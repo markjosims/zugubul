@@ -8,7 +8,7 @@ import sys
 Creates a .eaf file with empty annotations for each speech segment
 indicated in a .vad file.
 
-Usage: rvad_to_elan.py VAD_FILEPATH WAV_FILEPATH EAF_FILEPATH
+Usage: rvad_to_elan.py WAV_FILEPATH VAD_FILEPATH EAF_FILEPATH
 """
 
 def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> List[tuple]:
@@ -55,8 +55,8 @@ def rvad_segs_to_ms(segs: list) -> list:
     return [(start*frame_width, end*frame_width) for start, end in segs]
 
 def main():
-    rvad_fp = sys.argv[1]
-    wav_fp = sys.argv[2]
+    wav_fp = sys.argv[1]
+    rvad_fp = sys.argv[2]
     eaf_fp = sys.argv[3]
 
     segs = read_rvad_segs(rvad_fp)
