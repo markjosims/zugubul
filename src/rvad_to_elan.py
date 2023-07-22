@@ -1,8 +1,15 @@
 from pympi import Elan
-from typing import Literal
+from typing import Literal, List
 import sys
 
-def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> list:
+def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> List[tuple]:
+    """
+    Read .vad file and return list of tuples
+    containing start and end of speech segments.
+    By default assumes .vad file is of 'seg' dialect,
+    containing start and end frames for segments.
+    Use 'frame' dialect for .vad files containing 1s and 0s for each frame.
+    """
     if dialect == 'seg':
         with open(fp, 'r') as f:
             segs = f.readlines()
@@ -31,21 +38,23 @@ def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> list:
 
 
 def rvad_segs_to_ms(segs: list) -> list:
+    """
+    Convert list of tuples with frame indices
+    to list of same shape with time values in ms.
+    """
     frame_width = 10
     return [(start*frame_width, end*frame_width) for start, end in segs]
-
-def make_annotation(eaf: Elan.Eaf, start: int, end: int):
-    eaf.add_annotation('default-lt', start, end)
 
 def main():
     rvad_fp = sys.argv[1]
     eaf_fp = sys.argv[2]
+
     segs = read_rvad_segs(rvad_fp)
     times = rvad_segs_to_ms(segs)
     eaf = Elan.Eaf()
     eaf.add_tier('default-lt')
     for start, end in times:
-        make_annotation(eaf, start, end)
+        eaf.add_annotation('default-lt', start, end)
     Elan.to_eaf(eaf_fp, eaf)
     
 
