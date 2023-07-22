@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import unittest
 
 from zugubul.src.rvad_to_elan import read_rvad_segs
