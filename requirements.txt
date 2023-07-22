@@ -4,5 +4,13 @@
 #
 #    pip-compile
 #
+numpy==1.24.4
+    # via
+    #   -r requirements.in
+    #   scipy
+pyaudio==0.2.13
+    # via -r requirements.in
 pympi-ling==1.70.2
+    # via -r requirements.in
+scipy==1.10.1
     # via -r requirements.in
