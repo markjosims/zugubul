@@ -162,3 +162,4 @@ cython_debug/
 # Ignore ELAN and audio files
 *.eaf
 *.wav
+*.pfsx
