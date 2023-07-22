@@ -1,6 +1,15 @@
+#!/usr/bin/env python
+
 from pympi import Elan
 from typing import Literal, List
 import sys
+
+"""
+Creates a .eaf file with empty annotations for each speech segment
+indicated in a .vad file.
+
+Usage: rvad_to_elan.py VAD_FILEPATH WAV_FILEPATH EAF_FILEPATH
+"""
 
 def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> List[tuple]:
     """
@@ -47,11 +56,14 @@ def rvad_segs_to_ms(segs: list) -> list:
 
 def main():
     rvad_fp = sys.argv[1]
-    eaf_fp = sys.argv[2]
+    wav_fp = sys.argv[2]
+    eaf_fp = sys.argv[3]
 
     segs = read_rvad_segs(rvad_fp)
     times = rvad_segs_to_ms(segs)
     eaf = Elan.Eaf()
+    eaf.add_linked_file(wav_fp)
+    # TODO: enable retrieving ELAN tier info from .cfg file
     eaf.add_tier('default-lt')
     for start, end in times:
         eaf.add_annotation('default-lt', start, end)
