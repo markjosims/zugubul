@@ -30,7 +30,7 @@ def speech_wave(fileName_):
 
      # MODIFICATION BY Mark Joseph Simmons, 21 Jul 2023
      # if stereo, convert to mono
-     if sig.shape[1] > 1:
+     if len(sig.shape) > 1:
          sig = sig[:,0]
      # END MODIFICATION
 
