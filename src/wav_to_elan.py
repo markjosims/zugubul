@@ -15,8 +15,8 @@ def main():
     wav_fp = sys.argv[1]
     rvad_fp = sys.argv[2]
     eaf_fp = sys.argv[3]
-    os.system(f'python -m zugubul.rVAD.rVAD_fast.py {wav_fp} {rvad_fp}')
-    os.system(f'python -m zugubul.src.rvad_to_elan.py {wav_fp} {rvad_fp} {eaf_fp}')
+    os.system(f'python zugubul/rVAD/rVAD_fast.py {wav_fp} {rvad_fp} ')
+    os.system(f'python zugubul/src/rvad_to_elan.py {wav_fp} {rvad_fp} {eaf_fp} frame')
 
 if __name__ == '__main__':
     main()
