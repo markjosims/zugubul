@@ -63,9 +63,9 @@ def record_to_file(file_path):
 if __name__ == '__main__':
     # MODIFICATION BY Mark Simmons 7/25/2023
     # Indicate original copyright upon execution
-    print("Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
+    print("rVAD fast stream 2.0: Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
     # END MODIFICATION
-    
+
     part=0
     while True:
        audPart = 'output'+ str(part)  

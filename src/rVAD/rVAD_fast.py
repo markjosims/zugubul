@@ -21,7 +21,7 @@ from copy import deepcopy
 
 # MODIFICATION BY Mark Simmons 7/25/2023
 # Indicate original copyright upon execution
-print("Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
+print("rVAD fast 2.0: Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
 # END MODIFICATION
 
 winlen, ovrlen, pre_coef, nfilter, nftt = 0.025, 0.01, 0.97, 20, 512
