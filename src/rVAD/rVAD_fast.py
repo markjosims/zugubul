@@ -6,7 +6,7 @@ import sys
 import math
 import code
 from scipy.signal import lfilter
-import speechproc
+from rVAD import speechproc
 from copy import deepcopy
 
 # Refs:
@@ -19,6 +19,10 @@ from copy import deepcopy
 
 # Usage: python rVAD_fast_2.0.py inWaveFile  outputVadLabel
 
+# MODIFICATION BY Mark Simmons 7/25/2023
+# Indicate original copyright upon execution
+print("Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
+# END MODIFICATION
 
 winlen, ovrlen, pre_coef, nfilter, nftt = 0.025, 0.01, 0.97, 20, 512
 ftThres=0.5; vadThres=0.4

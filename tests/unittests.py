@@ -4,7 +4,7 @@ import unittest
 import os
 
 from pympi import Elan
-from zugubul.src.rvad_to_elan import read_rvad_segs
+from zugubul.rvad_to_elan import read_rvad_segs
 
 
 class TestRvadToElan(unittest.TestCase):

@@ -3,7 +3,8 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-package-dir = {"zugubul" = "zugubul/src"}
+packages = ["rVAD", "zugubul"]
+package-dir = {"" = "src"}
 
 [project]
 name = "zugubul"
@@ -21,3 +22,4 @@ version = "0.1.0"
 [project.scripts]
 rvad_to_elan = "zugubul.rvad_to_elan:main"
 wav_to_elan = "zugubul.wav_to_elan:main"
+rvad = "rVAD.rVAD_fast:__main__"
