@@ -49,7 +49,7 @@ def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> List[tupl
     return [(start, end) for start, end in zip(startpoints, endpoints)]
 
 
-def rvad_segs_to_ms(segs: list) -> list:
+def rvad_segs_to_ms(segs: List) -> List:
     """
     Convert list of tuples with frame indices
     to list of same shape with time values in ms.
