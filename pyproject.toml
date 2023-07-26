@@ -17,9 +17,10 @@ requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
 ]
-version = "0.1.0"
+version = "0.2.0"
 
 [project.scripts]
 rvad_to_elan = "zugubul.rvad_to_elan:main"
 wav_to_elan = "zugubul.wav_to_elan:main"
 rvad = "rVAD.rVAD_fast:main"
+elan_tools = "zugubul.elan_tools:main"
