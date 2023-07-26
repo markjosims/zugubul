@@ -94,5 +94,33 @@ class TestElanTools(unittest.TestCase):
             [(10, 11, 'include')]
         )
 
+    def test_trim_stopword(self):
+        in_fp = r'C:\projects\zugubul\tests\test_trim_in.eaf'
+        out_fp = r'C:\projects\zugubul\tests\test_trim_out.eaf'
+
+        if os.path.exists(in_fp):
+            os.remove(in_fp)
+
+        # make dummy .eaf file
+        eaf_obj = Elan.Eaf()
+        eaf_obj.add_tier('default-lt')
+
+        for i in range(10):
+            eaf_obj.add_annotation(id_tier='default-lt', start=i, end=i+1, value='stopword')
+        eaf_obj.add_annotation(id_tier='default-lt', start=10, end=11, value='include')
+
+        eaf_obj.to_file(in_fp)
+
+        # trim
+        os.system(f'elan_tools trim {in_fp} {out_fp} default-lt stopword')
+
+        # read annotations
+        eaf_obj = Elan.Eaf(out_fp)
+        annotations = eaf_obj.get_annotation_data_for_tier('default-lt')
+        self.assertEqual(
+            annotations,
+            [(10, 11, 'include')]
+        )
+
 if __name__ == '__main__':
     unittest.main()
