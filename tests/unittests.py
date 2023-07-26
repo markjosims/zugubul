@@ -95,8 +95,8 @@ class TestElanTools(unittest.TestCase):
         )
 
     def test_trim_stopword(self):
-        in_fp = r'C:\projects\zugubul\tests\test_trim_in.eaf'
-        out_fp = r'C:\projects\zugubul\tests\test_trim_out.eaf'
+        in_fp = r'C:\projects\zugubul\tests\test_trim_stopword_in.eaf'
+        out_fp = r'C:\projects\zugubul\tests\test_trim_stopword_out.eaf'
 
         if os.path.exists(in_fp):
             os.remove(in_fp)

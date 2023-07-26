@@ -11,7 +11,7 @@ Commands include:
         TIER indicates which Elan tier to use, or 'default-lt' if no argument is passed.
         If a STOPWORD is passed after the TIER argument,
         remove all annotations with the indicated string value
-        (e.g. elan_tools annotation.eaf ipa x  removes all annotations that contain only the letter "x" on tier "ipa")
+        (e.g. elan_tools annotation.eaf annotation_out.eaf ipa x  removes all annotations that contain only the letter "x" on tier "ipa")
 """
 
 def print_help():
