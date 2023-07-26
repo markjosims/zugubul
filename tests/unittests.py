@@ -64,7 +64,10 @@ class TestElanTools(unittest.TestCase):
     
     def test_usage_str(self):
         help_str = os.popen('elan_tools -h').read()
-        self.assertIn('Usage', help_str, 'Usage not found in help string.')
+        self.assertIn('Usage', help_str, '`Usage` not found in help string.')
+        self.assertIn('trim', help_str, '`trim` not found in help string.')
+        self.assertIn('merge', help_str, '`merge` not found in help string.')
+
 
     def test_trim(self):
         in_fp = r'C:\projects\zugubul\tests\test_trim_in.eaf'
@@ -72,6 +75,9 @@ class TestElanTools(unittest.TestCase):
 
         if os.path.exists(in_fp):
             os.remove(in_fp)
+
+        if os.path.exists(out_fp):
+            os.remove(out_fp)
 
         # make dummy .eaf file
         eaf_obj = Elan.Eaf()
@@ -101,6 +107,9 @@ class TestElanTools(unittest.TestCase):
         if os.path.exists(in_fp):
             os.remove(in_fp)
 
+        if os.path.exists(out_fp):
+            os.remove(out_fp)
+
         # make dummy .eaf file
         eaf_obj = Elan.Eaf()
         eaf_obj.add_tier('default-lt')
@@ -121,6 +130,33 @@ class TestElanTools(unittest.TestCase):
             annotations,
             [(10, 11, 'include')]
         )
+
+    def test_merge(self):
+        non_empty_fp = r'C:\projects\zugubul\tests\test_tira1_nonempty.eaf'
+        empty_fp = r'C:\projects\zugubul\tests\test_tira1.eaf'
+        out_fp = r'C:\projects\zugubul\tests\test_tira1_merged.eaf'
+
+        if os.path.exists(out_fp):
+            os.remove(out_fp)
+
+        os.system(f'elan_tools merge {non_empty_fp} {empty_fp} {out_fp}')
+
+        non_empty_annotations = Elan.Eaf(non_empty_fp).get_annotation_data_for_tier('default-lt')
+        self.assertEqual(
+            non_empty_annotations,
+            [(1170, 2150, 'jicelo')]
+        )
+        empty_annotations = Elan.Eaf(empty_fp).get_annotation_data_for_tier('default-lt')
+        self.assertEqual(
+            sorted(empty_annotations, key=lambda l: l[0]),
+            [(100, 1150, ''), (1170, 2150, '')]
+        )
+        out_annotations = Elan.Eaf(out_fp).get_annotation_data_for_tier('default-lt')
+        self.assertEqual(
+            sorted(out_annotations, key=lambda l: l[0]),
+            [(100, 1150, ''), (1170, 2150, 'jicelo')]
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
