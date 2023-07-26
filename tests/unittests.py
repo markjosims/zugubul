@@ -60,6 +60,31 @@ class TestRvadToElan(unittest.TestCase):
         except:
             self.fail('Could not open .eaf file')
 
+    def test_wav_to_elan_merge(self):
+        wav_fp = r'C:\projects\zugubul\tests\test_tira1.wav'
+        vad_fp = r'C:\projects\zugubul\tests\test_tira1_frames.vad'
+        eaf_in_fp = r'C:\projects\zugubul\tests\test_tira1_nonempty.eaf'
+        eaf_out_fp = r'C:\projects\zugubul\tests\test_tira1_out.eaf'
+
+        if os.path.exists(eaf_out_fp):
+            os.remove(eaf_out_fp)
+
+        if os.path.exists(vad_fp):
+            os.remove(vad_fp)
+        
+        try:
+            os.system(f'wav_to_elan {wav_fp} {vad_fp} {eaf_in_fp} {eaf_out_fp}')
+        except:
+            self.fail('Could not run script wav_to_elan.py')
+        try:
+            out_annotations = Elan.Eaf(eaf_out_fp).get_annotation_data_for_tier('default-lt')
+        except:
+            self.fail('Could not open .eaf file')
+        self.assertEqual(
+            sorted(out_annotations, key=lambda l: l[0]),
+            [(100, 1150, ''), (1170, 2150, 'jicelo')]
+        )
+
 class TestElanTools(unittest.TestCase):
     
     def test_usage_str(self):

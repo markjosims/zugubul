@@ -12,11 +12,18 @@ import os
 import sys
 
 def main():
-    wav_fp = sys.argv[1]
-    rvad_fp = sys.argv[2]
-    eaf_fp = sys.argv[3]
-    os.system(f'rvad {wav_fp} {rvad_fp} ')
-    os.system(f'rvad_to_elan {wav_fp} {rvad_fp} {eaf_fp} frame')
+    try:
+        wav_fp = sys.argv[1]
+        rvad_fp = sys.argv[2]
+        eaf_in_fp = sys.argv[3]
+        eaf_out_fp = sys.argv[4] if len(sys.argv) > 4 else eaf_in_fp
+    except IndexError():
+        print('Usage: wav_to_elan.py WAV_FILEPATH VAD_FILEPATH EAF_FILEPATH')
+        return
+    os.system(f'rvad {wav_fp} {rvad_fp}')
+    os.system(f'rvad_to_elan {wav_fp} {rvad_fp} {eaf_out_fp} frame')
+    if eaf_in_fp != eaf_out_fp:
+        os.system(f'elan_tools merge {eaf_in_fp} {eaf_out_fp} {eaf_out_fp}')
 
 if __name__ == '__main__':
     main()

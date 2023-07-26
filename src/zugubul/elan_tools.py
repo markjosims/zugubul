@@ -82,8 +82,8 @@ def main():
         tier = sys.argv[4] if len(sys.argv) > 4 else 'default-lt'
         stopword = sys.argv[5] if len(sys.argv) > 5 else ''
         eaf_obj = trim(in_fp, tier, stopword)
-        if out_fp == in_fp:
-            os.remove(in_fp)
+        if os.path.exists(out_fp):
+            os.remove(out_fp)
         eaf_obj.to_file(out_fp)
     elif command == 'merge':
         if len(sys.argv) <= 3:
@@ -100,8 +100,8 @@ def main():
             print('Enter value for gap as a number of ms. Defaulting to 200ms')
             gap = 200
         eaf_obj = merge(file1, file2, tier, gap)
-        if out_fp == file1:
-            os.remove(file1)
+        if os.path.exists(out_fp):
+            os.remove(out_fp)
         eaf_obj.to_file(out_fp)
     else:
         print('Unrecognized command')
