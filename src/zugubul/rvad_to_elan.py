@@ -2,6 +2,7 @@
 
 from pympi import Elan
 from typing import Literal, List
+from rVAD.rVAD_fast import frames_to_segs
 import sys
 
 """
@@ -25,27 +26,14 @@ def read_rvad_segs(fp: str, dialect: Literal['seg', 'frame']='seg') -> List[tupl
     if dialect == 'seg':
         with open(fp, 'r') as f:
             segs = f.readlines()
-        segs = [int(s) for s in segs]
-        startpoints = segs[:len(segs)//2]
-        endpoints = segs[len(segs)//2:]
     else:
         # dialect == 'frame'
         with open(fp, 'r') as f:
             frames = f.readlines()
-        frames = [int(f) for f in frames]
-        in_seg = False
-        startpoints = []
-        endpoints = []
-        for i, f in enumerate(frames):
-            if in_seg:
-                if f == 0:
-                    # end of segment
-                    in_seg = False
-                    endpoints.append(i)
-            elif f == 1:
-                # beginning of segment
-                in_seg = True
-                startpoints.append(i+1)
+        segs = frames_to_segs(frames)
+    segs = [int(s) for s in segs]
+    startpoints = segs[:len(segs)//2]
+    endpoints = segs[len(segs)//2:]
     return [(start, end) for start, end in zip(startpoints, endpoints)]
 
 
