@@ -30,7 +30,8 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     endpoints = np.where(diff==-1)[0]
     if frames[-1] == 1:
         endpoints = np.insert(endpoints, len(endpoints), len(endpoints))
-    endpoints-=1
+    startpoints+=2
+    endpoints+=1
     return np.concatenate([startpoints, endpoints])
 
 
