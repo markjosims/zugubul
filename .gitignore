@@ -169,3 +169,7 @@ cython_debug/
 
 # backup files
 *.bak
+
+# cached files
+cache
+cache/
