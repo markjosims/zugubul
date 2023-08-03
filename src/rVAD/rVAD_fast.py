@@ -8,6 +8,8 @@ import code
 from scipy.signal import lfilter
 from rVAD import speechproc
 from copy import deepcopy
+from zugubul.utils import batch_funct
+from typing import Optional, Literal, Callable
 
 # Refs:
 #  [1] Z.-H. Tan, A.k. Sarkara and N. Dehak, "rVAD: an unsupervised segment-based robust voice activity detection method," Computer Speech and Language, vol. 59, pp. 1-21, 2020. 
@@ -19,12 +21,30 @@ from copy import deepcopy
 
 # Usage: python rVAD_fast_2.0.py inWaveFile  outputVadLabel
 
+# MODIFICATION BY Mark J Simmons, 3 August 2023
+# Extracted code for saving vad file to a separate method
+# Added logic to allow for either passing a path to a wav file
+# or an array containing vad data
+def save_vad_file(vad_fp: str, wav_fp: Optional[str] = None, vad_array: Optional[np.ndarray] = None) -> str:
+    """
+    If wav_fp is passed, perform voice activity detection on the indicated wav file and save output to vad_fp
+    Else, save vad_array to vad_fp.
+    Returns vad_fp.
+    """
+    if wav_fp:
+        vad_array = rVAD_fast(wav_fp, dialect='seg')
+    np.savetxt(vad_fp, vad_array.astype(int),  fmt='%i')
+    print("%s --> %s " %(wav_fp, vad_fp))
+    return vad_fp
+# END MODIFICATION
+
 def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     """
     Takes an array of 0 and 1 frame values and returns an array with segment start and endpoints
     """
     diff = np.diff(frames)
     startpoints = np.where(diff==1)[0]
+    # np.diff function will miss speech segment edges on the first or last frame of the array
     if frames[0] == 1:
         startpoints = np.insert(startpoints, 0, 0)
     endpoints = np.where(diff==-1)[0]
@@ -34,7 +54,28 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     endpoints+=1
     return np.concatenate([startpoints, endpoints]).astype('int')
 
-def rVAD_fast(finwav: str, dialect: str = 'seg') -> np.ndarray:
+def rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
+    """
+    Run rVAD_fast on the wav file indicated by finwav,
+    return array indicating segments of speech.
+    If "dialect" is frame, return array of 0s and 1s for each frame (10ms) of audio,
+    where 1 indicates speech and 0 noise or silence.
+    If "dialect" is seg, return array of startpoints and endpoints for speech segments.
+    """
+
+    # MODIFICATION BY Mark J Simmons, 3 August 2023
+    # call batch_funct if directory path is passed
+    # default to saving vad file to same directory and filename as wav files
+    # with .wav suffix replaced with .vad
+    # if save_funct is passed, use that instead
+    if os.path.isdir(finwav):
+        if not save_funct:
+            save_funct = lambda data_file, array: save_vad_file(
+                vad_array=array,
+                vad_fp=str(data_file).replace('.wav', '.vad')
+            )
+        return batch_funct(rVAD_fast, finwav, '.wav', 'finwav', save_f=save_funct)
+    # END MODIFICATION
     winlen, frame_shift, pre_coef, nfilter, nftt = 0.025, 0.01, 0.97, 20, 512
     ftThres=0.5; vadThres=0.4
     opts=1
@@ -74,15 +115,22 @@ def rVAD_fast(finwav: str, dialect: str = 'seg') -> np.ndarray:
     return vad_out
 
 if __name__ == '__main__':
-    # MODIFICATION BY Mark Simmons 7/25/2023
+    # MODIFICATION BY Mark J Simmons 7/25/2023
     # Indicate original copyright upon execution
     print("rVAD fast 2.0: Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
     # END MODIFICATION
     finwav=str(sys.argv[1])
     fvad=str(sys.argv[2])
-    vad_out = rVAD_fast(finwav, dialect='seg')
-    np.savetxt(fvad, vad_out.astype(int),  fmt='%i')
-    print("%s --> %s " %(finwav, fvad))
-     
-
-
+    # MODIFICATION BY Mark J Simmons 8/3/2023
+    if os.path.isdir(finwav) and os.path.isdir(fvad):
+        save_funct = lambda data_file, array: save_vad_file(
+            vad_array=array,
+            vad_fp=str(data_file)
+                .replace('.wav', '.vad')
+                .replace(finwav, fvad)
+        )
+        rVAD_fast(finwav, save_funct=save_funct)
+    else:
+        vad_out = rVAD_fast(finwav)
+        save_vad_file(vad_array=vad_out, wav_fp=finwav)
+    # END MODIFICATION

@@ -174,7 +174,7 @@ class TestBatchScripts(unittest.TestCase):
         wav_dir = r'C:\projects\zugubul\tests\wavs'
         vad_dir = r'C:\projects\zugubul\tests\vads'
 
-        def save_funct(fp, out):
+        def save_funct(fp, out) -> str:
             fp = str(fp)
             fp = fp.replace('.wav', '_batch.vad')
             fp = fp.replace(wav_dir, vad_dir)
@@ -185,12 +185,30 @@ class TestBatchScripts(unittest.TestCase):
 
         for _, vad in out.items():
             gold_vad = vad.replace('_batch.vad', '_gold.vad')
-            vad = np.loadtxt(vad)
-            gold_vad = np.loadtxt(gold_vad)
-            self.assertTrue(np.array_equal(vad, gold_vad))
+            vad_array = np.loadtxt(vad)
+            gold_vad_array = np.loadtxt(gold_vad)
+            self.assertTrue(np.array_equal(vad_array, gold_vad_array))
+            os.remove(vad)
 
     def test_batch_wav_to_elan(self):
-        ...
+        wav_dir = r'C:\projects\zugubul\tests\wavs'
+        eaf_dir = r'C:\projects\zugubul\tests\eafs'
+
+        def save_funct(fp, out) -> str:
+            fp = str(fp)
+            fp = fp.replace('.wav', '_batch.eaf')
+            fp = fp.replace(wav_dir, eaf_dir)
+            out.to_file(fp)
+            return fp
+
+        out = label_speech_segments(wav_dir, save_funct=save_funct)
+
+        for _, eaf in out.items():
+            gold_eaf = eaf.replace('_batch.eaf', '_gold.eaf')
+            eaf_annotations = Elan.Eaf(eaf).get_annotation_data_for_tier('default-lt')
+            gold_eaf_annotations = Elan.Eaf(gold_eaf).get_annotation_data_for_tier('default-lt')
+            self.assertEqual(sorted(eaf_annotations), sorted(gold_eaf_annotations))
+            os.remove(eaf)
 
 if __name__ == '__main__':
     unittest.main()

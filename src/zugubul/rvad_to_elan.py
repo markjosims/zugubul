@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 from pympi import Elan
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Callable
 from rVAD.rVAD_fast import rVAD_fast, frames_to_segs
+from zugubul.utils import batch_funct
 import sys
+import os
 import numpy as np
 
 """
@@ -49,12 +51,15 @@ def rvad_segs_to_ms(segs: List) -> List:
     return [(start*frame_width, end*frame_width) for start, end in segs]
 
 
-def label_speech_segments(wav_fp: str, rvad_fp: Optional[str] = None, dialect: str = 'seg') -> Elan.Eaf:
+def label_speech_segments(wav_fp: str, rvad_fp: Optional[str] = None, dialect: str = 'seg', save_funct: Optional[Callable] = None) -> Elan.Eaf:
     """
     Returns an Eaf object with empty annotations for each detected speech segment.
     If rvad_fp is passed, read speech segments from the associated .vad file,
     otherwise run rVAD_fast on wav file indicated by wav_fp.
     """
+    if os.path.isdir(wav_fp):
+        return batch_funct(label_speech_segments, wav_fp, '.wav', 'wav_fp', save_f=save_funct)
+
     if rvad_fp:
         segs = read_rvad_segs(vad_fp=rvad_fp, dialect=dialect)
     else:
