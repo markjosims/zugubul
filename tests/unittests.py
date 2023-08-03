@@ -2,10 +2,13 @@
 
 import unittest
 import os
+import numpy as np
 
 from pympi import Elan
 from zugubul.rvad_to_elan import read_rvad_segs, label_speech_segments
 from zugubul.elan_tools import merge, trim
+from zugubul.utils import batch_funct
+from rVAD.rVAD_fast import rVAD_fast
 
 
 class TestRvadToElan(unittest.TestCase):
@@ -166,6 +169,28 @@ class TestElanTools(unittest.TestCase):
             [(100, 1150, ''), (1170, 2150, 'jicelo')]
         )
 
+class TestBatchScripts(unittest.TestCase):
+    def test_batch_rvad(self):
+        wav_dir = r'C:\projects\zugubul\tests\wavs'
+        vad_dir = r'C:\projects\zugubul\tests\vads'
+
+        def save_funct(fp, out):
+            fp = str(fp)
+            fp = fp.replace('.wav', '_batch.vad')
+            fp = fp.replace(wav_dir, vad_dir)
+            np.savetxt(fp, out)
+            return fp
+        
+        out = batch_funct(rVAD_fast, wav_dir, '.wav', 'finwav', save_f=save_funct)
+
+        for _, vad in out.items():
+            gold_vad = vad.replace('_batch.vad', '_gold.vad')
+            vad = np.loadtxt(vad)
+            gold_vad = np.loadtxt(gold_vad)
+            self.assertTrue(np.array_equal(vad, gold_vad))
+
+    def test_batch_wav_to_elan(self):
+        ...
 
 if __name__ == '__main__':
     unittest.main()
