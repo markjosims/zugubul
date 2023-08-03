@@ -10,7 +10,7 @@ import numpy as np
 Creates a .eaf file with empty annotations for each speech segment
 indicated in a .vad file.
 
-Usage: rvad_to_elan.py WAV_FILEPATH VAD_FILEPATH EAF_FILEPATH (DIALECT)
+Usage: rvad_to_elan WAV_FILEPATH VAD_FILEPATH EAF_FILEPATH (DIALECT)
 - DIALECT arg is optional, can either be 'seg' or 'frame',
 'seg' for a .vad file with start and endpoints for speech segments,
 'frame' for a .vad file with 0 or 1 for each frame
