@@ -4,7 +4,8 @@ import unittest
 import os
 
 from pympi import Elan
-from zugubul.rvad_to_elan import read_rvad_segs
+from zugubul.rvad_to_elan import read_rvad_segs, rvad_to_elan, wav_to_elan
+from zugubul.elan_tools import merge, trim
 
 
 class TestRvadToElan(unittest.TestCase):
@@ -52,7 +53,7 @@ class TestRvadToElan(unittest.TestCase):
             os.remove(vad_fp)
         
         try:
-            os.system(f'wav_to_elan {wav_fp} {vad_fp} {eaf_fp}')
+            rvad_to_elan(wav_fp, vad_fp, eaf_fp)
         except:
             self.fail('Could not run script wav_to_elan.py')
         try:
@@ -73,7 +74,7 @@ class TestRvadToElan(unittest.TestCase):
             os.remove(vad_fp)
         
         try:
-            os.system(f'wav_to_elan {wav_fp} {vad_fp} {eaf_in_fp} {eaf_out_fp}')
+            wav_to_elan(wav_fp, vad_fp, eaf_in_fp, eaf_out_fp)
         except:
             self.fail('Could not run script wav_to_elan.py')
         try:
@@ -116,7 +117,7 @@ class TestElanTools(unittest.TestCase):
         eaf_obj.to_file(in_fp)
 
         # trim
-        os.system(f'elan_tools trim {in_fp} {out_fp}')
+        trim(in_fp, out_fp)
 
         # read annotations
         eaf_obj = Elan.Eaf(out_fp)
@@ -147,7 +148,7 @@ class TestElanTools(unittest.TestCase):
         eaf_obj.to_file(in_fp)
 
         # trim
-        os.system(f'elan_tools trim {in_fp} {out_fp} default-lt stopword')
+        trim(in_fp, out_fp, 'default-lt', 'stopword')
 
         # read annotations
         eaf_obj = Elan.Eaf(out_fp)
@@ -165,7 +166,7 @@ class TestElanTools(unittest.TestCase):
         if os.path.exists(out_fp):
             os.remove(out_fp)
 
-        os.system(f'elan_tools merge {non_empty_fp} {empty_fp} {out_fp}')
+        merge(non_empty_fp, empty_fp, out_fp)
 
         non_empty_annotations = Elan.Eaf(non_empty_fp).get_annotation_data_for_tier('default-lt')
         self.assertEqual(
