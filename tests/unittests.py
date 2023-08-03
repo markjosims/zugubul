@@ -88,10 +88,11 @@ class TestRvadToElan(unittest.TestCase):
 class TestElanTools(unittest.TestCase):
     
     def test_usage_str(self):
-        help_str = os.popen('elan_tools -h').read()
-        self.assertIn('Usage', help_str, '`Usage` not found in help string.')
-        self.assertIn('trim', help_str, '`trim` not found in help string.')
-        self.assertIn('merge', help_str, '`merge` not found in help string.')
+        with os.popen('elan_tools -h') as process:
+            help_str = process.read()
+            self.assertIn('Usage', help_str, '`Usage` not found in help string.')
+            self.assertIn('trim', help_str, '`trim` not found in help string.')
+            self.assertIn('merge', help_str, '`merge` not found in help string.')
 
 
     def test_trim(self):
