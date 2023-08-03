@@ -12,30 +12,30 @@ class TestRvadToElan(unittest.TestCase):
 
     def test_read_rvad_segs(self):
         self.assertEqual(
-            read_rvad_segs('tests/test_tira1_matlab_segs.vad'),
+            read_rvad_segs(r'C:\projects\zugubul\tests\vads\test_tira1_matlab_segs.vad'),
             [(18, 114), (123,205)]
         )
         self.assertEqual(
-            read_rvad_segs('tests/test_tira1_matlab_frames.vad', dialect='frame'),
+            read_rvad_segs(r'C:\projects\zugubul\tests\vads\test_tira1_matlab_frames.vad', dialect='frame'),
             [(18, 114), (123,205)]
         )
 
     def test_read_rvad_dialects(self):
         self.assertEqual(
-            read_rvad_segs('tests/test_dendi1_matlab_segs.vad'),
-            read_rvad_segs('tests/test_dendi1_matlab_frames.vad', dialect='frame')
+            read_rvad_segs(r'C:\projects\zugubul\tests\vads\test_dendi1_matlab_segs.vad'),
+            read_rvad_segs(r'C:\projects\zugubul\tests\vads\test_dendi1_matlab_frames.vad', dialect='frame')
         )
 
     def test_links_media_file(self):
-        wav_fp = r'C:\projects\zugubul\tests\test_dendi1_matlab.wav'
-        vad_fp = r'C:\projects\zugubul\tests\test_dendi1_matlab_segs.vad'
+        wav_fp = r'C:\projects\zugubul\tests\wavs\test_dendi1_matlab.wav'
+        vad_fp = r'C:\projects\zugubul\tests\vads\test_dendi1_matlab_segs.vad'
 
         eaf = label_speech_segments(wav_fp, vad_fp)
 
         self.assertEqual(eaf.media_descriptors[0]['MEDIA_URL'], wav_fp)
     
     def test_wav_to_elan(self):        
-        wav_fp = r'C:\projects\zugubul\tests\test_tira1.wav'
+        wav_fp = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
         
         try:
             eaf = label_speech_segments(wav_fp)
@@ -49,10 +49,10 @@ class TestRvadToElan(unittest.TestCase):
         )
 
     def test_wav_to_elan_script(self):
-        wav_fp = r'C:\projects\zugubul\tests\test_tira1.wav'
-        vad_fp = r'C:\projects\zugubul\tests\test_tira1_frames.vad'
-        eaf_in_fp = r'C:\projects\zugubul\tests\test_tira1_nonempty.eaf'
-        eaf_out_fp = r'C:\projects\zugubul\tests\test_tira1_out.eaf'
+        wav_fp = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+        vad_fp = r'C:\projects\zugubul\tests\vads\test_tira1_frames.vad'
+        eaf_in_fp = r'C:\projects\zugubul\tests\eafs\test_tira1_nonempty.eaf'
+        eaf_out_fp = r'C:\projects\zugubul\tests\eafs\test_tira1_out.eaf'
 
         if os.path.exists(eaf_out_fp):
             os.remove(eaf_out_fp)
@@ -74,9 +74,9 @@ class TestRvadToElan(unittest.TestCase):
         )
 
     def test_rvad_to_elan_script(self):
-        wav_fp = r'C:\projects\zugubul\tests\test_dendi1_matlab.wav'
-        vad_fp = r'C:\projects\zugubul\tests\test_dendi1_matlab_segs.vad'
-        eaf_fp = r'C:\projects\zugubul\tests\test_dendi1_matlab.eaf'
+        wav_fp = r'C:\projects\zugubul\tests\wavs\test_dendi1_matlab.wav'
+        vad_fp = r'C:\projects\zugubul\tests\vads\test_dendi1_matlab_segs.vad'
+        eaf_fp = r'C:\projects\zugubul\tests\eafs\test_dendi1_matlab.eaf'
 
         if os.path.exists(eaf_fp):
             os.remove(eaf_fp)
