@@ -1,6 +1,8 @@
 import sys
 import os
 from pympi import Elan
+from typing import Union
+from copy import deepcopy
 
 docstr = """
 Usage: elan_tools COMMAND...
@@ -12,63 +14,73 @@ Commands include:
         If a STOPWORD is passed after the TIER argument,
         remove all annotations with the indicated string value
         (e.g. elan_tools annotation.eaf annotation_out.eaf ipa x  removes all annotations that contain only the letter "x" on tier "ipa")
-- merge FILE1 FILE2 (OUTFILE) (TIER) (GAP):
+- merge FILE1 FILE2 (OUTFILE) (TIER) (OVERLAP):
         For a given TIER, add all annotations from FILE2 that don't overlap with those already present in FILE1.
         When an annotation from FILE2 overlaps with one from FILE1, cut annotation from FILE2 to only non-overlapping part,
-        and add to FILE1, but only if non-overlapping part is less than GAP (default 200ms).
-        If GAP=inf, do not add any overlapping annotations from FILE2.
+        and add to FILE1, but only if non-overlapping part is less than OVERLAP (default 200ms).
+        If OVERLAP=inf, do not add any overlapping annotations from FILE2.
 """
 
 def print_help():
     print(docstr)
 
-def trim(eaf_fp: str, tier: str = 'default-lt', stopword: str = '') -> Elan.Eaf:
+def trim(eaf: Union[str, Elan.Eaf], tier: str = 'default-lt', stopword: str = '') -> Elan.Eaf:
     """
     Remove all annotations of the given tier which contain only the given stopword.
     By default, remove all empty annotations from tier 'default-lt'
     """
-    eaf_obj = Elan.Eaf(eaf_fp)
-    annotations = eaf_obj.get_annotation_data_for_tier(tier)
+    if type(eaf) is str:
+        eaf = Elan.Eaf(eaf)
+    annotations = eaf.get_annotation_data_for_tier(tier)
     for a in annotations:
         a_start = a[0]
         a_end = a[1]
         a_mid = (a_start + a_end)/2
         a_value = a[2]
         if a_value == stopword:
-            removed = eaf_obj.remove_annotation(tier, a_mid)
+            removed = eaf.remove_annotation(tier, a_mid)
             assert removed >= 1
-    return eaf_obj
+    return eaf
 
-def merge(file1: str, file2: str, tier: str = 'default-lt', gap: int = 200) -> Elan.Eaf:
+def merge(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf], tier: str = 'default-lt', overlap: int = 200) -> Elan.Eaf:
     """
-    For tier, add all annotations in file2 which are not already in file1.
-    If annotation from file2 overlaps with file1, add only the non-overlapping part.
-    If the non-overlapping part is shorter than the gap value, do not add.
+    eaf1 and eaf2 may be strings containing .eaf filepaths or Eaf objects
+    For tier, add all annotations in eaf2 which are not already in eaf1.
+    If annotation from eaf2 overlaps with eaf1, add only the non-overlapping part.
+    If the non-overlapping part is shorter than the overlap value, do not add.
     """
-    file1_obj = Elan.Eaf(file1)
-    file2_obj = Elan.Eaf(file2)
+    if type(eaf1) is str:
+        eaf1 = Elan.Eaf(eaf1)
+    else:
+        eaf1 = deepcopy(eaf1)
+    if type(eaf2) is str:
+        eaf2 = Elan.Eaf(eaf2)
+    else:
+        eaf2 = deepcopy(eaf2)
 
-    file2_annotations = file2_obj.get_annotation_data_for_tier(tier)
+    eaf2_annotations = eaf2.get_annotation_data_for_tier(tier)
 
-    for start, end, value in file2_annotations:
-        file1_overlap_file2_start = file1_obj.get_annotation_data_at_time(tier, start)
-        f1_endtimes = [t[1] for t in file1_overlap_file2_start]
+    for start, end, value in eaf2_annotations:
+        eaf1_overlap_eaf2_start = eaf1.get_annotation_data_at_time(tier, start)
+        f1_endtimes = [t[1] for t in eaf1_overlap_eaf2_start]
         start = max(f1_endtimes) if f1_endtimes else start
         
-        file1_overlap_file2_end = file1_obj.get_annotation_data_at_time(tier, end)
-        f1_startimes = [t[0] for t in file1_overlap_file2_end]
+        eaf1_overlap_eaf2_end = eaf1.get_annotation_data_at_time(tier, end)
+        f1_startimes = [t[0] for t in eaf1_overlap_eaf2_end]
         end = min(f1_startimes) if f1_startimes else end
 
-        if (end-start) < gap:
+        does_overlap = f1_endtimes or f1_startimes
+
+        if does_overlap and (end-start) < overlap:
             continue
 
-        file1_obj.add_annotation(tier, start, end, value)
+        eaf1.add_annotation(tier, start, end, value)
 
-    return file1_obj
+    return eaf1
 
 def main():
     if len(sys.argv) == 1:
-        print('Usage: python elan_tools.py COMMAND (ARG)')
+        print('Usage: python elan_tools.py COMMAND (ARG...)')
         print('Run `elan_tools -h` for a list of available commands.')
     command = sys.argv[1]
     if command == '-h':
@@ -93,13 +105,13 @@ def main():
         file2 = sys.argv[3]
         out_fp = sys.argv[4] if len(sys.argv) > 4 else file1
         tier = sys.argv[5] if len(sys.argv) > 5 else 'default-lt'
-        gap = sys.argv[6] if len(sys.argv) > 6 else 200
+        overlap = sys.argv[6] if len(sys.argv) > 6 else 200
         try:
-            gap = float(gap)
+            overlap = float(overlap)
         except ValueError():
-            print('Enter value for gap as a number of ms. Defaulting to 200ms')
-            gap = 200
-        eaf_obj = merge(file1, file2, tier, gap)
+            print('Enter value for overlap as a number of ms. Defaulting to 200ms')
+            overlap = 200
+        eaf_obj = merge(file1, file2, tier, overlap)
         if os.path.exists(out_fp):
             os.remove(out_fp)
         eaf_obj.to_file(out_fp)

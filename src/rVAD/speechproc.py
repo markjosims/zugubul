@@ -68,7 +68,7 @@ def sflux(data, fs, winlen, ovrlen, nftt):
     eps=np.finfo(float).eps
 
     xf=enframe(data, fs, winlen, ovrlen) #framing
-    w = np.matrix(np.hamming(int(fs*winlen)) )
+    w = np.array(np.hamming(int(fs*winlen)) )
     w = np.tile(w,(np.size(xf, axis=0), 1))
 
     xf = np.multiply (xf, w) #apply window
@@ -318,7 +318,6 @@ def snre_vad(fdata, nfr10, flen, fsh10, ENERGYFLOOR, pv01, pvblk, vadThres):
              e_new = estimate_energy(datai, nshifts, flen, fsh10, ENERGYFLOOR, prepend=False, use_margin=True)
              e_new = np.concatenate([[float('inf')],np.zeros(nstart-1),e_new,np.zeros(nfr10-nstop+1)])
              e = e + e_new
-             np.savetxt(r'C:\projects\zugubul\tests\tira1_refactor_e4.txt', e)
              e[nstop]=e[nstop-1]
 
 
