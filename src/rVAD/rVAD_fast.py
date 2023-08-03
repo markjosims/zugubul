@@ -32,7 +32,7 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
         endpoints = np.insert(endpoints, len(endpoints), len(endpoints))
     startpoints+=2
     endpoints+=1
-    return np.concatenate([startpoints, endpoints])
+    return np.concatenate([startpoints, endpoints]).astype('int')
 
 
 
