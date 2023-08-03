@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Usage: wav_to_elan.py WAV_FILEPATH EAF_FILEPATH (EAF_OUT_FILEPATH) (OVERLAP)
+Usage: wav_to_elan WAV_FILEPATH EAF_FILEPATH (EAF_OUT_FILEPATH) (OVERLAP)
 
 Runs rVAD_fast (Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar)
 on WAV_FILEPATH then generates elan annotations of speech segments at EAF_FILEPATH
@@ -25,7 +25,7 @@ def main():
             print('Gap must be a number.')
             overlap = 200
     except IndexError():
-        print('Usage: wav_to_elan.py WAV_FILEPATH EAF_FILEPATH (EAF_OUT_FILEPATH) (OVERLAP)')
+        print('Usage: wav_to_elan WAV_FILEPATH EAF_FILEPATH (EAF_OUT_FILEPATH) (OVERLAP)')
         return
     eaf = label_speech_segments(wav_fp)
     if eaf_fp2:
