@@ -34,20 +34,10 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     endpoints+=1
     return np.concatenate([startpoints, endpoints]).astype('int')
 
-
-
-def main():
-    # MODIFICATION BY Mark Simmons 7/25/2023
-    # Indicate original copyright upon execution
-    print("rVAD fast 2.0: Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
-    # END MODIFICATION
-
+def rVAD_fast(finwav: str, dialect: str = 'seg') -> np.ndarray:
     winlen, frame_shift, pre_coef, nfilter, nftt = 0.025, 0.01, 0.97, 20, 512
     ftThres=0.5; vadThres=0.4
     opts=1
-
-    finwav=str(sys.argv[1])
-    fvad=str(sys.argv[2])
 
     sampling_rate, data = speechproc.speech_wave(finwav)   
     ft, samples_per_frame, samples_per_frameshift, num_frameshifts =speechproc.sflux(data, sampling_rate, winlen, frame_shift, nftt)
@@ -76,18 +66,23 @@ def main():
         fdata[range(int(noise_samp[j,0]),  int(noise_samp[j,1]) +1)] = 0 
 
 
-    vad_frame=speechproc.snre_vad(fdata,  num_frameshifts, samples_per_frame, samples_per_frameshift, ENERGYFLOOR, pv01, pvblk, vadThres)
+    vad_out=speechproc.snre_vad(fdata,  num_frameshifts, samples_per_frame, samples_per_frameshift, ENERGYFLOOR, pv01, pvblk, vadThres)
 
-    vad_seg = vad_frame
-    #vad_seg = frames_to_segs(vad_frame)
+    if dialect == 'seg':
+        vad_out = frames_to_segs(vad_out)
 
-    np.savetxt(fvad, vad_seg.astype(int),  fmt='%i')
-    print("%s --> %s " %(finwav, fvad))
-
-    data=None; pv01=None; pitch=None; fdata=None; pvblk=None; vad_seg=None
+    return vad_out
 
 if __name__ == '__main__':
-    main()
+    # MODIFICATION BY Mark Simmons 7/25/2023
+    # Indicate original copyright upon execution
+    print("rVAD fast 2.0: Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar")
+    # END MODIFICATION
+    finwav=str(sys.argv[1])
+    fvad=str(sys.argv[2])
+    vad_out = rVAD_fast(finwav, dialect='seg')
+    np.savetxt(fvad, vad_out.astype(int),  fmt='%i')
+    print("%s --> %s " %(finwav, fvad))
      
 
 
