@@ -20,7 +20,5 @@ classifiers = [
 version = "0.2.0"
 
 [project.scripts]
-rvad_to_elan = "zugubul.rvad_to_elan:main"
-wav_to_elan = "zugubul.wav_to_elan:main"
+zugubul = "zugubul.scripts:main"
 rvad = "rVAD.rVAD_fast:main"
-elan_tools = "zugubul.elan_tools:main"

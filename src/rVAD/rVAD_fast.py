@@ -38,6 +38,7 @@ def save_vad_file(vad_fp: str, wav_fp: Optional[str] = None, vad_array: Optional
     return vad_fp
 # END MODIFICATION
 
+
 def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     """
     Takes an array of 0 and 1 frame values and returns an array with segment start and endpoints

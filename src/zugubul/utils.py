@@ -1,3 +1,5 @@
+import os
+import argparse
 from pathlib import Path
 from typing import Optional, Callable
 
@@ -30,3 +32,31 @@ def batch_funct(f: Callable,
             out[data_file] = f(**kwargs)
 
     return out
+
+def is_valid_file(parser: argparse.ArgumentParser, arg: str) -> str:
+    """
+    Return error if filepath not found, return filepath otherwise.
+    """
+    if not os.path.exists(arg):
+        parser.error("The file %s does not exist" % arg)
+    else:
+        return arg
+    
+def is_valid_dir(parser: argparse.ArgumentParser, arg: str) -> str:
+    """
+    Return error if directory path not found, return filepath otherwise.
+    """
+    if not os.path.isdir(arg):
+        parser.error("The folder %s does not exist" % arg)
+    else:
+        return arg
+    
+def file_in_valid_dir(parser: argparse.ArgumentParser, arg: str) -> str:
+    """
+    Return error if file's parent directory not found, return filepath otherwise.
+    """
+    parent_dir = os.path.split(arg)[0]
+    if not os.path.isdir(parent_dir):
+        parser.error(f"The file {arg} is invalid because the parent directory {parent_dir} does not exist")
+    else:
+        return arg

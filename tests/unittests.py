@@ -30,7 +30,7 @@ class TestRvadToElan(unittest.TestCase):
         )
 
     def test_links_media_file(self):
-        wav_fp = r'C:\projects\zugubul\tests\wavs\test_dendi1_matlab.wav'
+        wav_fp = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
         vad_fp = r'C:\projects\zugubul\tests\vads\test_dendi1_matlab_segs.vad'
 
         eaf = label_speech_segments(wav_fp, vad_fp)
@@ -64,9 +64,9 @@ class TestRvadToElan(unittest.TestCase):
             os.remove(vad_fp)
         
         try:
-            os.system(f'wav_to_elan {wav_fp} {eaf_in_fp} {eaf_out_fp}')
+            os.system(f'zugubul vad {wav_fp} {eaf_out_fp} -s {eaf_in_fp}')
         except:
-            self.fail('Could not run script wav_to_elan.py')
+            self.fail('Could not run command zugubul vad')
         try:
             out_annotations = Elan.Eaf(eaf_out_fp).get_annotation_data_for_tier('default-lt')
         except:
@@ -77,16 +77,16 @@ class TestRvadToElan(unittest.TestCase):
         )
 
     def test_rvad_to_elan_script(self):
-        wav_fp = r'C:\projects\zugubul\tests\wavs\test_dendi1_matlab.wav'
+        wav_fp = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
         vad_fp = r'C:\projects\zugubul\tests\vads\test_dendi1_matlab_segs.vad'
         eaf_fp = r'C:\projects\zugubul\tests\eafs\test_dendi1_matlab.eaf'
 
         if os.path.exists(eaf_fp):
             os.remove(eaf_fp)
         try:
-            os.system(f'rvad_to_elan {wav_fp} {vad_fp} {eaf_fp}')
+            os.system(f'zugubul vad {wav_fp} {eaf_fp} -v {vad_fp} ')
         except:
-            self.fail('Could not run script rvad_to_elan.py')
+            self.fail('Could not run script zugubul vad')
         try:
             Elan.Eaf(eaf_fp)
         except:
@@ -94,15 +94,6 @@ class TestRvadToElan(unittest.TestCase):
 
 
 class TestElanTools(unittest.TestCase):
-    
-    def test_usage_str(self):
-        with os.popen('elan_tools -h') as process:
-            help_str = process.read()
-            self.assertIn('Usage', help_str, '`Usage` not found in help string.')
-            self.assertIn('trim', help_str, '`trim` not found in help string.')
-            self.assertIn('merge', help_str, '`merge` not found in help string.')
-
-
     def test_trim(self):
         # make dummy .eaf file
         eaf = Elan.Eaf()
@@ -113,7 +104,7 @@ class TestElanTools(unittest.TestCase):
         eaf.add_annotation(id_tier='default-lt', start=10, end=11, value='include')
 
         # trim
-        trim(eaf)
+        eaf = trim(eaf)
 
         # read annotations
         annotations = eaf.get_annotation_data_for_tier('default-lt')
