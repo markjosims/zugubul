@@ -195,7 +195,7 @@ def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
 
 def main(argv: Optional[Sequence[str]] = None):
     parser = argparse.ArgumentParser(description='Tools for automatic transcription of audio files with ELAN.')
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(dest='COMMAND')
     
     merge_parser = subparsers.add_parser('merge', help='Add all annotations in eaf2 not present in eaf1')
     merge_parser = init_merge_parser(merge_parser)
