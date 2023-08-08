@@ -16,21 +16,22 @@ If -r flag is provided, and WAV_FILEPATH is a directory, search for wavs recursi
 import os
 from pathlib import Path
 import argparse
+import warnings
 from typing import Optional, Sequence
-from pympi import Elan
-from zugubul.rvad_to_elan import label_speech_segments
+from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim
-from zugubul.utils import is_valid_file, file_in_valid_dir
+from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct
+from tqdm import tqdm
 
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
-    merge_parser.add_argument('EAF1_FILEPATH', type=lambda x: is_valid_file(merge_parser, x),
-                        help='Filepath for eaf file to output to (or parent directory of eafs).'
-                    )
-    merge_parser.add_argument('EAF2_FILEPATH', type=lambda x: is_valid_file(merge_parser, x),
+    merge_parser.add_argument('EAF_SOURCE', type=lambda x: is_valid_file(merge_parser, x),
                         help='Filepath for eaf file to take output from (or parent directory of eafs).'
                     )
-    merge_parser.add_argument('-o', '--output_eaf', type=lambda x: file_in_valid_dir(merge_parser, x),
+    merge_parser.add_argument('EAF_MATRIX', type=lambda x: is_valid_file(merge_parser, x),
+                        help='Filepath for eaf file to insert annotations into (or parent directory of eafs). '\
+                    )
+    merge_parser.add_argument('-o', '--eaf_out', type=lambda x: file_in_valid_dir(merge_parser, x),
                         help='Filepath for eaf file to output to (or parent directory of eafs).'
                     )
     merge_parser.add_argument('-t', '--tier', required=False, nargs='+',
@@ -49,12 +50,16 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
     merge_parser.add_argument('-r', '--recursive', action='store_true',
                         help='If running a batch process, recurse over all subdirectories in WAV_FILEPATH.'
                     )
+    merge_parser.add_argument('--overwrite', action='store_true',
+                        help='If running batch process, overwrite applicable files in output directory. '\
+                            +'Default behavior is to skip merging a file already present in output.'
+                    )
     
 def init_trim_parser(trim_parser: argparse.ArgumentParser):
     trim_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(trim_parser, x),
                         help='Filepath for eaf file to trim (or parent directory of eafs).'
                     )
-    trim_parser.add_argument('-o', '--output_eaf', type=lambda x: file_in_valid_dir(trim_parser, x),
+    trim_parser.add_argument('-o', '--eaf_out', type=lambda x: file_in_valid_dir(trim_parser, x),
                         help='Filepath for eaf file to output to (or parent directory of eafs).'
                     )
     trim_parser.add_argument('-t', '--tier', required=False, nargs='+',
@@ -80,6 +85,7 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
                         help='Filepath for eaf file to output to (or parent directory).'
                        )
     vad_parser.add_argument('-s', '--source', help='Source .eaf file to merge output into (or parent directory).')
+    vad_parser.add_argument('-m', '--merge_output', help='Filepath to output  to merge output into (or parent directory).')
     vad_parser.add_argument('--overlap', type=int, default=200,
                         help='If source is passed, an overlapping annotation will only be added '\
                             +'if the non-overlapping portion is longer than the value passed (in ms). '\
@@ -92,51 +98,100 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('-r', '--recursive', action='store_true',
                         help='If running a batch process, recurse over all subdirectories in WAV_FILEPATH.'
                        )
+    vad_parser.add_argument('--overwrite', action='store_true',
+                        help='If running a batch process, overwrite files already in destination folder.'
+                       )
     vad_parser.add_argument('-v', '--vad', type=lambda x: is_valid_file(vad_parser, x),
                         help='Filepath for .vad file linked to the recording. '\
                             +'If passed, reads VAD data from file instead of running rVAD_fast.'
                        )
+    vad_parser.add_argument('-t', '--tier', required=False,
+                        help='Tier label to add annotations to. If none specified uses `default-lt`'\
+                       )
 
 def handle_merge(args):
-    eaf1 = args['EAF1_FILEPATH']
-    eaf2 = args['EAF2_FILEPATH']
-    out_fp = args['output_eaf']
-    tiers = args['tier']
+    eaf_source = args['EAF_SOURCE']
+    eaf_matrix = args['EAF_MATRIX']
+    eaf_out = args['eaf_out']
+    tier = args['tier']
     overlap = args['overlap']
     batch = args['batch']
     recursive = args['recursive']
+    overwrite = args['overwrite']
 
-    if not out_fp:
+    if not eaf_out:
         # default behavior is to override eaf2 file
-        out_fp = eaf2
+        eaf_out = eaf_source
 
-    if batch or os.path.isdir(eaf1):
-        assert os.path.isdir(eaf1) and os.path.isdir(eaf2),\
-        'If running batch process both EAF1_FILEPATH and EAF2_FILEPATH must be folders.'
-        save_funct=lambda data_file, out: save_eaf_batch(data_file, out, out_fp)
-        merge(eaf1, eaf2, tiers, overlap, recursive=recursive, save_funct=save_funct)
+    if batch or os.path.isdir(eaf_matrix):
+        assert os.path.isdir(eaf_matrix) and os.path.isdir(eaf_source),\
+        'If running batch process both EAF_SOURCE and EAF_MATRIX must be folders.'
+        
+        def safe_merge(**kwargs):
+            try:
+                return merge(**kwargs)
+            except (ValueError, FileNotFoundError) as error:
+                tqdm.write(f"{error}. Skipping file")
+
+        batch_funct(
+            safe_merge,
+            dir=eaf_source,
+            file_arg='eaf_source',
+            suffix='.eaf',
+            kwargs={
+                'eaf_matrix': eaf_matrix,
+                'tier': tier,
+                'overlap': overlap,
+            },
+            recursive=recursive,
+            overwrite=overwrite,
+            save_f=lambda data_file, out: save_eaf_batch(data_file, out, eaf_out),
+            out_path_f=lambda data_file: get_eaf_outpath(data_file, eaf_out),
+            desc='Merging elan files',
+        )
     else:
-        eaf = merge(eaf1, eaf2, tiers, overlap)
-        eaf.to_file(out_fp)
+        eaf = merge(eaf_matrix, eaf_source, tier, overlap)
+        eaf.to_file(eaf_out)
 
 def handle_vad(args):
     wav_fp = args['WAV_FILEPATH']
     eaf_fp = args['EAF_FILEPATH']
     eaf_source = args['source']
-    overlap = args['overlap']
     batch = args['batch']
     recursive = args['recursive']
+    overwrite = args['overwrite']
     vad = args['vad']
+    tier = args['tier']
 
     if batch or os.path.isdir(wav_fp):
-        wav_fp, eaf_source = handle_vad_batch(wav_fp, eaf_fp, vad, eaf_source, recursive)
+        handle_vad_batch(
+            wav_fp=wav_fp,
+            eaf_fp=eaf_fp,
+            tier=tier,
+            vad=vad,
+            eaf_source=eaf_source,
+            recursive=recursive,
+            overwrite=overwrite,
+        )
     else:        
-        eaf = label_speech_segments(wav_fp)
-        if eaf_source:
-            eaf = merge(eaf_source, eaf, overlap=overlap)
+        eaf = label_speech_segments(wav_fp=wav_fp, tier=tier)
         eaf.to_file(eaf_fp)
+    if eaf_source:
+        # if eaf_source is passed, perform merge
+        args['EAF_MATRIX'] = eaf_fp
+        args['EAF_SOURCE'] = eaf_source
+        args['eaf_out'] = eaf_fp
+        handle_merge(args)
 
-def handle_vad_batch(wav_fp: str, eaf_fp: str, vad: Optional[str] = None, eaf_source: Optional[str] = None, recursive: bool = False):
+def handle_vad_batch(
+        wav_fp: str,
+        eaf_fp: str,
+        tier: Optional[str] = None,
+        vad: Optional[str] = None,
+        eaf_source: Optional[str] = None,
+        recursive: bool = False,
+        overwrite: bool = False,
+    ):
     """
     Helper for batch processing of handle_vad
     """
@@ -147,39 +202,68 @@ def handle_vad_batch(wav_fp: str, eaf_fp: str, vad: Optional[str] = None, eaf_so
     if vad:
         assert os.path.isdir(vad), 'If using VAD arg and running batch process, VAD must point to folder.'
 
-    eafs = label_speech_segments(wav_fp=wav_fp, rvad_fp=vad, recursive=recursive)
-    for wav_fp, eaf in eafs.items():
-        file_stem = Path(wav_fp).stem
-        if eaf_source:
-            try:
-                eaf_source_path = os.path.join(eaf_source, file_stem+'.eaf')
-                eaf_source = Elan.Eaf(eaf_source_path)
-            except FileNotFoundError():
-                raise Warning(f'Source .eaf file not found for recording {wav_fp}')
-            eaf = merge(eaf_source, eaf)
-        out_path = os.path.join(eaf_fp, file_stem+'.eaf')
-        eaf.to_file(out_path)
-    return wav_fp, eaf_source
+    def label_speech_segments_safe(**kwargs):
+        try:
+            return label_speech_segments(**kwargs)
+        except RvadError as error:
+            tqdm.write(f"{error} Skipping file.")
+
+    batch_funct(
+        f=label_speech_segments_safe,
+        dir=wav_fp,
+        file_arg='wav_fp',
+        suffix='.wav',
+        kwargs = {
+            'rvad_fp': vad,
+            'tier': tier,
+        },
+        recursive=recursive,
+        overwrite=overwrite,
+        out_path_f=lambda data_file: get_eaf_outpath(data_file, eaf_fp),
+        save_f=lambda data_file, out: save_eaf_batch(data_file, out, eaf_fp),
+        desc='Running voice activity detection',
+    )
 
 def handle_trim(args):
     eaf_fp = args['EAF_FILEPATH']
-    out_fp = args['output_eaf']
+    out_fp = args['eaf_out']
     if not out_fp:
         # default behavior is to override input file
         out_fp = eaf_fp
     stopword = args['stopword']
-    tiers = args['tier']
+    tier = args['tier']
     batch = args['batch']
     recursive = args['recursive']
+    overwrite = args['overwrite']
 
     if batch or os.path.isdir(eaf_fp):
-        save_funct=lambda data_file, out: save_eaf_batch(data_file, out, out_fp)
         assert os.path.isdir(eaf_fp) and os.path.isdir(out_fp),\
-        'If running batch process both EAF_FILEPATH and output_eaf (if provided) must be folders.'
-        trim(eaf_fp, tiers, stopword, save_funct=save_funct, recursive=recursive)
+        'If running batch process both EAF_FILEPATH and eaf_out (if provided) must be folders.'
+        batch_funct(
+            f=trim,
+            dir=eaf_fp,
+            suffix='.eaf',
+            kwargs={
+                'tier': tier,
+                'stopword': stopword,
+            },
+            save_f=lambda data_file, out: save_eaf_batch(data_file, out, out_fp),
+            out_path_f=lambda data_file: get_eaf_outpath(data_file, out_fp),
+            recursive=recursive,
+            overwrite=overwrite,
+            desc='Trimming elan files',
+        )
     else:
-        eaf = trim(eaf_fp, tiers, stopword)
+        eaf = trim(eaf_fp, tier, stopword)
         eaf.to_file(out_fp)
+
+def get_eaf_outpath(data_file: str, out_folder: str) -> str:
+    """
+    Returns path to .eaf file with same name as data_file
+    in directory out_folder.
+    """
+    return os.path.join(out_folder, Path(data_file).stem + '.eaf')
+
 
 def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
     """
@@ -187,11 +271,13 @@ def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
     in directory out_folder.
     Returns path output is saved to.
     """
-    out_path = os.path.join(
-        out_folder, os.path.split(data_file)[-1]
-    )
-    out.to_file(out_path)
-    return out_path
+    out_path = get_eaf_outpath(data_file, out_folder)
+    tqdm.write(f'{data_file} \t ---> \t{out_path}')
+    out_path = out_path
+    if out:
+        out.to_file(out_path)
+        return out_path
+
 
 def main(argv: Optional[Sequence[str]] = None):
     parser = argparse.ArgumentParser(description='Tools for automatic transcription of audio files with ELAN.')

@@ -22,41 +22,16 @@ Commands include:
         If OVERLAP=inf, do not add any overlapping annotations from FILE2.
 """
 
-def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
-    """
-    Saves output provided by batch_funct to filepath with same name as data_file
-    in directory out_folder.
-    Returns path output is saved to.
-    """
-    out_path = os.path.join(
-        out_folder, os.path.split(data_file)[-1]
-    )
-    out.to_file(out_path)
-    return out_path
-
 def trim(
         eaf: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
         stopword: str = '',
-        save_funct: Optional[Callable] = None,
-        recursive: bool = False
     ) -> Elan.Eaf:
     """
     Remove all annotations of the given tier which contain only the given stopword.
     By default, remove empty annotations from all tiers.
     """
     if type(eaf) is str:
-        # batch processing
-        if os.path.isdir(eaf):
-            kwargs = {'stopword': stopword}
-            return batch_funct(
-                f=trim,
-                dir=eaf,
-                suffix='.eaf',
-                file_arg='eaf',
-                kwargs=kwargs,
-                save_f=save_funct,
-                recursive=recursive)
         eaf = Elan.Eaf(eaf)
     else:
         # avoid side effects from editing original eaf object
@@ -79,64 +54,41 @@ def trim(
     return eaf
 
 def merge(
-        eaf1: Union[str, Elan.Eaf],
-        eaf2: Union[str, Elan.Eaf],
+        eaf_source: Union[str, Elan.Eaf],
+        eaf_matrix: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
         overlap: int = 200,
-        save_funct: Optional[Callable] = None,
-        recursive: bool = False
     ) -> Elan.Eaf:
     """
-    eaf1 and eaf2 may be strings containing .eaf filepaths or Eaf objects
-    For tier, add all annotations in eaf2 which are not already in eaf1.
-    If annotation from eaf2 overlaps with eaf1, add only the non-overlapping part.
+    eaf_matrix and eaf_source may be strings containing .eaf filepaths or Eaf objects
+    For tier, add all annotations in eaf_source which are not already in eaf_matrix.
+    If annotation from eafs overlaps with eaf_matrix, add only the non-overlapping part.
     If the non-overlapping part is shorter than the overlap value, do not add.
     """
-    if type(eaf1) is str:
-        if os.path.isdir(eaf1):
-            # batch processing
-            if not os.path.isdir(eaf2):
-                raise ValueError(
-                    'If running batch process (by passing a folder path for eaf 1), '\
-                    +'eaf2 must also be a folder path.'
-                )
-            kwargs = {'eaf2': eaf2}
-            return batch_funct(
-                f=merge,
-                dir=eaf1,
-                suffix='.eaf',
-                file_arg='eaf1',
-                kwargs=kwargs,
-                save_f=save_funct,
-                recursive=recursive)
-        eaf1 = Elan.Eaf(eaf1)
-    else:
-        # avoid side effects from editing original eaf object
-        eaf1 = deepcopy(eaf1)
-    if type(eaf2) is str:
-        # if folder path is passed for eaf2,
-        # join name of eaf1 to folder
-        if os.path.sidir(eaf2):
-            eaf1_name = os.path.split(eaf1)[-1]
-            eaf2 = os.path.join(eaf2, eaf1_name)
-        eaf2 = Elan.Eaf(eaf2)
-        # not editing eaf2 so no chance of side effects
+    try:
+        eaf_source_obj = open_eaf_safe(eaf_source, eaf_matrix)
+        # don't overwrite eaf_source in case its filepath is needed to open eaf_matrix
+        eaf_matrix = open_eaf_safe(eaf_matrix, eaf_source)
+        eaf_source = eaf_source_obj
+    except ValueError as error:
+        raise ValueError(f'{error} {eaf_matrix=}, {eaf_source=}')
+
 
     if tier is None:
-        tier = eaf2.get_tier_names()
+        tier = eaf_source.get_tier_names()
     elif type(tier) is str:
         tier = [tier,]
 
     for t in tier:
-        eaf2_annotations = eaf2.get_annotation_data_for_tier(t)
+        eaf2_annotations = eaf_source.get_annotation_data_for_tier(t)
 
         for start, end, value in eaf2_annotations:
-            eaf1_overlap_eaf2_start = eaf1.get_annotation_data_at_time(t, start)
-            f1_endtimes = [t[1] for t in eaf1_overlap_eaf2_start]
+            eafm_overlap_eaf2_start = eaf_matrix.get_annotation_data_at_time(t, start)
+            f1_endtimes = [t[1] for t in eafm_overlap_eaf2_start]
             start = max(f1_endtimes) if f1_endtimes else start
             
-            eaf1_overlap_eaf2_end = eaf1.get_annotation_data_at_time(t, end)
-            f1_startimes = [t[0] for t in eaf1_overlap_eaf2_end]
+            eafm_overlap_eaf2_end = eaf_matrix.get_annotation_data_at_time(t, end)
+            f1_startimes = [t[0] for t in eafm_overlap_eaf2_end]
             end = min(f1_startimes) if f1_startimes else end
 
             does_overlap = f1_endtimes or f1_startimes
@@ -144,6 +96,28 @@ def merge(
             if does_overlap and (end-start) < overlap:
                 continue
 
-            eaf1.add_annotation(t, start, end, value)
+            eaf_matrix.add_annotation(t, start, end, value)
 
+    return eaf_matrix
+
+def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Elan.Eaf:
+    """
+    If eaf1 is an Eaf object, return.
+    If it is a str containing a filepath to an Eaf object, instantiate the Eaf and return.
+    If it is a str containing a path to a directory, then eaf2 must be a path to an eaf file.
+    Join filename of eaf2 to directory indicated by eaf1, instantiate Eaf object and return.
+    """
+    if type(eaf1) is str:
+        if os.path.isdir(eaf1):
+            try:
+                assert (type(eaf2) is str) and (os.path.isfile(eaf2))
+                eaf2_name = os.path.split(eaf2)[-1]
+            except AssertionError:
+                raise ValueError(
+                    'If either eaf_source or eaf_matrix is a directory path, '\
+                        +'the other must be a str containing a filepath, '\
+                        +'not a directory filepath or an Eaf object.'
+                )
+            eaf1 = os.path.join(eaf1, eaf2_name)
+        return Elan.Eaf(eaf1)
     return eaf1

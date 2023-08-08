@@ -8,7 +8,6 @@ import scipy.io.wavfile as wav
 from scipy.fftpack import dct
 from scipy.signal import lfilter
 from copy import deepcopy
-import code
 
 # Refs:
 #  [1] Z.-H. Tan, A.k. Sarkara and N. Dehak, "rVAD: an unsupervised segment-based robust voice activity detection method," Computer Speech and Language, vol. 59, pp. 1-21, 2020. 
@@ -102,7 +101,6 @@ def estimate_energy(
         samples_per_frameshift: int,
         ENERGYFLOOR: int,
         prepend: bool = True,
-        use_margin: bool = True,
      ) -> np.ndarray:
      """
      fdata is a vector of samples.
@@ -139,10 +137,8 @@ def estimate_energy(
      # only include 5ms
      margin = samples_per_frame-(samples_per_frameshift*2)
      third_partition = third_partition[:,:margin]
-
      data_reshaped = np.concatenate([first_partition, scnd_partition, third_partition], axis=1)
      squares = data_reshaped**2
-
      e = squares.sum(axis=1)
      e[e <= ENERGYFLOOR] = ENERGYFLOOR
      e = e.astype('float64')
@@ -315,7 +311,7 @@ def snre_vad(fdata, nfr10, flen, fsh10, ENERGYFLOOR, pv01, pvblk, vadThres):
              datai=np.insert(datai,0,'inf')
 
              nshifts = nstop-nstart
-             e_new = estimate_energy(datai, nshifts, flen, fsh10, ENERGYFLOOR, prepend=False, use_margin=True)
+             e_new = estimate_energy(datai, nshifts, flen, fsh10, ENERGYFLOOR, prepend=False)
              e_new = np.concatenate([[float('inf')],np.zeros(nstart-1),e_new,np.zeros(nfr10-nstop+1)])
              e = e + e_new
              e[nstop]=e[nstop-1]

@@ -2,13 +2,17 @@ import os
 import argparse
 from pathlib import Path
 from typing import Optional, Callable
+from tqdm import tqdm
 
 def batch_funct(f: Callable,
                 dir: str, suffix: str,
                 file_arg: str,
                 kwargs: Optional[dict] = None,
+                out_path_f: Optional[Callable] = None,
                 save_f: Optional[Callable] = None,
                 recursive: bool = False,
+                overwrite: bool = False,
+                desc: str = 'Running batch process'
             ) -> dict:
     """
     Takes a function f, a string containing a directory path dir, a suffix string,
@@ -23,7 +27,12 @@ def batch_funct(f: Callable,
     else:
         data_files = Path(dir).glob(f'*{suffix}')
     out = {}
-    for data_file in data_files:
+    data_files = list(data_files)
+    for data_file in tqdm(data_files, total=len(data_files), desc=desc):
+        out_path = out_path_f(data_file)
+        if not overwrite and os.path.exists(out_path):
+            tqdm.write(f'{out_path} already exists, skipping...')
+            continue
         data_file = str(data_file)
         kwargs[file_arg] = data_file
         if save_f:

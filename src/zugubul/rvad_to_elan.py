@@ -19,6 +19,15 @@ Usage: rvad_to_elan WAV_FILEPATH VAD_FILEPATH EAF_FILEPATH (DIALECT)
 'frame' for a .vad file with 0 or 1 for each frame
 """
 
+class RvadError(Exception):
+    def __init__(self, filepath: str, error: Optional[Exception] = None) -> Exception:
+        message = f'Error running voice activity detection on file {filepath}.'
+        if error:
+            message = message + f' Original exception: {error}'
+        self.message = message
+        super().__init__(self.message)
+
+
 def read_rvad_segs(vad_fp: Optional[str] = None, wav_fp: Optional[str] = None, dialect: Literal['seg', 'frame', 'auto']='auto') -> List[tuple]:
     """
     Read .vad file from vad_fp and return list of tuples
@@ -32,7 +41,10 @@ def read_rvad_segs(vad_fp: Optional[str] = None, wav_fp: Optional[str] = None, d
     if vad_fp:
         data = np.loadtxt(vad_fp)
     elif wav_fp:
-        data = rVAD_fast(wav_fp)
+        try:
+            data = rVAD_fast(wav_fp)
+        except Exception as error:
+            raise RvadError(wav_fp, error=error)
     else:
         raise ValueError('Either vad_fp or wav_fp must be provided.')
     if dialect == 'auto':
@@ -48,7 +60,7 @@ def read_rvad_segs(vad_fp: Optional[str] = None, wav_fp: Optional[str] = None, d
     startpoints = data[:midpoint]
     endpoints = data[midpoint:]
 
-    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints)]
+    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints) if start!=end]
 
 
 def rvad_segs_to_ms(segs: List) -> List:
@@ -63,26 +75,17 @@ def rvad_segs_to_ms(segs: List) -> List:
 def label_speech_segments(
         wav_fp: str,
         rvad_fp: Optional[str] = None,
+        tier: str = 'default-lt',
         dialect: str = 'seg',
-        save_funct: Optional[Callable] = None,
-        recursive: bool = False
     ) -> Elan.Eaf:
     """
     Returns an Eaf object with empty annotations for each detected speech segment.
     If rvad_fp is passed, read speech segments from the associated .vad file,
     otherwise run rVAD_fast on wav file indicated by wav_fp.
     """
-    if os.path.isdir(wav_fp):
-        kwargs = {'rvad_fp': rvad_fp}
-        return batch_funct(
-            label_speech_segments,
-            wav_fp,
-            '.wav',
-            'wav_fp',
-            kwargs=kwargs,
-            save_f=save_funct,
-            recursive=recursive
-        )
+
+    # avoid issues w/ adding linked files in pympi
+    wav_fp = wav_fp.replace('.WAV', '.wav')
 
     if rvad_fp:
         if os.path.isdir(rvad_fp):
@@ -96,7 +99,7 @@ def label_speech_segments(
     eaf = Elan.Eaf()
     eaf.add_linked_file(wav_fp)
     # TODO: enable retrieving ELAN tier info from .etf, .cfg or .toml file
-    eaf.add_tier('default-lt')
+    eaf.add_tier(tier)
     for start, end in times:
-        eaf.add_annotation('default-lt', start, end)
+        eaf.add_annotation(tier, start, end)
     return eaf

@@ -33,6 +33,8 @@ def save_vad_file(vad_fp: str, wav_fp: Optional[str] = None, vad_array: Optional
     """
     if wav_fp:
         vad_array = rVAD_fast(wav_fp, dialect='seg')
+    elif vad_array is None:
+        raise ValueError('Either vad_fp or vad_array must be non-null.')
     np.savetxt(vad_fp, vad_array.astype(int),  fmt='%i')
     print("%s --> %s " %(wav_fp, vad_fp))
     return vad_fp
