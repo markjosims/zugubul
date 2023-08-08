@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 from pympi import Elan
-from typing import Literal, List, Optional, Callable
+from typing import Literal, List, Optional
 from rVAD.rVAD_fast import rVAD_fast, frames_to_segs
-from zugubul.utils import batch_funct
 from pathlib import Path
 import os
 import numpy as np
