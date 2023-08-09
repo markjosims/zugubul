@@ -1,7 +1,6 @@
 from pympi import Elan
 from zugubul.rvad_to_elan import read_rvad_segs, label_speech_segments
-from zugubul.utils import batch_funct
-from rVAD.rVAD_fast import rVAD_fast
+from zugubul.utils import eaf_to_file_safe
 import os
 
 def test_read_rvad_segs():
@@ -45,6 +44,6 @@ def test_wav_to_elan_template():
     out_fp = r'C:\projects\zugubul\tests\eafs\test_tira_template_out.eaf'
     if os.path.exists(out_fp):
         os.remove(out_fp)
-    eaf.to_file(out_fp)
+    eaf_to_file_safe(eaf, out_fp)
 
     assert etf_tiers == eaf_tiers

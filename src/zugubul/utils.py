@@ -1,8 +1,9 @@
 import os
 import argparse
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional, Callable, Union
 from tqdm import tqdm
+from pympi import Elan
 
 def batch_funct(f: Callable,
                 dir: str, suffix: str,
@@ -69,3 +70,12 @@ def file_in_valid_dir(parser: argparse.ArgumentParser, arg: str) -> str:
         parser.error(f"The file {arg} is invalid because the parent directory {parent_dir} does not exist")
     else:
         return arg
+    
+def eaf_to_file_safe(eaf: Elan.Eaf, fp: Union[str, os.PathLike]):
+    """
+    Detects if backup version of eaf file already exists and, if so, deletes it before saving eaf to fp.
+    """
+    bak_fp = fp.replace('.eaf', '.bak')
+    if os.path.exists(bak_fp):
+        os.remove(bak_fp)
+    eaf.to_file(fp)

@@ -21,7 +21,7 @@ import argparse
 from typing import Optional, Sequence
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim
-from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct
+from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
 
@@ -165,7 +165,7 @@ def handle_merge(args):
             tier=tier,
             overlap_behavior=overlap_behavior
         )
-        eaf.to_file(eaf_out)
+        eaf_to_file_safe(eaf ,eaf_out)
 
 def handle_vad(args):
     wav_fp = args['WAV_FILEPATH']
@@ -191,7 +191,7 @@ def handle_vad(args):
         )
     else:        
         eaf = label_speech_segments(wav_fp=wav_fp, tier=tier, etf=etf)
-        eaf.to_file(eaf_fp)
+        eaf_to_file_safe(eaf, eaf_fp)
     if eaf_source:
         # if eaf_source is passed, perform merge
         args['EAF_MATRIX'] = eaf_fp
@@ -273,7 +273,7 @@ def handle_trim(args):
         )
     else:
         eaf = trim(eaf_fp, tier, stopword)
-        eaf.to_file(out_fp)
+        eaf_to_file_safe(eaf, out_fp)
 
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
@@ -293,7 +293,7 @@ def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
     tqdm.write(f'{data_file} \t ---> \t{out_path}')
     out_path = out_path
     if out:
-        out.to_file(out_path)
+        eaf_to_file_safe(out ,out_path)
         return out_path
 
 
