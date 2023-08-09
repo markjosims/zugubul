@@ -1,6 +1,6 @@
 import os
 from pympi import Elan
-from typing import Union, Optional, Sequence
+from typing import Union, Optional, Sequence, Literal
 from copy import deepcopy
 
 """
@@ -54,17 +54,19 @@ def merge(
         eaf_source: Union[str, Elan.Eaf],
         eaf_matrix: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
-        exclude_overlap: bool = False,
+        overlap_behavior: Literal['keep_source', 'keep_matrix', 'keep_both'] = 'keep_matrix',
     ) -> Elan.Eaf:
     """
     eaf_matrix and eaf_source may be strings containing .eaf filepaths or Eaf objects
     For tier, add all annotations in eaf_source which are not already in eaf_matrix.
-    If annotation from eafs overlaps with eaf_matrix, add only the non-overlapping part.
-    If the non-overlapping part is shorter than the overlap value, do not add.
+    If overlap_behavior=keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE.
+    If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX.
+    If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not.
+    Default behavior is keep_matrix
     """
     try:
         eaf_source_obj = open_eaf_safe(eaf_source, eaf_matrix)
-        # don't overwrite eaf_source in case its filepath is needed to open eaf_matrix
+        # don't overwrite eaf_source yet in case its filepath is needed to open eaf_matrix
         eaf_matrix = open_eaf_safe(eaf_matrix, eaf_source)
         eaf_source = eaf_source_obj
     except ValueError as error:
@@ -77,17 +79,17 @@ def merge(
         tier = [tier,]
 
     for t in tier:
-        eaf2_annotations = eaf_source.get_annotation_data_for_tier(t)
+        eaf_source_annotations = eaf_source.get_annotation_data_for_tier(t)
 
-        for start, end, value in eaf2_annotations:
-            if exclude_overlap:
-                overlap_start = eaf_matrix.get_annotation_data_at_time(t, start)
-                overlap_end = eaf_matrix.get_annotation_data_at_time(t, end)
+        for start, end, value in eaf_source_annotations:
+            if overlap_behavior != 'keep_both':
+                matrix_overlap = eaf_matrix.get_annotation_data_between_times(t, start, end)
 
-                does_overlap = overlap_start or overlap_end
-
-                if does_overlap:
+                if matrix_overlap and overlap_behavior == 'keep_matrix':
                     continue
+                elif matrix_overlap and overlap_behavior == 'keep_source':
+                    for interval_start, _, _ in matrix_overlap:
+                        eaf_matrix.remove_annotation(id_tier=t, time=interval_start)
 
             eaf_matrix.add_annotation(t, start, end, value)
 

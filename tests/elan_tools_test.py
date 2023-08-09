@@ -33,28 +33,7 @@ def test_trim_stopword():
     annotations = eaf.get_annotation_data_for_tier('default-lt')
     assert annotations == [(10, 11, 'include')]
 
-def test_merge():
-    non_empty_eaf = Elan.Eaf()
-    non_empty_eaf.add_tier('default-lt')
-    non_empty_eaf.add_annotation(id_tier='default-lt', start=1170, end=2150, value='jicelo')
-
-    empty_eaf = Elan.Eaf()
-    empty_eaf.add_tier('default-lt')
-    empty_eaf.add_annotation(id_tier='default-lt', start=100, end=1150, value='')
-    empty_eaf.add_annotation(id_tier='default-lt', start=1170, end=2150, value='')
-
-    out_eaf = merge(eaf_source=non_empty_eaf, eaf_matrix=empty_eaf)
-
-    non_empty_annotations = non_empty_eaf.get_annotation_data_for_tier('default-lt')
-    assert non_empty_annotations == [(1170, 2150, 'jicelo')]
-
-    empty_annotations = empty_eaf.get_annotation_data_for_tier('default-lt')
-    assert sorted(empty_annotations) == [(100, 1150, ''), (1170, 2150, '')]
-
-    out_annotations = out_eaf.get_annotation_data_for_tier('default-lt')
-    assert sorted(out_annotations) == [(100, 1150, ''), (1170, 2150, ''), (1170, 2150, 'jicelo')]
-
-def test_merge_exclude_overlap():
+def dummy_eafs():
     non_empty_eaf = Elan.Eaf()
     non_empty_eaf.add_tier('default-lt')
     non_empty_eaf.add_annotation(id_tier='default-lt', start=1170, end=2150, value='jicelo')
@@ -64,8 +43,27 @@ def test_merge_exclude_overlap():
     empty_eaf.add_tier('default-lt')
     empty_eaf.add_annotation(id_tier='default-lt', start=100, end=1150, value='')
     empty_eaf.add_annotation(id_tier='default-lt', start=1170, end=2150, value='')
+    return non_empty_eaf,empty_eaf
 
-    out_eaf = merge(eaf_source=non_empty_eaf, eaf_matrix=empty_eaf, exclude_overlap=True)
+def test_merge_keep_both():
+    non_empty_eaf, empty_eaf = dummy_eafs()
+
+
+    out_eaf = merge(eaf_source=non_empty_eaf, eaf_matrix=empty_eaf, overlap_behavior='keep_both')
+
+    non_empty_annotations = non_empty_eaf.get_annotation_data_for_tier('default-lt')
+    assert non_empty_annotations == [(1170, 2150, 'jicelo'), (2200, 2250, 'ngamhare')]
+
+    empty_annotations = empty_eaf.get_annotation_data_for_tier('default-lt')
+    assert sorted(empty_annotations) == [(100, 1150, ''), (1170, 2150, '')]
+
+    out_annotations = out_eaf.get_annotation_data_for_tier('default-lt')
+    assert sorted(out_annotations) == [(100, 1150, ''), (1170, 2150, ''), (1170, 2150, 'jicelo'), (2200, 2250, 'ngamhare')]
+
+def test_merge_keep_matrix():
+    non_empty_eaf, empty_eaf = dummy_eafs()
+
+    out_eaf = merge(eaf_source=non_empty_eaf, eaf_matrix=empty_eaf, overlap_behavior='keep_matrix')
 
     non_empty_annotations = non_empty_eaf.get_annotation_data_for_tier('default-lt')
     assert non_empty_annotations == [(1170, 2150, 'jicelo'), (2200, 2250, 'ngamhare')]
@@ -75,3 +73,17 @@ def test_merge_exclude_overlap():
 
     out_annotations = out_eaf.get_annotation_data_for_tier('default-lt')
     assert sorted(out_annotations) == [(100, 1150, ''), (1170, 2150, ''), (2200, 2250, 'ngamhare')]
+
+def test_merge_keep_source():
+    non_empty_eaf, empty_eaf = dummy_eafs()
+
+    out_eaf = merge(eaf_source=non_empty_eaf, eaf_matrix=empty_eaf, overlap_behavior='keep_source')
+
+    non_empty_annotations = non_empty_eaf.get_annotation_data_for_tier('default-lt')
+    assert non_empty_annotations == [(1170, 2150, 'jicelo'), (2200, 2250, 'ngamhare')]
+
+    empty_annotations = empty_eaf.get_annotation_data_for_tier('default-lt')
+    assert sorted(empty_annotations) == [(100, 1150, ''), (1170, 2150, '')]
+
+    out_annotations = out_eaf.get_annotation_data_for_tier('default-lt')
+    assert sorted(out_annotations) == [(100, 1150, ''), (1170, 2150, 'jicelo'), (2200, 2250, 'ngamhare')]
