@@ -54,7 +54,7 @@ def merge(
         eaf_source: Union[str, Elan.Eaf],
         eaf_matrix: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
-        overlap_behavior: Literal['keep_source', 'keep_matrix', 'keep_both'] = 'keep_matrix',
+        overlap_behavior: Literal['keep_source', 'keep_matrix', 'keep_both'] = 'keep_source',
     ) -> Elan.Eaf:
     """
     eaf_matrix and eaf_source may be strings containing .eaf filepaths or Eaf objects

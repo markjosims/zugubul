@@ -44,7 +44,7 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
                         +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
                         +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
                         +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
-                        +'Default behavior is keep_matrix'
+                        +'Default behavior is keep_source'
                 )
     merge_parser.add_argument('-b', '--batch', action='store_true',
                         help='Run on all wav files in a given folder '\
