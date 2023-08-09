@@ -18,7 +18,6 @@ If -r flag is provided, and WAV_FILEPATH is a directory, search for wavs recursi
 import os
 from pathlib import Path
 import argparse
-import warnings
 from typing import Optional, Sequence
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim
@@ -40,10 +39,13 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
                         help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
                          +'For multiple tiers write tier names separated by space.'
                     ) 
-    merge_parser.add_argument('--exclude-overlap', action='store_true',
-                        help='Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
-                         +'Default behavior is to add.'
-                    )
+    merge_parser.add_argument('-o', '--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'],
+                    help='Behavior for treating segments that overlap between the two .eafs. '
+                        +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
+                        +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
+                        +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
+                        +'Default behavior is keep_matrix'
+                )
     merge_parser.add_argument('-b', '--batch', action='store_true',
                         help='Run on all wav files in a given folder '\
                             +'(EAF1_FILEPATH and EAF2_FILEPATH must be paths to folders and not files)'
@@ -92,9 +94,11 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('--template', type=lambda x: is_valid_file(vad_parser, x),
                         help='Template .etf file for generating output .eafs.'
                        )
-    vad_parser.add_argument('--exclude-overlap', action='store_true',
-                    help='Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
-                        +'Default behavior is to add.'
+    vad_parser.add_argument('-o', '--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'],
+                    help='Behavior for treating segments that overlap between the two .eafs. '
+                        +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
+                        +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
+                        +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
                 )
     vad_parser.add_argument('-b', '--batch', action='store_true',
                         help='Run on all wav files in a given folder '\
@@ -119,7 +123,7 @@ def handle_merge(args):
     eaf_matrix = args['EAF_MATRIX']
     eaf_out = args['eaf_out']
     tier = args['tier']
-    exclude_overlap = args['exclude-overlap']
+    overlap_behavior = args['overlap_behavior']
     batch = args['batch']
     recursive = args['recursive']
     overwrite = args['overwrite']
@@ -146,7 +150,7 @@ def handle_merge(args):
             kwargs={
                 'eaf_matrix': eaf_matrix,
                 'tier': tier,
-                'exclude_overlap': exclude_overlap,
+                'overlap_behavior': overlap_behavior,
             },
             recursive=recursive,
             overwrite=overwrite,
@@ -159,7 +163,7 @@ def handle_merge(args):
             eaf_matrix=eaf_matrix,
             eaf_source=eaf_source,
             tier=tier,
-            exclude_overlap=exclude_overlap
+            overlap_behavior=overlap_behavior
         )
         eaf.to_file(eaf_out)
 
