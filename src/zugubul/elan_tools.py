@@ -54,7 +54,7 @@ def merge(
         eaf_source: Union[str, Elan.Eaf],
         eaf_matrix: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
-        overlap: int = 200,
+        exclude_overlap: bool = False,
     ) -> Elan.Eaf:
     """
     eaf_matrix and eaf_source may be strings containing .eaf filepaths or Eaf objects
@@ -80,18 +80,14 @@ def merge(
         eaf2_annotations = eaf_source.get_annotation_data_for_tier(t)
 
         for start, end, value in eaf2_annotations:
-            eafm_overlap_eaf2_start = eaf_matrix.get_annotation_data_at_time(t, start)
-            f1_endtimes = [t[1] for t in eafm_overlap_eaf2_start]
-            start = max(f1_endtimes) if f1_endtimes else start
-            
-            eafm_overlap_eaf2_end = eaf_matrix.get_annotation_data_at_time(t, end)
-            f1_startimes = [t[0] for t in eafm_overlap_eaf2_end]
-            end = min(f1_startimes) if f1_startimes else end
+            if exclude_overlap:
+                overlap_start = eaf_matrix.get_annotation_data_at_time(t, start)
+                overlap_end = eaf_matrix.get_annotation_data_at_time(t, end)
 
-            does_overlap = f1_endtimes or f1_startimes
+                does_overlap = overlap_start or overlap_end
 
-            if does_overlap and (end-start) < overlap:
-                continue
+                if does_overlap:
+                    continue
 
             eaf_matrix.add_annotation(t, start, end, value)
 
@@ -117,4 +113,4 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
                 )
             eaf1 = os.path.join(eaf1, eaf2_name)
         return Elan.Eaf(eaf1)
-    return eaf1
+    return deepcopy(eaf1)

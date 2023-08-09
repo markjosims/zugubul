@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
 """
-Usage: wav_to_elan WAV_FILEPATH EAF_FILEPATH (-s, --source EAF_OUT_FILEPATH) (--overlap OVERLAP) (-r)
+Usage: scripts COMMAND ARGS...
+If zugubul package installed, zugubul COMMAND ARGS...
+Run scripts/zugubul -h for more information.
 """
 
 docstr = """
@@ -38,10 +40,9 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
                         help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
                          +'For multiple tiers write tier names separated by space.'
                     ) 
-    merge_parser.add_argument('--overlap', type=int, default=200,
-                        help='An overlapping annotation will only be added '\
-                            +'if the non-overlapping portion is longer than the value passed (in ms). '\
-                            +'Default 200ms.'
+    merge_parser.add_argument('--exclude-overlap', action='store_true',
+                        help='Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
+                         +'Default behavior is to add.'
                     )
     merge_parser.add_argument('-b', '--batch', action='store_true',
                         help='Run on all wav files in a given folder '\
@@ -91,11 +92,10 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('--template', type=lambda x: is_valid_file(vad_parser, x),
                         help='Template .etf file for generating output .eafs.'
                        )
-    vad_parser.add_argument('--overlap', type=int, default=200,
-                        help='If source is passed, an overlapping annotation will only be added '\
-                            +'if the non-overlapping portion is longer than the value passed (in ms). '\
-                            +'Default 200ms.'
-                       )
+    vad_parser.add_argument('--exclude-overlap', action='store_true',
+                    help='Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
+                        +'Default behavior is to add.'
+                )
     vad_parser.add_argument('-b', '--batch', action='store_true',
                         help='Run on all wav files in a given folder '\
                             +'(WAV_FILEPATH and EAF_FILEPATH must be paths to folders and not files)'
@@ -119,7 +119,7 @@ def handle_merge(args):
     eaf_matrix = args['EAF_MATRIX']
     eaf_out = args['eaf_out']
     tier = args['tier']
-    overlap = args['overlap']
+    exclude_overlap = args['exclude-overlap']
     batch = args['batch']
     recursive = args['recursive']
     overwrite = args['overwrite']
@@ -146,7 +146,7 @@ def handle_merge(args):
             kwargs={
                 'eaf_matrix': eaf_matrix,
                 'tier': tier,
-                'overlap': overlap,
+                'exclude_overlap': exclude_overlap,
             },
             recursive=recursive,
             overwrite=overwrite,
@@ -155,7 +155,12 @@ def handle_merge(args):
             desc='Merging elan files',
         )
     else:
-        eaf = merge(eaf_matrix, eaf_source, tier, overlap)
+        eaf = merge(
+            eaf_matrix=eaf_matrix,
+            eaf_source=eaf_source,
+            tier=tier,
+            exclude_overlap=exclude_overlap
+        )
         eaf.to_file(eaf_out)
 
 def handle_vad(args):
