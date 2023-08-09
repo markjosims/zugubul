@@ -1,21 +1,18 @@
-import argparse
 import os
 from pympi import Elan
-from typing import Union, Optional, Sequence, Callable
-from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct
+from typing import Union, Optional, Sequence
 from copy import deepcopy
 
 """
-Usage: elan_tools COMMAND...
-Commands include:
-- trim INFILE (OUTFILE) (TIER) (STOPWORD):
+Contains following helper functions for processing .eaf files:
+- trim:
         Remove all empty annotations from a .eaf file with name INFILE and writes to OUTFILE.
         If no OUTFILE argument supplied, overrwrites INFILE.
         TIER indicates which Elan tier to use, or 'default-lt' if no argument is passed.
         If a STOPWORD is passed after the TIER argument,
         remove all annotations with the indicated string value
         (e.g. elan_tools annotation.eaf annotation_out.eaf ipa x  removes all annotations that contain only the letter "x" on tier "ipa")
-- merge FILE1 FILE2 (OUTFILE) (TIER) (OVERLAP):
+- merge:
         For a given TIER, add all annotations from FILE2 that don't overlap with those already present in FILE1.
         When an annotation from FILE2 overlaps with one from FILE1, cut annotation from FILE2 to only non-overlapping part,
         and add to FILE1, but only if non-overlapping part is less than OVERLAP (default 200ms).
