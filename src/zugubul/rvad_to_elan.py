@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from pympi import Elan
-from typing import Literal, List, Optional
+from typing import Literal, List, Optional, Union
 from rVAD.rVAD_fast import rVAD_fast, frames_to_segs
 from pathlib import Path
 import os
@@ -76,11 +76,13 @@ def label_speech_segments(
         rvad_fp: Optional[str] = None,
         tier: str = 'default-lt',
         dialect: str = 'seg',
+        etf: Optional[Union[str, Elan.Eaf]] = None
     ) -> Elan.Eaf:
     """
     Returns an Eaf object with empty annotations for each detected speech segment.
     If rvad_fp is passed, read speech segments from the associated .vad file,
     otherwise run rVAD_fast on wav file indicated by wav_fp.
+    If etf is passed, add all tiers from etf file.
     """
 
     # avoid issues w/ adding linked files in pympi
@@ -95,10 +97,20 @@ def label_speech_segments(
     else:
         segs = read_rvad_segs(wav_fp=wav_fp)
     times = rvad_segs_to_ms(segs)
-    eaf = Elan.Eaf()
+
+    if etf:
+        if type(etf) is str:
+            eaf = Elan.Eaf(etf)
+        else:
+            eaf = etf
+        etf_tiers = eaf.get_tier_names()
+        if tier not in etf_tiers:
+            raise ValueError(f'tier argument must correspond to tier in .etf file. {tier=}, {etf_tiers=}')
+    else:
+        eaf = Elan.Eaf()
+        eaf.add_tier(tier)
     eaf.add_linked_file(wav_fp)
-    # TODO: enable retrieving ELAN tier info from .etf, .cfg or .toml file
-    eaf.add_tier(tier)
+    
     for start, end in times:
         eaf.add_annotation(tier, start, end)
     return eaf

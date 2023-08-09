@@ -84,8 +84,13 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('EAF_FILEPATH', type=lambda x: file_in_valid_dir(vad_parser, x),
                         help='Filepath for eaf file to output to (or parent directory).'
                        )
-    vad_parser.add_argument('-s', '--source', help='Source .eaf file to merge output into (or parent directory).')
-    vad_parser.add_argument('-m', '--merge_output', help='Filepath to output  to merge output into (or parent directory).')
+    vad_parser.add_argument('-s', '--source', type=lambda x: is_valid_file(vad_parser, x),
+                        help='Source .eaf file to merge output into (or parent directory).'
+                       )
+    # vad_parser.add_argument('-m', '--merge_output', help='Filepath to output  to merge output into (or parent directory).')
+    vad_parser.add_argument('--template', type=lambda x: is_valid_file(vad_parser, x),
+                        help='Template .etf file for generating output .eafs.'
+                       )
     vad_parser.add_argument('--overlap', type=int, default=200,
                         help='If source is passed, an overlapping annotation will only be added '\
                             +'if the non-overlapping portion is longer than the value passed (in ms). '\
@@ -162,6 +167,7 @@ def handle_vad(args):
     overwrite = args['overwrite']
     vad = args['vad']
     tier = args['tier']
+    etf = args['template']
 
     if batch or os.path.isdir(wav_fp):
         handle_vad_batch(
@@ -170,11 +176,12 @@ def handle_vad(args):
             tier=tier,
             vad=vad,
             eaf_source=eaf_source,
+            etf=etf,
             recursive=recursive,
             overwrite=overwrite,
         )
     else:        
-        eaf = label_speech_segments(wav_fp=wav_fp, tier=tier)
+        eaf = label_speech_segments(wav_fp=wav_fp, tier=tier, etf=etf)
         eaf.to_file(eaf_fp)
     if eaf_source:
         # if eaf_source is passed, perform merge
@@ -189,6 +196,7 @@ def handle_vad_batch(
         tier: Optional[str] = None,
         vad: Optional[str] = None,
         eaf_source: Optional[str] = None,
+        etf: Optional[str]= None,
         recursive: bool = False,
         overwrite: bool = False,
     ):
@@ -216,6 +224,7 @@ def handle_vad_batch(
         kwargs = {
             'rvad_fp': vad,
             'tier': tier,
+            'etf': etf,
         },
         recursive=recursive,
         overwrite=overwrite,
