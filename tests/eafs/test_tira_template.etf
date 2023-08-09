@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ANNOTATION_DOCUMENT AUTHOR="" DATE="2020-08-02T11:33:52-08:00" FORMAT="3.0" VERSION="3.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.mpi.nl/tools/elan/EAFv3.0.xsd">
+    <HEADER MEDIA_FILE="" TIME_UNITS="milliseconds"/>
+    <TIME_ORDER/>
+    <TIER DEFAULT_LOCALE="en" LINGUISTIC_TYPE_REF="Transcription" TIER_ID="IPA Transcription"/>
+    <TIER DEFAULT_LOCALE="en" LINGUISTIC_TYPE_REF="Word" PARENT_REF="IPA Transcription" TIER_ID="Word"/>
+    <TIER DEFAULT_LOCALE="en" LINGUISTIC_TYPE_REF="Free translation" PARENT_REF="IPA Transcription" TIER_ID="Translation"/>
+    <TIER DEFAULT_LOCALE="en" LINGUISTIC_TYPE_REF="Free translation" PARENT_REF="IPA Transcription" TIER_ID="Annotation (other)"/>
+    <TIER DEFAULT_LOCALE="en" LINGUISTIC_TYPE_REF="Glosses" PARENT_REF="IPA Transcription" TIER_ID="Gloss"/>
+    <TIER DEFAULT_LOCALE="en" LINGUISTIC_TYPE_REF="Orthography" PARENT_REF="IPA Transcription" TIER_ID="Tira orthography"/>
+    <LINGUISTIC_TYPE GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="default-lt" TIME_ALIGNABLE="true"/>
+    <LINGUISTIC_TYPE GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="Transcription" TIME_ALIGNABLE="true"/>
+    <LINGUISTIC_TYPE CONSTRAINTS="Symbolic_Association" GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="Free translation" TIME_ALIGNABLE="false"/>
+    <LINGUISTIC_TYPE CONSTRAINTS="Symbolic_Subdivision" GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="Morphemes" TIME_ALIGNABLE="false"/>
+    <LINGUISTIC_TYPE CONSTRAINTS="Symbolic_Association" GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="Glosses" TIME_ALIGNABLE="false"/>
+    <LINGUISTIC_TYPE CONSTRAINTS="Symbolic_Association" GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="Word" TIME_ALIGNABLE="false"/>
+    <LINGUISTIC_TYPE CONSTRAINTS="Symbolic_Association" GRAPHIC_REFERENCES="false" LINGUISTIC_TYPE_ID="Orthography" TIME_ALIGNABLE="false"/>
+    <LOCALE COUNTRY_CODE="US" LANGUAGE_CODE="en"/>
+    <CONSTRAINT DESCRIPTION="Time subdivision of parent annotation's time interval, no time gaps allowed within this interval" STEREOTYPE="Time_Subdivision"/>
+    <CONSTRAINT DESCRIPTION="Symbolic subdivision of a parent annotation. Annotations refering to the same parent are ordered" STEREOTYPE="Symbolic_Subdivision"/>
+    <CONSTRAINT DESCRIPTION="1-1 association with a parent annotation" STEREOTYPE="Symbolic_Association"/>
+    <CONSTRAINT DESCRIPTION="Time alignable annotations within the parent annotation's time interval, gaps are allowed" STEREOTYPE="Included_In"/>
+</ANNOTATION_DOCUMENT>
