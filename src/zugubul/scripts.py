@@ -39,7 +39,7 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
                         help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
                          +'For multiple tiers write tier names separated by space.'
                     ) 
-    merge_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'],
+    merge_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
                     help='Behavior for treating segments that overlap between the two .eafs. '
                         +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
                         +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
@@ -94,7 +94,7 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('--template', type=lambda x: is_valid_file(vad_parser, x),
                         help='Template .etf file for generating output .eafs.'
                        )
-    vad_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'],
+    vad_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
                     help='Behavior for treating segments that overlap between the two .eafs. '
                         +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
                         +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
