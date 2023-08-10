@@ -1,7 +1,7 @@
 from typing import Sequence, List
 
-from zugubul.models._unimorph import DELIMITER
-from zugubul.models._unimorph import FEATURES
+#from zugubul.models._unimorph import DELIMITER
+#from zugubul.models._unimorph import FEATURES
 
 
 NUM_UNICODE_SYMBOLS = 149186
@@ -12,14 +12,14 @@ SPECIAL_TOKENS = (PAD_TOKEN, START_TOKEN, END_TOKEN)
 PAD_TOKEN_IDX = NUM_UNICODE_SYMBOLS + SPECIAL_TOKENS.index(PAD_TOKEN)
 START_TOKEN_IDX = NUM_UNICODE_SYMBOLS + SPECIAL_TOKENS.index(START_TOKEN)
 END_TOKEN_IDX = NUM_UNICODE_SYMBOLS + SPECIAL_TOKENS.index(END_TOKEN)
-SIZE = NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS) + len(FEATURES)
+SIZE = NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS)# + len(FEATURES)
 
 
-def _try_feature_index(f: str) -> int:
-    try:
-        return FEATURES.index(f)
-    except ValueError:
-        return FEATURES.index("UNK")
+# def _try_feature_index(f: str) -> int:
+#     try:
+#         return FEATURES.index(f)
+#     except ValueError:
+#         return FEATURES.index("UNK")
 
 
 def encode(to_encode: str, encode_type: str) -> List[int]:
@@ -27,11 +27,11 @@ def encode(to_encode: str, encode_type: str) -> List[int]:
         for i, tok in enumerate(SPECIAL_TOKENS):
             to_encode = to_encode.replace(tok, chr(NUM_UNICODE_SYMBOLS + i))
         return [ord(c) for c in to_encode]
-    elif encode_type == "features":
-        return [
-            _try_feature_index(f) + NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS)
-            for f in to_encode.split(DELIMITER)
-        ]
+    # elif encode_type == "features":
+    #     return [
+    #         _try_feature_index(f) + NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS)
+    #         for f in to_encode.split(DELIMITER)
+    #     ]
     else:
         raise ValueError("encode_type must be 'character' or 'features'")
 
@@ -46,6 +46,6 @@ def decode(to_decode: Sequence[int], include_special_tokens: bool = True) -> str
                 decoded.append(SPECIAL_TOKENS[c - NUM_UNICODE_SYMBOLS])
             if c == END_TOKEN_IDX:
                 break
-        else:
-            decoded.append(FEATURES[c - NUM_UNICODE_SYMBOLS - len(SPECIAL_TOKENS)])
+        # else:
+        #     decoded.append(FEATURES[c - NUM_UNICODE_SYMBOLS - len(SPECIAL_TOKENS)])
     return "".join(decoded)
