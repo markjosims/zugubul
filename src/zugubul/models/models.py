@@ -1,13 +1,14 @@
 import math
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 from torch import nn
 
-from ._constants import FEATURE_TYPE
-from ._constants import TOKEN_TYPES
-from .vocab import PAD_TOKEN_IDX
-from .vocab import SIZE
+from zugubul.models._constants import FEATURE_TYPE
+from zugubul.models._constants import TOKEN_TYPES
+from zugubul.models.vocab import PAD_TOKEN_IDX
+from zugubul.models.vocab import SIZE
 
 
 D_MODEL = 256
@@ -116,7 +117,7 @@ class _PositionalEncoding(nn.Module):
         self.register_buffer("pe", pe)
 
     def forward(
-        self, x: torch.Tensor, mask: torch.Tensor | None = None
+        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         pe = self.pe[: x.size(0)]
         if mask is not None:

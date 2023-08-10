@@ -4,9 +4,9 @@ from pathlib import Path
 
 import torch
 
-from .infer import infer
-from .model import MODELS
-from .train import Trainer
+from zugubul.models.infer import infer
+from zugubul.models.models import MODELS
+from zugubul.models.train import Trainer
 
 
 def _get_parser() -> ArgumentParser:

@@ -1,7 +1,7 @@
-from typing import Sequence
+from typing import Sequence, List
 
-from ._unimorph import DELIMITER
-from ._unimorph import FEATURES
+from zugubul.models._unimorph import DELIMITER
+from zugubul.models._unimorph import FEATURES
 
 
 NUM_UNICODE_SYMBOLS = 149186
@@ -22,7 +22,7 @@ def _try_feature_index(f: str) -> int:
         return FEATURES.index("UNK")
 
 
-def encode(to_encode: str, encode_type: str) -> list[int]:
+def encode(to_encode: str, encode_type: str) -> List[int]:
     if encode_type == "characters":
         for i, tok in enumerate(SPECIAL_TOKENS):
             to_encode = to_encode.replace(tok, chr(NUM_UNICODE_SYMBOLS + i))

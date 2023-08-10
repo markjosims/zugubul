@@ -7,16 +7,16 @@ import torch
 import torch.utils.data as data
 from torch.nn.utils.rnn import pad_sequence
 
-from ._constants import CHARACTER_TYPE
-from ._constants import FEATURE_TYPE
-from ._constants import SPECIAL_TOKEN_TYPE
-from .model import LangIdentifierInput
-from .vocab import encode
-from .vocab import END_TOKEN
-from .vocab import END_TOKEN_IDX
-from .vocab import PAD_TOKEN_IDX
-from .vocab import START_TOKEN
-from .vocab import START_TOKEN_IDX
+from zugubul.models._constants import CHARACTER_TYPE
+from zugubul.models._constants import FEATURE_TYPE
+from zugubul.models._constants import SPECIAL_TOKEN_TYPE
+from zugubul.models.models import LangIdentifierInput
+from zugubul.models.vocab import encode
+from zugubul.models.vocab import END_TOKEN
+from zugubul.models.vocab import END_TOKEN_IDX
+from zugubul.models.vocab import PAD_TOKEN_IDX
+from zugubul.models.vocab import START_TOKEN
+from zugubul.models.vocab import START_TOKEN_IDX
 
 
 class RawDatum(NamedTuple):

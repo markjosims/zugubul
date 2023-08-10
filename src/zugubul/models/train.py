@@ -2,6 +2,7 @@ import dataclasses
 import os
 from glob import glob
 from pathlib import Path
+from typing import Optional
 
 import torch
 from torch import nn
@@ -10,20 +11,20 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from torchmetrics import MetricCollection
 from tqdm import tqdm
 
-from ._constants import MODELS_PATH
-from ._metrics import SequenceCharacterAccuracy
-from ._metrics import SequenceExactAccuracy
-from .dataset import collate_fn
-from .dataset import Dataset
-from .model import MODELS
-from .vocab import decode
-from .vocab import PAD_TOKEN_IDX
+from zugubul.models._constants import MODELS_PATH
+from zugubul.models._metrics import SequenceCharacterAccuracy
+from zugubul.models._metrics import SequenceExactAccuracy
+from zugubul.models.dataset import collate_fn
+from zugubul.models.dataset import Dataset
+from zugubul.models.models import MODELS
+from zugubul.models.vocab import decode
+from zugubul.models.vocab import PAD_TOKEN_IDX
 
 
 @dataclasses.dataclass
 class Trainer:
     model_name: str
-    load_path: Path | None
+    load_path: Optional[Path]
     train_path: Path
     val_path: Path
     batch_size: int

@@ -1,3 +1,3 @@
-from .main import main
+from zugubul.models.main import main
 
 __all__ = ["main"]
