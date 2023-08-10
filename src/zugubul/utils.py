@@ -30,15 +30,19 @@ def batch_funct(f: Callable,
     out = {}
     data_files = list(data_files)
     for data_file in tqdm(data_files, total=len(data_files), desc=desc):
-        out_path = out_path_f(data_file)
-        if not overwrite and os.path.exists(out_path):
-            tqdm.write(f'{out_path} already exists, skipping...')
-            continue
         data_file = str(data_file)
         kwargs[file_arg] = data_file
         if save_f:
+            if out_path_f:
+                out_path = out_path_f(data_file)
+                if not overwrite and os.path.exists(out_path):
+                    tqdm.write(f'{out_path} already exists, skipping...')
+                    continue
             out[data_file] = save_f(data_file, f(**kwargs))
         else:
+            if not overwrite and os.path.exists(data_file):
+                tqdm.write(f'{data_file} already exists, skipping...')
+                continue
             out[data_file] = f(**kwargs)
 
     return out
