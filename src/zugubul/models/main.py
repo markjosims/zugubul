@@ -92,7 +92,7 @@ def _add_infer_parser_args(infer_parser: ArgumentParser) -> None:
     infer_parser.add_argument("output", type=Path, help="Path to output predictions")
 
 
-def main(argv: Optional(List[str]) = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     args = _get_parser().parse_args(argv)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
