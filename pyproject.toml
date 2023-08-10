@@ -20,5 +20,5 @@ classifiers = [
 version = "0.2.0"
 
 [project.scripts]
-zugubul = "zugubul.scripts:main"
+zugubul = "zugubul.main:main"
 rvad = "rVAD.rVAD_fast:main"
