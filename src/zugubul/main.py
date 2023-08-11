@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 """
-Usage: scripts COMMAND ARGS...
+Usage: main COMMAND ARGS...
 If zugubul package installed, zugubul COMMAND ARGS...
-Run scripts/zugubul -h for more information.
+Run main/zugubul -h for more information.
 """
 
 docstr = """
@@ -18,7 +18,7 @@ If -r flag is provided, and WAV_FILEPATH is a directory, search for wavs recursi
 import os
 from pathlib import Path
 import argparse
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim
 from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct, eaf_to_file_safe
@@ -118,7 +118,7 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
                         help='Tier label to add annotations to. If none specified uses `default-lt`'\
                        )
 
-def handle_merge(args):
+def handle_merge(args: Mapping) -> int:
     eaf_source = args['EAF_SOURCE']
     eaf_matrix = args['EAF_MATRIX']
     eaf_out = args['eaf_out']
@@ -166,8 +166,9 @@ def handle_merge(args):
             overlap_behavior=overlap_behavior
         )
         eaf_to_file_safe(eaf ,eaf_out)
+    return 0
 
-def handle_vad(args):
+def handle_vad(args: Mapping) -> int:
     wav_fp = args['WAV_FILEPATH']
     eaf_fp = args['EAF_FILEPATH']
     eaf_source = args['source']
@@ -198,6 +199,7 @@ def handle_vad(args):
         args['EAF_SOURCE'] = eaf_source
         args['eaf_out'] = eaf_fp
         handle_merge(args)
+    return 0
 
 def handle_vad_batch(
         wav_fp: str,
@@ -242,7 +244,7 @@ def handle_vad_batch(
         desc='Running voice activity detection',
     )
 
-def handle_trim(args):
+def handle_trim(args: Mapping) -> int:
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['eaf_out']
     if not out_fp:
@@ -274,6 +276,7 @@ def handle_trim(args):
     else:
         eaf = trim(eaf_fp, tier, stopword)
         eaf_to_file_safe(eaf, out_fp)
+    return 0
 
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
@@ -297,7 +300,7 @@ def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
         return out_path
 
 
-def main(argv: Optional[Sequence[str]] = None):
+def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='Tools for automatic transcription of audio files with ELAN.')
     subparsers = parser.add_subparsers(dest='COMMAND')
     
@@ -319,11 +322,12 @@ def main(argv: Optional[Sequence[str]] = None):
 
     command = args['COMMAND']
     if command == 'trim':
-        handle_trim(args)
+        return handle_trim(args)
     elif command == 'merge':
-        handle_merge(args)
+        return handle_merge(args)
     elif command == 'vad':
-        handle_vad(args)
+        return handle_vad(args)
+    return 1
 
 if __name__ == '__main__':
     main()
