@@ -1,51 +1,45 @@
-from typing import Sequence, List
+from typing import Sequence, Union
+from transformers import Wav2Vec2CTCTokenizer
+import os
+import csv
+import json
 
-#from zugubul.models._unimorph import DELIMITER
-#from zugubul.models._unimorph import FEATURES
+def vocab_from_list(vocab: Sequence[str], vocab_dir: Union[str, os.PathLike]) -> str:
+    """
+    vocab is a list of strings containing tokens to include in vocabulary.
+    vocab_dir is folder to save vocab.json in.
+    Returns path to vocab.json
+    """
+    vocab_dict = {k: v for v, k in enumerate(vocab)}
+    json_path = os.path.join(vocab_dir, 'vocab.json')
+    with open(json_path, 'w') as f:
+        json.dump(vocab_dict, f)
+    return json_path
 
+def tokenizer_from_list(vocab: Sequence[str], vocab_dir: Union[str, os.PathLike]) -> Wav2Vec2CTCTokenizer:
+    """
+    vocab is a list of strings containing tokens to include in vocabulary.
+    vocab_dir is folder to save vocab.json in.
+    Returns Wav2Vec2CTCTokenizer object.
+    """
+    vocab_path = vocab_from_list(vocab=vocab, vocab_dir=vocab_dir)
+    return Wav2Vec2CTCTokenizer(vocab_path)
 
-NUM_UNICODE_SYMBOLS = 149186
-PAD_TOKEN = "<PAD>"
-START_TOKEN = "<S>"
-END_TOKEN = "<E>"
-SPECIAL_TOKENS = (PAD_TOKEN, START_TOKEN, END_TOKEN)
-PAD_TOKEN_IDX = NUM_UNICODE_SYMBOLS + SPECIAL_TOKENS.index(PAD_TOKEN)
-START_TOKEN_IDX = NUM_UNICODE_SYMBOLS + SPECIAL_TOKENS.index(START_TOKEN)
-END_TOKEN_IDX = NUM_UNICODE_SYMBOLS + SPECIAL_TOKENS.index(END_TOKEN)
-SIZE = NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS)# + len(FEATURES)
-
-
-# def _try_feature_index(f: str) -> int:
-#     try:
-#         return FEATURES.index(f)
-#     except ValueError:
-#         return FEATURES.index("UNK")
-
-
-def encode(to_encode: str, encode_type: str) -> List[int]:
-    if encode_type == "characters":
-        for i, tok in enumerate(SPECIAL_TOKENS):
-            to_encode = to_encode.replace(tok, chr(NUM_UNICODE_SYMBOLS + i))
-        return [ord(c) for c in to_encode]
-    # elif encode_type == "features":
-    #     return [
-    #         _try_feature_index(f) + NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS)
-    #         for f in to_encode.split(DELIMITER)
-    #     ]
-    else:
-        raise ValueError("encode_type must be 'character' or 'features'")
-
-
-def decode(to_decode: Sequence[int], include_special_tokens: bool = True) -> str:
-    decoded: list[str] = []
-    for c in to_decode:
-        if c < NUM_UNICODE_SYMBOLS:
-            decoded.append(chr(c))
-        elif c < NUM_UNICODE_SYMBOLS + len(SPECIAL_TOKENS):
-            if include_special_tokens:
-                decoded.append(SPECIAL_TOKENS[c - NUM_UNICODE_SYMBOLS])
-            if c == END_TOKEN_IDX:
-                break
-        # else:
-        #     decoded.append(FEATURES[c - NUM_UNICODE_SYMBOLS - len(SPECIAL_TOKENS)])
-    return "".join(decoded)
+def tokenizer_from_csv(
+        csv_path: Union[str, os.PathLike],
+        vocab_dir: Union[str, os.PathLike],
+        csv_col: str = 'value',
+        delimiter: str = '\t'
+    ) -> Wav2Vec2CTCTokenizer:
+    """
+    vocab is a list of strings containing tokens to include in vocabulary.
+    vocab_dir is folder to save vocab.json in.
+    Returns Wav2Vec2CTCTokenizer object.
+    """
+    vocab = set()
+    with open(csv_path) as f:
+        reader = csv.DictReader(f, delimiter=delimiter)
+        for row in reader:
+            vocab.add(row[csv_col])
+    vocab_path = vocab_from_list(vocab=vocab, vocab_dir=vocab_dir)
+    return Wav2Vec2CTCTokenizer(vocab_path)
