@@ -39,14 +39,13 @@ def test_tokenizer_from_csv(tmp_path):
     vocab_dir.mkdir()
     csv_path = os.path.join(vocab_dir, 'vocab.csv')
     csv_vocab = [
-        ['start', 'end', 'value', 'eaf', 'recording'],
-        [0, 1, '[ENG]', 'foo.eaf', 'foo.wav'],
-        [2, 3, '[TIC]', 'foo.eaf', 'foo.wav'],
-        [0, 1, '[DDN]', 'bar.eaf', 'bar.wav'],
-        [4, 5, '[ENG]', 'bar.eaf', 'bar.wav'],
+        ['[ENG]', 'foo.wav', 0, 1],
+        ['[TIC]', 'foo.wav', 2, 3],
+        ['[DDN]', 'bar.wav', 0, 1],
+        ['[ENG]', 'bar.wav', 4, 5],
     ]
     with open(csv_path, 'w') as f:
-        vocab_writer = csv.writer(f, delimiter='\t')
+        vocab_writer = csv.writer(f, delimiter='\t', dialect='unix')
         vocab_writer.writerows(csv_vocab)
     tokenizer = tokenizer_from_csv(csv_path=csv_path, vocab_dir=vocab_dir)
     # because tokenizer_from_csv puts the token in a set, we can't know for certain what the indices will be
