@@ -28,8 +28,6 @@ def tokenizer_from_list(vocab: Sequence[str], vocab_dir: Union[str, os.PathLike]
 def tokenizer_from_csv(
         csv_path: Union[str, os.PathLike],
         vocab_dir: Union[str, os.PathLike],
-        csv_col: str = 'value',
-        delimiter: str = '\t'
     ) -> Wav2Vec2CTCTokenizer:
     """
     vocab is a list of strings containing tokens to include in vocabulary.
@@ -38,8 +36,8 @@ def tokenizer_from_csv(
     """
     vocab = set()
     with open(csv_path) as f:
-        reader = csv.DictReader(f, delimiter=delimiter)
+        reader = csv.reader(f, delimiter='\t')
         for row in reader:
-            vocab.add(row[csv_col])
+            vocab.add(row[0])
     vocab_path = vocab_from_list(vocab=vocab, vocab_dir=vocab_dir)
     return Wav2Vec2CTCTokenizer(vocab_path)
