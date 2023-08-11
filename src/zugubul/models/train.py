@@ -42,7 +42,7 @@ class Trainer:
             )
 
         self.model = torch.nn.DataParallel(MODELS[self.model_name]())
-        if self.load_path is not None:
+        if self.load_path:
             with open(self.load_path, "rb") as f:
                 self.model.load_state_dict(torch.load(f))
 
