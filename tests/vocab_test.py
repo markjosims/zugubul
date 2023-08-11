@@ -52,3 +52,16 @@ def test_tokenizer_from_csv(tmp_path):
     # because tokenizer_from_csv puts the token in a set, we can't know for certain what the indices will be
     # for that reason we're not checking the encoded values here
     assert len(tokenizer.encode('[TIC][ENG][ENG][DDN][TIC]')) == 5
+
+def test_special_tokens(tmp_path):
+    vocab = [
+        '[ENG]',
+        '[TIC]',
+        '[DDN]',
+    ]
+    vocab_dir = tmp_path / 'vocab2'
+    vocab_dir.mkdir()
+    tokenizer = tokenizer_from_list(vocab=vocab, vocab_dir=vocab_dir)
+    assert tokenizer.pad_token == '<pad>'
+    assert tokenizer.unk_token == '<unk>'
+    assert tokenizer.word_delimiter_token == '|'
