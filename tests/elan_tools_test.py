@@ -94,7 +94,7 @@ def test_metadata():
     non_empty_eaf.add_linked_file('foo.wav')
     empty_eaf.add_linked_file('bar.wav')
 
-    metadata_df = metadata(non_empty_eaf)
+    metadata_df = metadata('foo.eaf', non_empty_eaf)
 
     assert np.array_equal(metadata_df['start'], [1170, 2200])
     assert np.array_equal(metadata_df['end'], [2150, 2250])
@@ -102,7 +102,7 @@ def test_metadata():
     assert np.array_equal(metadata_df['text'], ['jicelo', 'ngamhare'])
     assert np.array_equal(metadata_df['file_name'], ['foo.wav', 'foo.wav'])
 
-    metadata_df = metadata(empty_eaf)
+    metadata_df = metadata('bar.eaf', empty_eaf)
 
     assert np.array_equal(metadata_df['start'], [100, 1170])
     assert np.array_equal(metadata_df['end'], [1150, 2150])

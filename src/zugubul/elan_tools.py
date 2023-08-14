@@ -121,15 +121,15 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
     return deepcopy(eaf1)
 
 def metadata(
-        eaf: Union[str, Elan.Eaf],
+        eaf: str,
+        eaf_obj: Optional[Elan.Eaf] = None,
         tier: Optional[str] = None,
         media: Optional[str] = None,
     ) -> pd.DataFrame:
-    if type(eaf) is str:
-        eaf = Elan.Eaf(eaf)
-    eaf: Elan.Eaf
+    if not eaf_obj:
+        eaf_obj = Elan.Eaf(eaf)
 
-    media_paths = eaf.media_descriptors
+    media_paths = eaf_obj.media_descriptors
     if (media) and (media not in media_paths):
         raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
     if not media:
@@ -140,12 +140,12 @@ def metadata(
     if tier:
         tiers = [tier,]
     else:
-        tiers = eaf.get_tier_names()
+        tiers = eaf_obj.get_tier_names()
 
     dfs = []
 
     for t in tiers:
-        annotations = eaf.get_annotation_data_for_tier(t)
+        annotations = eaf_obj.get_annotation_data_for_tier(t)
         start_times = [a[0] for a in annotations]
         end_times = [a[1] for a in annotations]
         values = [a[2] for a in annotations]
@@ -160,5 +160,6 @@ def metadata(
 
     df = pd.concat(dfs)
     df['file_name'] = media
+    df['eaf_name'] = eaf
 
     return df
