@@ -13,6 +13,7 @@ def tmp_csv():
         os.mkdir(vocab_dir)
         csv_path = os.path.join(vocab_dir, 'vocab.csv')
         csv_vocab = [
+            ['text', 'file_name', 'start', 'end'],
             ['[ENG]', 'foo.wav', 0, 1],
             ['[TIC]', 'foo.wav', 2, 3],
             ['[DDN]', 'bar.wav', 0, 1],

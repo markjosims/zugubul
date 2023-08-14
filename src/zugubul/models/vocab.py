@@ -37,9 +37,9 @@ def tokenizer_from_csv(
     """
     vocab = set()
     with open(csv_path) as f:
-        reader = csv.reader(f, delimiter='\t')
+        reader = csv.DictReader(f, delimiter='\t')
         for row in reader:
-            vocab.add(row[0])
+            vocab.add(row['text'])
     vocab_path = vocab_from_list(vocab=vocab, vocab_dir=vocab_dir)
     return Wav2Vec2CTCTokenizer(vocab_path)
 
