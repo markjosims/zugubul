@@ -17,10 +17,11 @@ If -r flag is provided, and WAV_FILEPATH is a directory, search for wavs recursi
 
 import os
 from pathlib import Path
+import pandas as pd
 import argparse
 from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
-from zugubul.elan_tools import merge, trim
+from zugubul.elan_tools import merge, trim, metadata
 from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
@@ -46,17 +47,7 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
                         +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
                         +'Default behavior is keep_source'
                 )
-    merge_parser.add_argument('-b', '--batch', action='store_true',
-                        help='Run on all wav files in a given folder '\
-                            +'(EAF1_FILEPATH and EAF2_FILEPATH must be paths to folders and not files)'
-                    )
-    merge_parser.add_argument('-r', '--recursive', action='store_true',
-                        help='If running a batch process, recurse over all subdirectories in WAV_FILEPATH.'
-                    )
-    merge_parser.add_argument('--overwrite', action='store_true',
-                        help='If running batch process, overwrite applicable files in output directory. '\
-                            +'Default behavior is to skip merging a file already present in output.'
-                    )
+    add_batch_args(merge_parser)
     
 def init_trim_parser(trim_parser: argparse.ArgumentParser):
     trim_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(trim_parser, x),
@@ -72,13 +63,7 @@ def init_trim_parser(trim_parser: argparse.ArgumentParser):
     trim_parser.add_argument('-s', '--stopword', type=str, default='',
                         help='Remove all annotations with this value. By default removes all annotations with no text.'
                     ) 
-    trim_parser.add_argument('-b', '--batch', action='store_true',
-                        help='Run on all wav files in a given folder '\
-                            +'(EAF1_FILEPATH and EAF2_FILEPATH must be paths to folders and not files)'
-                       )
-    trim_parser.add_argument('-r', '--recursive', action='store_true',
-                        help='If running a batch process, recurse over all subdirectories in WAV_FILEPATH.'
-                       )
+    add_batch_args(trim_parser)
 
 def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('WAV_FILEPATH', type=lambda x: is_valid_file(vad_parser, x),
@@ -100,23 +85,42 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
                         +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
                         +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
                 )
-    vad_parser.add_argument('-b', '--batch', action='store_true',
-                        help='Run on all wav files in a given folder '\
-                            +'(WAV_FILEPATH and EAF_FILEPATH must be paths to folders and not files)'
-                       )
-    vad_parser.add_argument('-r', '--recursive', action='store_true',
-                        help='If running a batch process, recurse over all subdirectories in WAV_FILEPATH.'
-                       )
-    vad_parser.add_argument('--overwrite', action='store_true',
-                        help='If running a batch process, overwrite files already in destination folder.'
-                       )
     vad_parser.add_argument('-v', '--vad', type=lambda x: is_valid_file(vad_parser, x),
                         help='Filepath for .vad file linked to the recording. '\
                             +'If passed, reads VAD data from file instead of running rVAD_fast.'
                        )
-    vad_parser.add_argument('-t', '--tier', required=False,
+    vad_parser.add_argument('-t', '--tier',
                         help='Tier label to add annotations to. If none specified uses `default-lt`'\
                        )
+    add_batch_args(vad_parser)
+
+def init_metadata_parser(metadata_parser: argparse.ArgumentParser) -> None:
+    metadata_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(metadata_parser, x),
+        help='.eaf file to process metadata for.'
+    )
+    metadata_parser.add_argument('-o', '--output', type=lambda x: is_valid_file(metadata_parser, x),
+        help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
+            +'or if EAF_FILEPATH is a directory, create a file named metadata.csv in the given directory.'
+    )
+    metadata_parser.add_argument('-t', '--tier',
+        help='Tier label to read metadata from. If none specified read from all tiers.'
+    )
+    metadata_parser.add_argument('-m', '--media',
+        help='Path to media file, if different than media path specified in .eaf file.'
+    )
+    add_batch_args(metadata_parser)
+
+def add_batch_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument('-b', '--batch', action='store_true',
+                        help='Run on all wav files in a given folder.'
+                    )
+    parser.add_argument('-r', '--recursive', action='store_true',
+                        help='If running a batch process, recurse over all subdirectories in folder.'
+                    )
+    parser.add_argument('--overwrite', action='store_true',
+                        help='If running batch process, overwrite applicable files in already in output directory. '\
+                            +'Default behavior is to skip files already present.'
+                    )
 
 def handle_merge(args: Mapping) -> int:
     eaf_source = args['EAF_SOURCE']
@@ -278,6 +282,47 @@ def handle_trim(args: Mapping) -> int:
         eaf_to_file_safe(eaf, out_fp)
     return 0
 
+def handle_metadata(args: Mapping) -> int:
+    eaf_fp = args['EAF_FILEPATH']
+    out_fp = args['output']
+    if not out_fp:
+        # default behavior is to change suffix of input file
+        if os.path.isfile(eaf_fp):
+            out_fp = eaf_fp.replace('.eaf', '.csv')
+        # if eaf_fp is folder, create file metadata.csv in folder
+        else:
+            out_fp = os.path.join(eaf_fp, 'metadata.csv')
+    tier = args['tier']
+    media = args['media']
+    batch = args['batch']
+    recursive = args['recursive']
+    overwrite = args['overwrite']
+
+    if batch or os.path.isdir(eaf_fp):
+        out = batch_funct(
+            f=metadata,
+            dir=eaf_fp,
+            suffix='.eaf',
+            file_arg='eaf',
+            kwargs={
+                'tier': tier,
+                'media': media
+            },
+            recursive=recursive,
+            overwrite=overwrite,
+        )
+        df = pd.concat(out.values())
+    else:
+        df = metadata(
+            eaf=eaf_fp,
+            tier=tier,
+            media=media
+        )
+
+    df.to_csv(out_fp)
+
+    return 0
+
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
     Returns path to .eaf file with same name as data_file
@@ -305,18 +350,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     subparsers = parser.add_subparsers(dest='COMMAND')
     
     merge_parser = subparsers.add_parser('merge', help='Add all annotations in eaf2 not present in eaf1')
-    merge_parser = init_merge_parser(merge_parser)
+    init_merge_parser(merge_parser)
 
     trim_parser = subparsers.add_parser('trim',
                         help='Remove all empty annotations in a given tier, '\
                             +'or all annotations with a given value indicated by the STOPWORD argument.'
                     )        
-    trim_parser = init_trim_parser(trim_parser)
+    init_trim_parser(trim_parser)
 
-    vad_parsers = subparsers.add_parser('vad',
+    vad_parser = subparsers.add_parser('vad',
                         help='Create ELAN file with annotations corresponding to detected speech segments in recording.'
                     )
-    vad_parsers = init_vad_parser(vad_parsers)
+    init_vad_parser(vad_parser)
+
+    metadata_parser = subparsers.add_parser('metadata', help='Process metadata for given .eaf file(s) into a csv.')
+    init_metadata_parser(metadata_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -327,6 +375,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_merge(args)
     elif command == 'vad':
         return handle_vad(args)
+    elif command == 'metadata':
+        return handle_metadata(args)
     return 1
 
 if __name__ == '__main__':
