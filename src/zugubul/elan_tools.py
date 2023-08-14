@@ -1,6 +1,7 @@
 import os
+import pandas as pd
 from pympi import Elan
-from typing import Union, Optional, Sequence, Literal
+from typing import Union, Optional, Sequence, Literal, Callable
 from copy import deepcopy
 
 """
@@ -17,6 +18,8 @@ Contains following helper functions for processing .eaf files:
         When an annotation from FILE2 overlaps with one from FILE1, cut annotation from FILE2 to only non-overlapping part,
         and add to FILE1, but only if non-overlapping part is less than OVERLAP (default 200ms).
         If OVERLAP=inf, do not add any overlapping annotations from FILE2.
+- metadata:
+        For a given elan file, create a csv with all annotation data for the whole file or for a given tier.
 """
 
 def trim(
@@ -116,3 +119,46 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
             eaf1 = os.path.join(eaf1, eaf2_name)
         return Elan.Eaf(eaf1)
     return deepcopy(eaf1)
+
+def metadata(
+        eaf: Union[str, Elan.Eaf],
+        tier: Optional[str] = None,
+        media: Optional[str] = None,
+    ) -> pd.DataFrame:
+    if type(eaf) is str:
+        eaf = Elan.Eaf(eaf)
+    eaf: Elan.Eaf
+
+    media_paths = eaf.media_descriptors
+    if (media) and (media not in media_paths):
+        raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
+    if not media:
+        media = media_paths[0]['MEDIA_URL']
+        if len(media_paths) > 0:
+            print(f'No media argument provided and eaf has multiple linked files. {media=}, {media_paths=}')
+
+    if tier:
+        tiers = [tier,]
+    else:
+        tiers = eaf.get_tier_names()
+
+    dfs = []
+
+    for t in tiers:
+        annotations = eaf.get_annotation_data_for_tier(t)
+        start_times = [a[0] for a in annotations]
+        end_times = [a[1] for a in annotations]
+        values = [a[2] for a in annotations]
+
+        t_df = pd.DataFrame(data={
+            'start': start_times,
+            'end': end_times,
+            'text': values,
+            'tier': t,
+        })
+        dfs.append(t_df)
+
+    df = pd.concat(dfs)
+    df['file_name'] = media
+
+    return df
