@@ -7,8 +7,10 @@ from torch import nn
 
 from zugubul.models._constants import FEATURE_TYPE
 from zugubul.models._constants import TOKEN_TYPES
-from zugubul.models.vocab import PAD_TOKEN_IDX
-from zugubul.models.vocab import SIZE
+# from zugubul.models.vocab import PAD_TOKEN_IDX
+# from zugubul.models.vocab import SIZE
+PAD_TOKEN_IDX=-1 # implement
+SIZE=-1 # implement
 
 
 D_MODEL = 256
