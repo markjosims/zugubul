@@ -106,6 +106,8 @@ pyaudio==0.2.13
     # via -r requirements.in
 pycparser==2.21
     # via cffi
+pydub==0.25.1
+    # via -r requirements.in
 pympi-ling==1.70.2
     # via -r requirements.in
 python-dateutil==2.8.2
