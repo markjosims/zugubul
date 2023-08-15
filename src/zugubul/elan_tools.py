@@ -1,8 +1,10 @@
 import os
 import pandas as pd
 from pympi import Elan
-from typing import Union, Optional, Sequence, Literal, Callable
+from typing import Union, Optional, Sequence, Literal
 from copy import deepcopy
+from pydub import AudioSegment
+from pathlib import Path
 
 """
 Contains following helper functions for processing .eaf files:
@@ -134,7 +136,7 @@ def metadata(
         raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
     if not media:
         media = media_paths[0]['MEDIA_URL']
-        if len(media_paths) > 0:
+        if len(media_paths) > 1:
             print(f'No media argument provided and eaf has multiple linked files. {media=}, {media_paths=}')
 
     if tier:
@@ -159,7 +161,86 @@ def metadata(
         dfs.append(t_df)
 
     df = pd.concat(dfs)
-    df['file_name'] = media
+    df['wav_source'] = media
     df['eaf_name'] = eaf
 
     return df
+
+def snip_audio(
+        annotations: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame],
+        out_dir: Union[str, os.PathLike],
+        audio: Union[str, os.PathLike, AudioSegment, None] = None,
+        tier: Optional[str] = None,
+    ) -> pd.DataFrame:
+    """
+    annotations may be an Eaf object, a pandas dataframe with the columns 'start', 'end' and 'wav_source',
+    or a filepath pointing to a .eaf file or a .csv file with the same column structure.
+    Returns a dataframe containing information for each annotation with the added column 'wav_clip',
+    which points to a .wav file snipped to the start and end value for each annotation.
+    """
+    if type(annotations) is Elan.Eaf:
+        df = metadata(eaf='', eaf_obj=annotations, tier=tier, media=audio)
+        # no filepath for .eaf file passed so name is unknown
+        del df['eaf_name']
+    elif type(annotations) is pd.DataFrame:
+        df = annotations
+    else:
+        # type(annotations) is str
+        path = Path(annotations)
+        suffix = path.suffix
+        if suffix == '.eaf':
+            df = metadata(annotations, tier=tier, media=audio)
+        elif suffix == '.csv':
+            ...
+        else:
+            raise ValueError('If passing filepath for annotations, must point to .eaf or .csv file.')
+        
+    if tier:
+        df = df[df['tier']==tier]
+
+    df['wav_clip'] = ''
+
+    for wav_source in df['wav_source']:
+        from_source = df['wav_source'] == wav_source
+        wav_obj = AudioSegment.from_wav(wav_source)
+
+        wav_clips = df[from_source].apply(
+            lambda r: save_clip(
+                start = r['start'],
+                end = r['end'],
+                source_fp = wav_source,
+                out_dir = out_dir,
+                wav_obj = wav_obj,
+            ),
+            axis=1
+        )
+        df.loc[from_source, 'wav_clip'] = wav_clips
+
+    if audio:
+        ...# TODO: don't do loop
+
+    return df
+
+def save_clip(
+    start: int,
+    end: int,
+    source_fp: Union[str, os.PathLike],
+    out_dir: Union[str, os.PathLike],
+    wav_obj: Optional[AudioSegment] = None
+    ) -> str:
+    """
+    Cut wav file from source_fp into clip from start to end timestamps (in number of milliseconds).
+    Save clip to path/to/out_dir/source_fp[start-end].wav.
+    Return path clip was saved to.
+    """
+    if not wav_obj:
+        wav_obj = AudioSegment.from_wav(source_fp)
+    
+    source_stem = Path(source_fp).stem
+    out_name = f'{source_stem}[{start}-{end}].wav'
+    out_path = os.path.join(out_dir, out_name)
+    
+    clip = wav_obj[start:end]
+    clip.export(out_path, format='wav')
+
+    return out_path
