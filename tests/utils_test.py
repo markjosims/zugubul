@@ -69,7 +69,6 @@ def test_metadata_batch(tmp_eafdir):
         overwrite=True
     )
 
-    print(df_dict)
     df = pd.concat(df_dict.values())
 
     print(df['eaf_name'].iloc[0])
@@ -88,5 +87,5 @@ def test_metadata_batch(tmp_eafdir):
         assert np.array_equal(eaf_values, eaf_df['text'].sort_values())
         assert np.array_equal(
             df['eaf_name']==eaf_path,
-            df['file_name']==linked_files[eaf]
+            df['wav_source']==linked_files[eaf]
         )
