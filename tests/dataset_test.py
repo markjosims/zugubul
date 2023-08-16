@@ -1,4 +1,4 @@
-from zugubul.models.dataset import init_lid_dataset, split_data
+from zugubul.models.dataset import init_lid_dataset, split_data, make_lid_labels
 import pytest
 import csv
 import os
@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import pandas as pd
 import numpy as np
+import tomli_w
 
 @pytest.fixture
 def tmp_dataset():
@@ -63,6 +64,46 @@ def tmp_unsplit_data():
 
         yield dir_path, csv_path
 
+@pytest.fixture
+def tmp_lid_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dir_path = os.path.join(tmpdir, 'dataset1')
+        os.mkdir(dir_path)
+
+        dendi_path = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
+        tira_path = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+
+        csv_path = os.path.join(dir_path, 'eaf_data.csv')
+
+        with open(csv_path, 'w') as f:
+            writer = csv.writer(f, delimiter=',')
+            rows = [
+                ['eaf_name', 'wav_source', 'text', 'start', 'end'],
+                ['tira.eaf', tira_path, 'TIC', 100, 500],
+                ['tira.eaf', tira_path, 'TIC', 600, 1000],
+                ['tira.eaf', tira_path, 'ngamhare', 1100, 1500],
+                ['dendi.eaf', dendi_path, '', 100, 500],
+                ['dendi.eaf', dendi_path, 'DDN1', 600, 1000],
+                ['dendi.eaf', dendi_path, 'DDN', 1100, 1500],
+            ]
+            writer.writerows(rows)
+
+        toml_path = os.path.join(dir_path, 'tira.toml')
+
+        with open(toml_path, 'wb') as f:
+            toml_data = {
+                'LID': {
+                    'targetlang': 'TIC',
+                    'metalang': 'DDN',
+                    'target_labels': '*',
+                    'meta_labels': ['DDN', 'DDN1'],
+                    'empty': 'meta'
+                }
+            }
+            tomli_w.dump(toml_data, f)
+
+        yield dir_path, csv_path, toml_path
+
 def test_init_lid_dataset(tmp_dataset):
     dataset = init_lid_dataset(tmp_dataset)
     assert dataset['train'][0]['text'] == 'train'
@@ -97,3 +138,53 @@ def test_split_data(tmp_unsplit_data):
                 clip_files.pop(clip)
     
     assert not clip_files
+
+def test_make_lid_labels(tmp_lid_data):
+    _, csv_path, _ = tmp_lid_data
+    
+    targetlang = 'TIC'
+    metalang = 'DDN'
+    target_labels = '*'
+    meta_labels = ['DDN', 'DDN1']
+
+    df = make_lid_labels(
+        csv_path,
+        targetlang=targetlang,
+        metalang=metalang,
+        target_labels=target_labels,
+        meta_labels=meta_labels
+    )
+
+    assert np.array_equal(
+        df['eaf_name'] == 'tira.eaf',
+        df['lang'] == 'TIC'
+    )
+
+    assert np.array_equal(
+        df['eaf_name'] == 'dendi.eaf',
+        df['lang'] == 'DDN'
+    )
+
+    assert len(df[df['lang']=='TIC']) == 3
+    assert len(df[df['lang']=='DDN']) == 2
+
+def test_make_lid_labels1(tmp_lid_data):
+    _, csv_path, toml_path = tmp_lid_data
+    
+    df = make_lid_labels(
+        csv_path,
+        toml=toml_path
+    )
+
+    assert np.array_equal(
+        df['eaf_name'] == 'tira.eaf',
+        df['lang'] == 'TIC'
+    )
+
+    assert np.array_equal(
+        df['eaf_name'] == 'dendi.eaf',
+        df['lang'] == 'DDN'
+    )
+
+    assert len(df[df['lang']=='TIC']) == 3
+    assert len(df[df['lang']=='DDN']) == 3
