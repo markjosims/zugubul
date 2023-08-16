@@ -29,14 +29,14 @@ def init_lid_dataset(dirpath: Union[str, os.PathLike]) -> Dataset:
     return load_dataset('audiofolder', data_dir=dirpath)
 
 def split_data(
-        metadata: Union[str, os.PathLike, pd.DataFrame],
+        eaf_data: Union[str, os.PathLike, pd.DataFrame],
         out_dir: Union[str, os.PathLike],
         lid: bool = False,
         copy: bool = False,
         splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1)
     ) -> str:
     """
-    metadata is the path to a csv produced by the metadata function in Elan tools,
+    eaf_data is the path to a csv produced by the eaf_data function in Elan tools,
     or an equivalent pandas DataFrame object.
     out_dir is the path to a data folder to save the new metadata.csv and all clipped recordings to.
     lid is a bool indicating whether the split is being made for a language identification model or not (default False).
@@ -45,28 +45,28 @@ def split_data(
     splitsize is a tuple of len 3 containing floats the length of each split (training, validation, test), default (0.8, 0.1, 0.1).
     Returns path to the new metadata.csv.
     """
-    if type(metadata) is str:
-        metadata = pd.read_csv(metadata)
+    if type(eaf_data) is str:
+        eaf_data = pd.read_csv(eaf_data)
     if type(out_dir) is str:
         out_dir = Path(out_dir)
 
-    metadata: pd.DataFrame
+    eaf_data: pd.DataFrame
 
-    if 'wav_clip' not in metadata.columns:
-        metadata = snip_audio(metadata, out_dir)
+    if 'wav_clip' not in eaf_data.columns:
+        eaf_data = snip_audio(eaf_data, out_dir)
 
     # drop unlabeled rows
-    metadata = metadata[metadata['text'] != '']
+    eaf_data = eaf_data[eaf_data['text'] != '']
 
-    metadata=metadata.sample(frac=1)
+    eaf_data=eaf_data.sample(frac=1)
 
-    train_size = ceil(splitsize[0]*len(metadata))
-    train_split = metadata[:train_size]
+    train_size = ceil(splitsize[0]*len(eaf_data))
+    train_split = eaf_data[:train_size]
 
-    val_size = ceil(splitsize[1]*len(metadata))
-    val_split = metadata[train_size:train_size+val_size]
+    val_size = ceil(splitsize[1]*len(eaf_data))
+    val_split = eaf_data[train_size:train_size+val_size]
 
-    test_split = metadata[train_size+val_size:]
+    test_split = eaf_data[train_size+val_size:]
 
     split_dict = {
         'train': train_split,
@@ -91,10 +91,10 @@ def split_data(
             lambda fp: move_clip_to_split(Path(fp), split_dir)
         )
 
-        metadata.loc[split_df.index, 'file_name'] = split_clips
+        eaf_data.loc[split_df.index, 'file_name'] = split_clips
     
-    metadata = metadata[['file_name', 'text']]
+    eaf_data = eaf_data[['file_name', 'text']]
     out_path = out_dir/'metadata.csv'
-    metadata.to_csv(out_path, index=False)
+    eaf_data.to_csv(out_path, index=False)
 
     return out_path
