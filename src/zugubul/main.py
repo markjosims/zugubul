@@ -21,7 +21,7 @@ import pandas as pd
 import argparse
 from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
-from zugubul.elan_tools import merge, trim, metadata
+from zugubul.elan_tools import merge, trim, eaf_data
 from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
@@ -94,21 +94,21 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
                        )
     add_batch_args(vad_parser)
 
-def init_metadata_parser(metadata_parser: argparse.ArgumentParser) -> None:
-    metadata_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(metadata_parser, x),
+def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
+    eaf_data_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(eaf_data_parser, x),
         help='.eaf file to process metadata for.'
     )
-    metadata_parser.add_argument('-o', '--output', type=lambda x: is_valid_file(metadata_parser, x),
+    eaf_data_parser.add_argument('-o', '--output', type=lambda x: is_valid_file(eaf_data_parser, x),
         help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
-            +'or if EAF_FILEPATH is a directory, create a file named metadata.csv in the given directory.'
+            +'or if EAF_FILEPATH is a directory, create a file named eaf_data.csv in the given directory.'
     )
-    metadata_parser.add_argument('-t', '--tier',
-        help='Tier label to read metadata from. If none specified read from all tiers.'
+    eaf_data_parser.add_argument('-t', '--tier',
+        help='Tier label to read eaf_data from. If none specified read from all tiers.'
     )
-    metadata_parser.add_argument('-m', '--media',
+    eaf_data_parser.add_argument('-m', '--media',
         help='Path to media file, if different than media path specified in .eaf file.'
     )
-    add_batch_args(metadata_parser)
+    add_batch_args(eaf_data_parser)
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -282,16 +282,16 @@ def handle_trim(args: Mapping) -> int:
         eaf_to_file_safe(eaf, out_fp)
     return 0
 
-def handle_metadata(args: Mapping) -> int:
+def handle_eaf_data(args: Mapping) -> int:
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['output']
     if not out_fp:
         # default behavior is to change suffix of input file
         if os.path.isfile(eaf_fp):
             out_fp = eaf_fp.replace('.eaf', '.csv')
-        # if eaf_fp is folder, create file metadata.csv in folder
+        # if eaf_fp is folder, create file eaf_data.csv in folder
         else:
-            out_fp = os.path.join(eaf_fp, 'metadata.csv')
+            out_fp = os.path.join(eaf_fp, 'eaf_data.csv')
     tier = args['tier']
     media = args['media']
     batch = args['batch']
@@ -300,7 +300,7 @@ def handle_metadata(args: Mapping) -> int:
 
     if batch or os.path.isdir(eaf_fp):
         out = batch_funct(
-            f=metadata,
+            f=eaf_data,
             dir=eaf_fp,
             suffix='.eaf',
             file_arg='eaf',
@@ -313,7 +313,7 @@ def handle_metadata(args: Mapping) -> int:
         )
         df = pd.concat(out.values())
     else:
-        df = metadata(
+        df = eaf_data(
             eaf=eaf_fp,
             tier=tier,
             media=media
@@ -363,8 +363,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     )
     init_vad_parser(vad_parser)
 
-    metadata_parser = subparsers.add_parser('metadata', help='Process metadata for given .eaf file(s) into a csv.')
-    init_metadata_parser(metadata_parser)
+    eaf_data_parser = subparsers.add_parser('eaf_data', help='Process metadata for given .eaf file(s) into a csv.')
+    init_eaf_data_parser(eaf_data_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -375,8 +375,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_merge(args)
     elif command == 'vad':
         return handle_vad(args)
-    elif command == 'metadata':
-        return handle_metadata(args)
+    elif command == 'eaf_data':
+        return handle_eaf_data(args)
     return 1
 
 if __name__ == '__main__':

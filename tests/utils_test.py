@@ -1,5 +1,5 @@
 from zugubul.utils import eaf_to_file_safe, batch_funct
-from zugubul.elan_tools import metadata
+from zugubul.elan_tools import eaf_data
 from pympi import Elan
 import os
 import pytest
@@ -58,11 +58,11 @@ def test_eaf_to_file_safe():
     assert os.path.isfile(eaf_fp)   
     assert os.path.isfile(bak_fp)
 
-def test_metadata_batch(tmp_eafdir):
+def test_eaf_data_batch(tmp_eafdir):
     dir_path, annotations, linked_files = tmp_eafdir
 
     df_dict = batch_funct(
-        metadata,
+        eaf_data,
         dir=dir_path,
         suffix='.eaf',
         file_arg='eaf',

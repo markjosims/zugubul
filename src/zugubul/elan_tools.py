@@ -20,7 +20,7 @@ Contains following helper functions for processing .eaf files:
         When an annotation from FILE2 overlaps with one from FILE1, cut annotation from FILE2 to only non-overlapping part,
         and add to FILE1, but only if non-overlapping part is less than OVERLAP (default 200ms).
         If OVERLAP=inf, do not add any overlapping annotations from FILE2.
-- metadata:
+- eaf_data:
         For a given elan file, create a csv with all annotation data for the whole file or for a given tier.
 """
 
@@ -122,7 +122,7 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
         return Elan.Eaf(eaf1)
     return deepcopy(eaf1)
 
-def metadata(
+def eaf_data(
         eaf: str,
         eaf_obj: Optional[Elan.Eaf] = None,
         tier: Optional[str] = None,
@@ -179,7 +179,7 @@ def snip_audio(
     which points to a .wav file snipped to the start and end value for each annotation.
     """
     if type(annotations) is Elan.Eaf:
-        df = metadata(eaf='', eaf_obj=annotations, tier=tier, media=audio)
+        df = eaf_data(eaf='', eaf_obj=annotations, tier=tier, media=audio)
         # no filepath for .eaf file passed so name is unknown
         del df['eaf_name']
     elif type(annotations) is pd.DataFrame:
@@ -189,7 +189,7 @@ def snip_audio(
         path = Path(annotations)
         suffix = path.suffix
         if suffix == '.eaf':
-            df = metadata(annotations, tier=tier, media=audio)
+            df = eaf_data(annotations, tier=tier, media=audio)
         elif suffix == '.csv':
             ...
         else:
