@@ -21,8 +21,9 @@ import pandas as pd
 import argparse
 from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
-from zugubul.elan_tools import merge, trim, eaf_data
-from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct, eaf_to_file_safe
+from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
+from zugubul.models.dataset import split_data
+from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
 
@@ -109,6 +110,27 @@ def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
         help='Path to media file, if different than media path specified in .eaf file.'
     )
     add_batch_args(eaf_data_parser)
+
+def init_split_data_parser(split_data_parser: argparse.ArgumentParser) -> None:
+    split_data_parser.add_argument('EAF_DATA', type=lambda x: is_valid_file(split_data_parser, x),
+        help='Path to eaf_data.csv (output of eaf_data command) to generate data splits from.'
+    )
+    split_data_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(split_data_parser, x),
+        help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
+            +'or if EAF_FILEPATH is a directory, create a file named split_data.csv in the given directory.'
+    )
+    split_data_parser.add_argument('-s', '--splitsize', type=float, nargs=3,
+        help='Size of training, validation and test splits, given as floats where 0 < size < 1. Default is (0.8, 0.1, 0.1).'
+    )
+
+def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
+    snip_audio_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(snip_audio_parser, x),
+        help='Path to eaf_data.csv or .eaf file.'
+    )
+    snip_audio_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(snip_audio_parser, x),
+        help='Path to folder to save output in.'
+    )
+    snip_audio_parser.add_argument('-t', '--tier', help='Tier name to read annotations from (default is to use all tiers).')
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -323,6 +345,38 @@ def handle_eaf_data(args: Mapping) -> int:
 
     return 0
 
+def handle_split_data(args: Mapping) -> int:
+    eaf_data_fp = args['EAF_DATA']
+    out_dir = args['OUT_DIR']
+    splitsize = args['splitsize'] or (0.8, 0.1, 0.1)
+
+    metadata_fp = split_data(
+        eaf_data=eaf_data_fp,
+        out_dir=out_dir,
+        splitsize=splitsize
+    )
+
+    print('Metadata for training split saved to', metadata_fp)
+
+    return 0
+
+def handle_snip_audio(args: Mapping) -> int:
+    annotations = Path(args['ANNOTATIONS'])
+    out_dir = Path(args['OUT_DIR'])
+    tier = args['tier']
+
+    df = snip_audio(
+        annotations=annotations,
+        out_dir=out_dir,
+        tier=tier
+    )
+
+    csv_path = out_dir/'eaf_data.csv'
+    df.to_csv(csv_path, index=False)
+    print(f'Audio clips and eaf_data saved to {out_dir}.')
+
+    return 0
+
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
     Returns path to .eaf file with same name as data_file
@@ -366,6 +420,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     eaf_data_parser = subparsers.add_parser('eaf_data', help='Process metadata for given .eaf file(s) into a csv.')
     init_eaf_data_parser(eaf_data_parser)
 
+    split_data_parser = subparsers.add_parser('split_data', help='Make training splits from a collection of ELAN files or from a .csv file output by the eaf_data command.')
+    init_split_data_parser(split_data_parser)
+
+    snip_audio_parser = subparsers.add_parser('snip_audio', help='Create a directory of audio clips corresponding to ELAN annotations.')
+    init_snip_audio_parser(snip_audio_parser)
+
     args = vars(parser.parse_args(argv))
 
     command = args['COMMAND']
@@ -377,6 +437,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_vad(args)
     elif command == 'eaf_data':
         return handle_eaf_data(args)
+    elif command == 'split_data':
+        return handle_split_data(args)
     return 1
 
 if __name__ == '__main__':

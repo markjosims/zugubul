@@ -191,7 +191,7 @@ def snip_audio(
         if suffix == '.eaf':
             df = eaf_data(annotations, tier=tier, media=audio)
         elif suffix == '.csv':
-            ...
+            df = pd.read_csv(annotations)
         else:
             raise ValueError('If passing filepath for annotations, must point to .eaf or .csv file.')
         
@@ -215,9 +215,6 @@ def snip_audio(
             axis=1
         )
         df.loc[from_source, 'wav_clip'] = wav_clips
-
-    if audio:
-        ...# TODO: don't do loop
 
     return df
 
