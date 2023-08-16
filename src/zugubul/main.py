@@ -21,8 +21,9 @@ import pandas as pd
 import argparse
 from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
-from zugubul.elan_tools import merge, trim, metadata
-from zugubul.utils import is_valid_file, file_in_valid_dir, batch_funct, eaf_to_file_safe
+from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
+from zugubul.models.dataset import split_data
+from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
 
@@ -94,21 +95,42 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
                        )
     add_batch_args(vad_parser)
 
-def init_metadata_parser(metadata_parser: argparse.ArgumentParser) -> None:
-    metadata_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(metadata_parser, x),
+def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
+    eaf_data_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(eaf_data_parser, x),
         help='.eaf file to process metadata for.'
     )
-    metadata_parser.add_argument('-o', '--output', type=lambda x: is_valid_file(metadata_parser, x),
+    eaf_data_parser.add_argument('-o', '--output', type=lambda x: is_valid_file(eaf_data_parser, x),
         help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
-            +'or if EAF_FILEPATH is a directory, create a file named metadata.csv in the given directory.'
+            +'or if EAF_FILEPATH is a directory, create a file named eaf_data.csv in the given directory.'
     )
-    metadata_parser.add_argument('-t', '--tier',
-        help='Tier label to read metadata from. If none specified read from all tiers.'
+    eaf_data_parser.add_argument('-t', '--tier',
+        help='Tier label to read eaf_data from. If none specified read from all tiers.'
     )
-    metadata_parser.add_argument('-m', '--media',
+    eaf_data_parser.add_argument('-m', '--media',
         help='Path to media file, if different than media path specified in .eaf file.'
     )
-    add_batch_args(metadata_parser)
+    add_batch_args(eaf_data_parser)
+
+def init_split_data_parser(split_data_parser: argparse.ArgumentParser) -> None:
+    split_data_parser.add_argument('EAF_DATA', type=lambda x: is_valid_file(split_data_parser, x),
+        help='Path to eaf_data.csv (output of eaf_data command) to generate data splits from.'
+    )
+    split_data_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(split_data_parser, x),
+        help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
+            +'or if EAF_FILEPATH is a directory, create a file named split_data.csv in the given directory.'
+    )
+    split_data_parser.add_argument('-s', '--splitsize', type=float, nargs=3,
+        help='Size of training, validation and test splits, given as floats where 0 < size < 1. Default is (0.8, 0.1, 0.1).'
+    )
+
+def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
+    snip_audio_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(snip_audio_parser, x),
+        help='Path to eaf_data.csv or .eaf file.'
+    )
+    snip_audio_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(snip_audio_parser, x),
+        help='Path to folder to save output in.'
+    )
+    snip_audio_parser.add_argument('-t', '--tier', help='Tier name to read annotations from (default is to use all tiers).')
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -282,16 +304,16 @@ def handle_trim(args: Mapping) -> int:
         eaf_to_file_safe(eaf, out_fp)
     return 0
 
-def handle_metadata(args: Mapping) -> int:
+def handle_eaf_data(args: Mapping) -> int:
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['output']
     if not out_fp:
         # default behavior is to change suffix of input file
         if os.path.isfile(eaf_fp):
             out_fp = eaf_fp.replace('.eaf', '.csv')
-        # if eaf_fp is folder, create file metadata.csv in folder
+        # if eaf_fp is folder, create file eaf_data.csv in folder
         else:
-            out_fp = os.path.join(eaf_fp, 'metadata.csv')
+            out_fp = os.path.join(eaf_fp, 'eaf_data.csv')
     tier = args['tier']
     media = args['media']
     batch = args['batch']
@@ -300,7 +322,7 @@ def handle_metadata(args: Mapping) -> int:
 
     if batch or os.path.isdir(eaf_fp):
         out = batch_funct(
-            f=metadata,
+            f=eaf_data,
             dir=eaf_fp,
             suffix='.eaf',
             file_arg='eaf',
@@ -313,13 +335,45 @@ def handle_metadata(args: Mapping) -> int:
         )
         df = pd.concat(out.values())
     else:
-        df = metadata(
+        df = eaf_data(
             eaf=eaf_fp,
             tier=tier,
             media=media
         )
 
     df.to_csv(out_fp)
+
+    return 0
+
+def handle_split_data(args: Mapping) -> int:
+    eaf_data_fp = args['EAF_DATA']
+    out_dir = args['OUT_DIR']
+    splitsize = args['splitsize'] or (0.8, 0.1, 0.1)
+
+    metadata_fp = split_data(
+        eaf_data=eaf_data_fp,
+        out_dir=out_dir,
+        splitsize=splitsize
+    )
+
+    print('Metadata for training split saved to', metadata_fp)
+
+    return 0
+
+def handle_snip_audio(args: Mapping) -> int:
+    annotations = Path(args['ANNOTATIONS'])
+    out_dir = Path(args['OUT_DIR'])
+    tier = args['tier']
+
+    df = snip_audio(
+        annotations=annotations,
+        out_dir=out_dir,
+        tier=tier
+    )
+
+    csv_path = out_dir/'eaf_data.csv'
+    df.to_csv(csv_path, index=False)
+    print(f'Audio clips and eaf_data saved to {out_dir}.')
 
     return 0
 
@@ -363,8 +417,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     )
     init_vad_parser(vad_parser)
 
-    metadata_parser = subparsers.add_parser('metadata', help='Process metadata for given .eaf file(s) into a csv.')
-    init_metadata_parser(metadata_parser)
+    eaf_data_parser = subparsers.add_parser('eaf_data', help='Process metadata for given .eaf file(s) into a csv.')
+    init_eaf_data_parser(eaf_data_parser)
+
+    split_data_parser = subparsers.add_parser('split_data', help='Make training splits from a collection of ELAN files or from a .csv file output by the eaf_data command.')
+    init_split_data_parser(split_data_parser)
+
+    snip_audio_parser = subparsers.add_parser('snip_audio', help='Create a directory of audio clips corresponding to ELAN annotations.')
+    init_snip_audio_parser(snip_audio_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -375,8 +435,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_merge(args)
     elif command == 'vad':
         return handle_vad(args)
-    elif command == 'metadata':
-        return handle_metadata(args)
+    elif command == 'eaf_data':
+        return handle_eaf_data(args)
+    elif command == 'split_data':
+        return handle_split_data(args)
     return 1
 
 if __name__ == '__main__':

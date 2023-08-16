@@ -4,7 +4,7 @@ import pytest
 import pandas as pd
 from pympi import Elan
 from pydub import AudioSegment
-from zugubul.elan_tools import trim, merge, metadata, snip_audio
+from zugubul.elan_tools import trim, merge, eaf_data, snip_audio
 
 def test_trim():
     # make dummy .eaf file
@@ -116,26 +116,26 @@ def test_merge_keep_source(dummy_eafs):
     out_annotations = out_eaf.get_annotation_data_for_tier('default-lt')
     assert sorted(out_annotations) == [(100, 1150, ''), (1170, 2150, 'jicelo'), (2200, 2250, 'ngamhare')]
 
-def test_metadata(dummy_eafs):
+def test_eaf_data(dummy_eafs):
     non_empty_eaf, empty_eaf = dummy_eafs
     non_empty_eaf.add_linked_file('foo.wav')
     empty_eaf.add_linked_file('bar.wav')
 
-    metadata_df = metadata('foo.eaf', non_empty_eaf)
+    eaf_data_df = eaf_data('foo.eaf', non_empty_eaf)
 
-    assert np.array_equal(metadata_df['start'], [1170, 2200])
-    assert np.array_equal(metadata_df['end'], [2150, 2250])
-    assert np.array_equal(metadata_df['tier'], ['default-lt', 'default-lt'])
-    assert np.array_equal(metadata_df['text'], ['jicelo', 'ngamhare'])
-    assert np.array_equal(metadata_df['wav_source'], ['foo.wav', 'foo.wav'])
+    assert np.array_equal(eaf_data_df['start'], [1170, 2200])
+    assert np.array_equal(eaf_data_df['end'], [2150, 2250])
+    assert np.array_equal(eaf_data_df['tier'], ['default-lt', 'default-lt'])
+    assert np.array_equal(eaf_data_df['text'], ['jicelo', 'ngamhare'])
+    assert np.array_equal(eaf_data_df['wav_source'], ['foo.wav', 'foo.wav'])
 
-    metadata_df = metadata('bar.eaf', empty_eaf)
+    eaf_data_df = eaf_data('bar.eaf', empty_eaf)
 
-    assert np.array_equal(metadata_df['start'], [100, 1170])
-    assert np.array_equal(metadata_df['end'], [1150, 2150])
-    assert np.array_equal(metadata_df['tier'], ['default-lt', 'default-lt'])
-    assert np.array_equal(metadata_df['text'], ['', ''])
-    assert np.array_equal(metadata_df['wav_source'], ['bar.wav', 'bar.wav'])
+    assert np.array_equal(eaf_data_df['start'], [100, 1170])
+    assert np.array_equal(eaf_data_df['end'], [1150, 2150])
+    assert np.array_equal(eaf_data_df['tier'], ['default-lt', 'default-lt'])
+    assert np.array_equal(eaf_data_df['text'], ['', ''])
+    assert np.array_equal(eaf_data_df['wav_source'], ['bar.wav', 'bar.wav'])
 
 def test_snip_audio(tmp_path, tira_eaf: Elan.Eaf):
     clips_dir = os.path.join(tmp_path, 'clips')
@@ -163,12 +163,12 @@ def test_snip_audio1(tmp_path, tira_eaf: Elan.Eaf, dendi_eaf: Elan.Eaf):
     tira_eaf.to_file(tira_path)
     dendi_eaf.to_file(dendi_path)
 
-    tira_metadata = metadata(tira_path, tira_eaf)
-    dendi_metadata = metadata(dendi_path, dendi_eaf)
+    tira_eaf_data = eaf_data(tira_path, tira_eaf)
+    dendi_eaf_data = eaf_data(dendi_path, dendi_eaf)
 
-    metadata_df = pd.concat([tira_metadata, dendi_metadata])
+    eaf_data_df = pd.concat([tira_eaf_data, dendi_eaf_data])
 
-    clips_df = snip_audio(metadata_df, out_dir=clips_dir)
+    clips_df = snip_audio(eaf_data_df, out_dir=clips_dir)
 
     for a in tira_eaf.get_annotation_data_for_tier('default-lt'):
         start = a[0]

@@ -1,9 +1,11 @@
-from zugubul.models.dataset import init_lid_dataset
+from zugubul.models.dataset import init_lid_dataset, split_data
 import pytest
 import csv
 import os
 import shutil
 import tempfile
+import pandas as pd
+import numpy as np
 
 @pytest.fixture
 def tmp_dataset():
@@ -35,6 +37,63 @@ def tmp_dataset():
             writer.writerows(rows)
         yield dir_path
 
+@pytest.fixture
+def tmp_unsplit_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        dir_path = os.path.join(tmpdir, 'dataset1')
+        os.mkdir(dir_path)
+
+        dendi_path = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
+        tira_path = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+
+        csv_path = os.path.join(dir_path, 'eaf_data.csv')
+
+        with open(csv_path, 'w') as f:
+            writer = csv.writer(f, delimiter=',')
+            rows = [
+                ['eaf_name', 'wav_source', 'text', 'start', 'end'],
+                ['tira.eaf', tira_path, 'apri', 100, 500],
+                ['tira.eaf', tira_path, 'jicelo', 600, 1000],
+                ['tira.eaf', tira_path, 'ngamhare', 1100, 1500],
+                ['dendi.eaf', dendi_path, 'n na suba', 100, 500],
+                ['dendi.eaf', dendi_path, 'a ci deesu', 600, 1000],
+                ['dendi.eaf', dendi_path, 'n na gbei', 1100, 1500],
+            ]
+            writer.writerows(rows)
+
+        yield dir_path, csv_path
+
 def test_init_lid_dataset(tmp_dataset):
     dataset = init_lid_dataset(tmp_dataset)
     assert dataset['train'][0]['text'] == 'train'
+
+def test_split_data(tmp_unsplit_data):
+    dir_path, csv_path = tmp_unsplit_data
+    csv_path = split_data(csv_path, dir_path)
+    df = pd.read_csv(csv_path)
+
+    assert np.array_equal(df.columns, ['file_name', 'text'])
+
+    clip_files = {
+        'test_tira1[100-500].wav': 'apri',
+        'test_tira1[600-1000].wav': 'jicelo',
+        'test_tira1[1100-1500].wav': 'ngamhare',
+        'test_dendi1[100-500].wav': 'n na suba',
+        'test_dendi1[600-1000].wav': 'a ci deesu',
+        'test_dendi1[1100-1500].wav': 'n na gbei',
+    }
+
+    splits = ['train', 'val', 'test']
+
+    for clip, text in clip_files.copy().items():
+        possible_filenames = [
+            os.path.join(dir_path, s, clip)
+            for s in splits
+        ]
+        for f in possible_filenames:
+            has_f = df[df['file_name']==f]
+            if len(has_f) > 0:
+                assert has_f['text'].iloc[0] == text
+                clip_files.pop(clip)
+    
+    assert not clip_files
