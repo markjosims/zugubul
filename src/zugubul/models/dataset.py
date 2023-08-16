@@ -2,7 +2,7 @@ from typing import Union, Sequence, Tuple, Optional, Literal
 import os
 import pandas as pd
 from datasets import Dataset, load_dataset
-from zugubul.elan_tools import snip_audio
+from zugubul.elan_tools import snip_audio, eaf_data
 from math import ceil
 from pathlib import Path
 import shutil
@@ -143,7 +143,13 @@ def make_lid_labels(
             )
 
     if type(annotations) is str:
-        annotations = pd.read_csv(annotations)
+        annotations = Path(annotations)
+        if annotations.suffix == '.csv':
+            annotations = pd.read_csv(annotations)
+        elif annotations.suffix == '.eaf':
+            annotations = eaf_data(annotations)
+        else:
+            raise ValueError('If annotations arg is a filepath, must be .csv or .eaf file.')
     annotations : pd.DataFrame
 
     annotations['lang'] = ''
