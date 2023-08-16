@@ -22,7 +22,7 @@ import argparse
 from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
-from zugubul.models.dataset import split_data
+from zugubul.models.dataset import split_data, make_lid_labels
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
@@ -131,6 +131,22 @@ def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
         help='Path to folder to save output in.'
     )
     snip_audio_parser.add_argument('-t', '--tier', help='Tier name to read annotations from (default is to use all tiers).')
+
+def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
+    lid_labels_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(lid_labels_parser, x),
+        help='Path to eaf_data.csv or .eaf file.'
+    )
+    lid_labels_parser.add_argument('-tl', '--targetlang', help='ISO code or other unique identifier for target (fieldwork) language.')
+    lid_labels_parser.add_argument('-ml', '--metalang', help='ISO code or other unique identifier for meta language.')
+    lid_labels_parser.add_argument('--target_labels', help="Strings to map to target language, or '*' to map all strings except those specified by --meta_labels.", nargs='+')
+    lid_labels_parser.add_argument('--meta_labels', help="Strings to map to meta language, or '*' to map all strings except those specified by --target_labels.", nargs='+')
+    lid_labels_parser.add_argument('-e', '--empty', choices=['target', 'meta', 'exclude'], help='Whether empty annotations should be mapped to target language, meta language, or excluded.')
+    lid_labels_parser.add_argument('--toml', type=lambda x: is_valid_file(lid_labels_parser, x),
+        help='Path to a .toml file with metadata for args for this script.'
+    )
+    lid_labels_parser.add_argument('out_path', type=lambda x: is_valid_file(lid_labels_parser, x),
+        help='Path to .csv file to output to (default is to overwrite ANNOTATIONS).'
+    )
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -377,6 +393,34 @@ def handle_snip_audio(args: Mapping) -> int:
 
     return 0
 
+def handle_lid_labels(args: Mapping) -> int:
+    annotations = args['ANNOTATIONS']
+    out_path = args['out_path']
+    targetlang = args['targetlang']
+    metalang = args['metalang']
+    target_labels = args['target_labels']
+    meta_labels = args['meta_labels']
+    empty = args['empty']
+    toml = args['toml']
+
+    if not out_path:
+        # default behavior is to overwrite annotations
+        out_path = annotations
+
+    lid_df = make_lid_labels(
+        annotations=annotations,
+        targetlang=targetlang,
+        metalang=metalang,
+        target_labels=target_labels,
+        meta_labels=meta_labels,
+        empty=empty,
+        toml=toml
+    )
+
+    lid_df.to_csv(out_path, index=False)
+
+    return 0
+
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
     Returns path to .eaf file with same name as data_file
@@ -426,6 +470,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     snip_audio_parser = subparsers.add_parser('snip_audio', help='Create a directory of audio clips corresponding to ELAN annotations.')
     init_snip_audio_parser(snip_audio_parser)
 
+    lid_labels_parser = subparsers.add_parser('lid_labels', help='Create Language IDentification (LID) labels for eaf_data.csv.')
+    init_lid_labels_parser(lid_labels_parser)
+
     args = vars(parser.parse_args(argv))
 
     command = args['COMMAND']
@@ -439,6 +486,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_eaf_data(args)
     elif command == 'split_data':
         return handle_split_data(args)
+    elif command == 'lid_labels':
+        return handle_lid_labels(args)
     return 1
 
 if __name__ == '__main__':
