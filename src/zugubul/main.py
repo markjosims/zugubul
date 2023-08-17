@@ -29,70 +29,70 @@ from tqdm import tqdm
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     merge_parser.add_argument('EAF_SOURCE', type=lambda x: is_valid_file(merge_parser, x),
-                        help='Filepath for eaf file to take output from (or parent directory of eafs).'
-                    )
+        help='Filepath for eaf file to take output from (or parent directory of eafs).'
+    )
     merge_parser.add_argument('EAF_MATRIX', type=lambda x: is_valid_file(merge_parser, x),
-                        help='Filepath for eaf file to insert annotations into (or parent directory of eafs). '\
-                    )
+        help='Filepath for eaf file to insert annotations into (or parent directory of eafs). '\
+    )
     merge_parser.add_argument('-o', '--eaf_out', type=lambda x: file_in_valid_dir(merge_parser, x),
-                        help='Filepath for eaf file to output to (or parent directory of eafs).'
-                    )
+        help='Filepath for eaf file to output to (or parent directory of eafs).'
+    )
     merge_parser.add_argument('-t', '--tier', required=False, nargs='+',
-                        help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
-                         +'For multiple tiers write tier names separated by space.'
-                    ) 
+        help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
+            +'For multiple tiers write tier names separated by space.'
+    ) 
     merge_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
-                    help='Behavior for treating segments that overlap between the two .eafs. '
-                        +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
-                        +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
-                        +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
-                        +'Default behavior is keep_source'
-                )
+        help='Behavior for treating segments that overlap between the two .eafs. '
+            +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
+            +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
+            +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
+            +'Default behavior is keep_source'
+    )
     add_batch_args(merge_parser)
     
 def init_trim_parser(trim_parser: argparse.ArgumentParser):
     trim_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(trim_parser, x),
-                        help='Filepath for eaf file to trim (or parent directory of eafs).'
-                    )
+        help='Filepath for eaf file to trim (or parent directory of eafs).'
+    )
     trim_parser.add_argument('-o', '--eaf_out', type=lambda x: file_in_valid_dir(trim_parser, x),
-                        help='Filepath for eaf file to output to (or parent directory of eafs).'
-                    )
+        help='Filepath for eaf file to output to (or parent directory of eafs).'
+    )
     trim_parser.add_argument('-t', '--tier', required=False, nargs='+',
-                        help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
-                            +'For multiple tiers write tier names separated by space.'
-                    ) 
+        help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
+            +'For multiple tiers write tier names separated by space.'
+    ) 
     trim_parser.add_argument('-s', '--stopword', type=str, default='',
-                        help='Remove all annotations with this value. By default removes all annotations with no text.'
-                    ) 
+        help='Remove all annotations with this value. By default removes all annotations with no text.'
+    ) 
     add_batch_args(trim_parser)
 
 def init_vad_parser(vad_parser: argparse.ArgumentParser):
     vad_parser.add_argument('WAV_FILEPATH', type=lambda x: is_valid_file(vad_parser, x),
-                        help='Filepath for wav file to be processed (or parent directory).'
-                       )
+        help='Filepath for wav file to be processed (or parent directory).'
+    )
     vad_parser.add_argument('EAF_FILEPATH', type=lambda x: file_in_valid_dir(vad_parser, x),
-                        help='Filepath for eaf file to output to (or parent directory).'
-                       )
+        help='Filepath for eaf file to output to (or parent directory).'
+    )
     vad_parser.add_argument('-s', '--source', type=lambda x: is_valid_file(vad_parser, x),
-                        help='Source .eaf file to merge output into (or parent directory).'
-                       )
+        help='Source .eaf file to merge output into (or parent directory).'
+    )
     # vad_parser.add_argument('-m', '--merge_output', help='Filepath to output  to merge output into (or parent directory).')
     vad_parser.add_argument('--template', type=lambda x: is_valid_file(vad_parser, x),
-                        help='Template .etf file for generating output .eafs.'
-                       )
+        help='Template .etf file for generating output .eafs.'
+    )
     vad_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
-                    help='Behavior for treating segments that overlap between the two .eafs. '
-                        +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
-                        +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
-                        +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
-                )
+        help='Behavior for treating segments that overlap between the two .eafs. '
+            +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
+            +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
+            +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
+    )
     vad_parser.add_argument('-v', '--vad', type=lambda x: is_valid_file(vad_parser, x),
-                        help='Filepath for .vad file linked to the recording. '\
-                            +'If passed, reads VAD data from file instead of running rVAD_fast.'
-                       )
-    vad_parser.add_argument('-t', '--tier',
-                        help='Tier label to add annotations to. If none specified uses `default-lt`'\
-                       )
+        help='Filepath for .vad file linked to the recording. '\
+            +'If passed, reads VAD data from file instead of running rVAD_fast.'
+    )
+    vad_parser.add_argument('-t', '--tier', nargs='+',
+        help='Tier label(s) to add annotations to. If none specified uses `default-lt`'\
+    )
     add_batch_args(vad_parser)
 
 def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
@@ -103,8 +103,8 @@ def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
         help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
             +'or if EAF_FILEPATH is a directory, create a file named eaf_data.csv in the given directory.'
     )
-    eaf_data_parser.add_argument('-t', '--tier',
-        help='Tier label to read eaf_data from. If none specified read from all tiers.'
+    eaf_data_parser.add_argument('-t', '--tier', nargs='+',
+        help='Tier label(s) to read annotation data from. If none specified read from all tiers.'
     )
     eaf_data_parser.add_argument('-m', '--media',
         help='Path to media file, if different than media path specified in .eaf file.'
@@ -122,6 +122,7 @@ def init_split_data_parser(split_data_parser: argparse.ArgumentParser) -> None:
     split_data_parser.add_argument('-s', '--splitsize', type=float, nargs=3,
         help='Size of training, validation and test splits, given as floats where 0 < size < 1. Default is (0.8, 0.1, 0.1).'
     )
+    split_data_parser.add_argument('--lid', action='store_true', help="Indicates data split is being made for LID model (split_data will use 'lang' columns instead of 'text')")
 
 def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
     snip_audio_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(snip_audio_parser, x),
@@ -130,12 +131,9 @@ def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
     snip_audio_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(snip_audio_parser, x),
         help='Path to folder to save output in.'
     )
-    snip_audio_parser.add_argument('-t', '--tier', help='Tier name to read annotations from (default is to use all tiers).')
+    snip_audio_parser.add_argument('-t', '--tier', nargs='+', help='Tier label(s) to read annotations from (default is to use all tiers).')
 
 def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
-    lid_labels_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(lid_labels_parser, x),
-        help='Path to eaf_data.csv or .eaf file.'
-    )
     lid_labels_parser.add_argument('-tl', '--targetlang', help='ISO code or other unique identifier for target (fieldwork) language.')
     lid_labels_parser.add_argument('-ml', '--metalang', help='ISO code or other unique identifier for meta language.')
     lid_labels_parser.add_argument('--target_labels', help="Strings to map to target language, or '*' to map all strings except those specified by --meta_labels.", nargs='+')
@@ -144,9 +142,26 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     lid_labels_parser.add_argument('--toml', type=lambda x: is_valid_file(lid_labels_parser, x),
         help='Path to a .toml file with metadata for args for this script.'
     )
-    lid_labels_parser.add_argument('out_path', type=lambda x: is_valid_file(lid_labels_parser, x),
-        help='Path to .csv file to output to (default is to overwrite ANNOTATIONS).'
+
+def init_lid_parser(lid_parser: argparse.ArgumentParser) -> None:
+    lid_parser.add_argument('EAF_DIR', type=lambda x: is_valid_dir(lid_parser, x),
+        help='Folder containing .eafs for processing into Language IDentification (LID) dataset.'
     )
+    lid_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(lid_parser, x),
+        help='Folder to initalize Language IDentification (LID) dataset in.'
+    )
+    lid_parser.add_argument('-t', '--tier', nargs='+', help='Tier label(s) to read annotations from (default is to use all tiers).')
+
+    lid_parser.add_argument('-s', '--splitsize', type=float, nargs=3,
+        help='Size of training, validation and test splits, given as floats where 0 < size < 1. Default is (0.8, 0.1, 0.1).'
+    )
+    lid_parser.add_argument('-r', '--recursive', action='store_true',
+        help='Recurse over all subdirectories in EAF_DIR.'
+    )
+    init_lid_labels_parser(lid_parser)
+
+
+    
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -334,7 +349,6 @@ def handle_eaf_data(args: Mapping) -> int:
     media = args['media']
     batch = args['batch']
     recursive = args['recursive']
-    overwrite = args['overwrite']
 
     if batch or os.path.isdir(eaf_fp):
         out = batch_funct(
@@ -347,7 +361,7 @@ def handle_eaf_data(args: Mapping) -> int:
                 'media': media
             },
             recursive=recursive,
-            overwrite=overwrite,
+            overwrite=True
         )
         df = pd.concat(out.values())
     else:
@@ -364,12 +378,14 @@ def handle_eaf_data(args: Mapping) -> int:
 def handle_split_data(args: Mapping) -> int:
     eaf_data_fp = args['EAF_DATA']
     out_dir = args['OUT_DIR']
+    lid = args['lid']
     splitsize = args['splitsize'] or (0.8, 0.1, 0.1)
 
     metadata_fp = split_data(
         eaf_data=eaf_data_fp,
         out_dir=out_dir,
-        splitsize=splitsize
+        splitsize=splitsize,
+        lid=lid
     )
 
     print('Metadata for training split saved to', metadata_fp)
@@ -403,6 +419,11 @@ def handle_lid_labels(args: Mapping) -> int:
     empty = args['empty']
     toml = args['toml']
 
+    if target_labels == ['*',]:
+        target_labels = '*'
+    if meta_labels == ['*',]:
+        meta_labels = '*'
+
     if not out_path:
         # default behavior is to overwrite annotations
         out_path = annotations
@@ -418,6 +439,36 @@ def handle_lid_labels(args: Mapping) -> int:
     )
 
     lid_df.to_csv(out_path, index=False)
+
+    return 0
+
+def handle_lid(args: Mapping) -> int:
+    eaf_dir = Path(args['EAF_DIR'])
+    out_dir = Path(args['OUT_DIR'])
+
+    # eaf_data
+    print('Generating eaf_data.csv...')
+    args['batch'] = True
+    args['EAF_FILEPATH'] = eaf_dir
+    args['output'] = out_dir / 'eaf_data.csv'
+    args['overwrite'] = None
+    args['media'] = None
+    handle_eaf_data(args)
+
+    # lid_labels
+    print('Normalizing LID labels...')
+    args['ANNOTATIONS'] = args['output']
+    # overwrite eaf_data.csv
+    args['out_path'] = args['output']
+    handle_lid_labels(args)
+
+    # split_data
+    print('Making train/validation/test splits...')
+    args['EAF_DATA'] = args['output']
+    args['lid'] = True
+    handle_split_data(args)
+
+    # TODO: train
 
     return 0
 
@@ -471,7 +522,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     init_snip_audio_parser(snip_audio_parser)
 
     lid_labels_parser = subparsers.add_parser('lid_labels', help='Create Language IDentification (LID) labels for eaf_data.csv.')
+    # add this arg separately because all other args are shared between lid_labels and lid
+    lid_labels_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(lid_labels_parser, x),
+        help='Path to eaf_data.csv or .eaf file.'
+    )
+    lid_labels_parser.add_argument('--out_path', type=lambda x: is_valid_file(lid_labels_parser, x),
+        help='Path to .csv file to output to (default is to overwrite ANNOTATIONS).'
+    )
     init_lid_labels_parser(lid_labels_parser)
+
+    lid_parser = subparsers.add_parser('lid', help='Initialize Language IDentification (LID) model from directory of .eaf files.')
+    init_lid_parser(lid_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -488,6 +549,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_split_data(args)
     elif command == 'lid_labels':
         return handle_lid_labels(args)
+    elif command == 'lid':
+        return handle_lid(args)
     return 1
 
 if __name__ == '__main__':

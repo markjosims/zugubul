@@ -5,6 +5,7 @@ from typing import Union, Optional, Sequence, Literal
 from copy import deepcopy
 from pydub import AudioSegment
 from pathlib import Path
+from tqdm import tqdm
 
 """
 Contains following helper functions for processing .eaf files:
@@ -125,7 +126,7 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
 def eaf_data(
         eaf: str,
         eaf_obj: Optional[Elan.Eaf] = None,
-        tier: Optional[str] = None,
+        tier: Union[str, Sequence[str], None] = None,
         media: Optional[str] = None,
     ) -> pd.DataFrame:
     if not eaf_obj:
@@ -136,17 +137,19 @@ def eaf_data(
         raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
     if not media:
         media = media_paths[0]['MEDIA_URL']
+        # trim prefix added by ELAN
+        media = media.replace('file:///', '')
         if len(media_paths) > 1:
             print(f'No media argument provided and eaf has multiple linked files. {media=}, {media_paths=}')
 
-    if tier:
-        tiers = [tier,]
+    if tier and type(tier) is str:
+        tier = [tier,]
     else:
-        tiers = eaf_obj.get_tier_names()
+        tier = eaf_obj.get_tier_names()
 
     dfs = []
 
-    for t in tiers:
+    for t in tier:
         annotations = eaf_obj.get_annotation_data_for_tier(t)
         start_times = [a[0] for a in annotations]
         end_times = [a[1] for a in annotations]
@@ -170,11 +173,13 @@ def snip_audio(
         annotations: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame],
         out_dir: Union[str, os.PathLike],
         audio: Union[str, os.PathLike, AudioSegment, None] = None,
-        tier: Optional[str] = None,
+        tier: Union[str, Sequence[str], None] = None,
+        allow_skip: bool = True,
     ) -> pd.DataFrame:
     """
     annotations may be an Eaf object, a pandas dataframe with the columns 'start', 'end' and 'wav_source',
     or a filepath pointing to a .eaf file or a .csv file with the same column structure.
+    allow_skip determines whether to raise an error or merely print a warning if an audio file is not found.
     Returns a dataframe containing information for each annotation with the added column 'wav_clip',
     which points to a .wav file snipped to the start and end value for each annotation.
     """
@@ -195,14 +200,25 @@ def snip_audio(
         else:
             raise ValueError('If passing filepath for annotations, must point to .eaf or .csv file.')
         
-    if tier:
+    if tier and (type(tier) is str):
         df = df[df['tier']==tier]
+    elif tier: # type(tier) is Sequence
+        df = df[df['tier'].isin(tier)]
 
     df['wav_clip'] = ''
 
-    for wav_source in df['wav_source']:
+    for wav_source in tqdm(df['wav_source'].unique(), desc='Snipping audio'):
         from_source = df['wav_source'] == wav_source
-        wav_obj = AudioSegment.from_wav(wav_source)
+        try:
+            wav_obj = AudioSegment.from_wav(wav_source)
+        except FileNotFoundError as error:
+            if allow_skip:
+                num_skip = from_source.value_counts()[True]
+                tqdm.write(f'{wav_source=} not found, skipping audio file and excluding {num_skip} rows from dataset.')
+                df = df[~from_source]
+                continue
+            else:
+                raise error
 
         wav_clips = df[from_source].apply(
             lambda r: save_clip(

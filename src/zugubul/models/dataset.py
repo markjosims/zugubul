@@ -46,18 +46,22 @@ def split_data(
     splitsize is a tuple of len 3 containing floats the length of each split (training, validation, test), default (0.8, 0.1, 0.1).
     Returns path to the new metadata.csv.
     """
-    if type(eaf_data) is str:
+    if (type(eaf_data) is str) or isinstance(eaf_data, Path):
         eaf_data = pd.read_csv(eaf_data)
     if type(out_dir) is str:
         out_dir = Path(out_dir)
 
     eaf_data: pd.DataFrame
 
+    label_col = 'text'
+    if lid:
+        label_col = 'lang'
+
     if 'wav_clip' not in eaf_data.columns:
         eaf_data = snip_audio(eaf_data, out_dir)
 
     # drop unlabeled rows
-    eaf_data = eaf_data[eaf_data['text'] != '']
+    eaf_data = eaf_data[eaf_data[label_col] != '']
 
     eaf_data=eaf_data.sample(frac=1)
 
@@ -94,7 +98,7 @@ def split_data(
 
         eaf_data.loc[split_df.index, 'file_name'] = split_clips
     
-    metadata = eaf_data[['file_name', 'text']]
+    metadata = eaf_data[['file_name', label_col]]
     out_path = out_dir/'metadata.csv'
     metadata.to_csv(out_path, index=False)
 
@@ -142,7 +146,7 @@ def make_lid_labels(
                 + f'{targetlang=}, {metalang=}, {target_labels=}, {meta_labels=}'
             )
 
-    if type(annotations) is str:
+    if (type(annotations) is str) or isinstance(annotations, Path):
         annotations = Path(annotations)
         if annotations.suffix == '.csv':
             annotations = pd.read_csv(annotations)
