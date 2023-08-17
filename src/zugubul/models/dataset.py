@@ -7,6 +7,7 @@ from math import ceil
 from pathlib import Path
 import shutil
 import tomli
+import numpy as np
 
 def init_lid_dataset(dirpath: Union[str, os.PathLike]) -> Dataset:
     """
@@ -90,6 +91,7 @@ def split_data(
         
 
     for split, split_df in split_dict.items():
+        print(f'Moving {len(split_df)} clips into {split} folder.')
         split_dir = out_dir / split
         os.mkdir(split_dir)
         split_clips = split_df['wav_clip'].apply(
@@ -111,7 +113,9 @@ def make_lid_labels(
         target_labels: Union[Sequence[str], Literal['*'], None] = None,
         meta_labels: Union[Sequence[str], Literal['*'], None] = None,
         empty: Union[Literal['target'], Literal['meta'], Literal['exclude']] = 'exclude',
-        toml: Optional[Union[str, os.PathLike]] = None
+        toml: Optional[Union[str, os.PathLike]] = None,
+        balance: bool = True,
+        sample_strategy: Literal['downsample', 'upsample'] = 'downsample',
     ) -> pd.DataFrame:
     """
     annotations is a dataframe or str pointing to csv with a 'text' column.
@@ -121,7 +125,9 @@ def make_lid_labels(
     meta_labels is a list indicating all strs to be mapped to metalang.
     Either target_labels or meta_labels may be the str '*',
     in which case all non-empty strs not specified by the other arg will be mapped to that language.
-    If toml is not None, ignore other kwargs and read their values from the provided .toml file. 
+    balance is a bool indicating whether balance_lid_data should be called to ensure each category has an equal number of rows.
+    The sample_strategy arg is passed to balance_lid_data if called.
+    If toml is not None, ignore other kwargs and read their values from the provided .toml file.
     Creates a new column 'lang' containing the label for each language.
     Returns dataframe.
     """
@@ -129,11 +135,13 @@ def make_lid_labels(
         with open(toml, 'rb') as f:
             toml_obj = tomli.load(f)
         lid_params: dict = toml_obj['LID']
-        targetlang = lid_params['targetlang']
-        metalang = lid_params['metalang']
-        target_labels = lid_params['target_labels']
-        meta_labels = lid_params['meta_labels']
-        empty = lid_params.get('empty', 'exclude')
+        targetlang = lid_params.get('targetlang', targetlang)
+        metalang = lid_params.get('metalang', metalang)
+        target_labels = lid_params.get('target_labels', target_labels)
+        meta_labels = lid_params.get('meta_labels', meta_labels)
+        empty = lid_params.get('empty', empty)
+        balance - lid_params.get('balance', balance)
+        sample_strategy = lid_params.get('sample_strategy', sample_strategy)
     else:
         try:
             assert targetlang
@@ -181,4 +189,102 @@ def make_lid_labels(
         annotations.loc[annotations['text'].isin(meta_labels), 'lang'] = metalang
         annotations = annotations[annotations['lang']!='']
     
+    if balance:
+        annotations = balance_lid_data(df=annotations, sample_strategy=sample_strategy)
+
     return annotations
+
+def balance_lid_data(df: pd.DataFrame, sample_strategy: Literal['upsample', 'downsample'] = 'downsample') -> pd.DataFrame:
+    """
+    Takes a dataframe with column 'lang', counts the number of each language represented,
+    and either upsamples the underrepresented categories using Gaussian noise (TODO: implement upsampling),
+    or downsamples overrepresented categories until each category has an equal distribution.
+    """
+    num_rows = len(df)
+    if sample_strategy == 'upsample':
+        raise NotImplementedError('Upsampling LID data has not been implemented yet.')
+    min_ct = df['lang'].value_counts().min()
+
+    print(f'Downsampling all categories to {min_ct} rows.')
+    for lang in df['lang'].unique():
+        lang_ct = df['lang'].value_counts()[lang]
+        downsample_ct = lang_ct - min_ct
+        if not downsample_ct:
+            continue
+
+        drop_rows = df[df['lang']==lang].sample(downsample_ct)
+        print(f'Language {lang} was downsampled from {lang_ct} rows to {min_ct}.')
+        df = df.drop(drop_rows.index)
+
+    print(f'Dataset resampled from {num_rows} rows to {len(df)}.')
+
+    return df
+
+def process_annotation_length(
+        df: Union[pd.DataFrame, str, os.PathLike],
+        min_gap: int = 2000,
+        min_length: int = 1000,
+        lid: bool = False
+    ) -> pd.DataFrame: 
+    """
+    df is a dataframe or .csv filepath containing 'start', 'end', 'wav_source' and either 'text' or 'lang' columns.
+    min_gap is a time in milliseconds indicating how far away two annotations must be to not be merged.
+    min_length is a time in milliseconds indicating how long an annotation must be to not be deleted
+    (after adjacent annotations have been merged).
+    If lid = True, use 'lang' column and only merge adjacent annotations that have the same value for 'lang',
+    else merge any adjacent annotations and concatenate the value for the 'text' column.
+    """
+    if (type(df) is str) or isinstance(df, Path):
+        df = pd.read_csv(df)
+    df: pd.DataFrame
+
+    if lid:
+        lang_dfs = []
+        for lang in df['lang'].unique():
+            has_lang = df['lang']==lang
+            lang_df = process_annotation_length_innerloop(df[has_lang], min_gap, lid)
+            lang_dfs.append(lang_df)
+        df = pd.concat(lang_dfs)
+    else:
+        df = process_annotation_length_innerloop(df, min_gap, lid)
+        
+    duration = df['end'] - df['start']
+    is_min_duration = duration >= min_length
+    df = df[is_min_duration]
+
+    return df
+
+def process_annotation_length_innerloop(df: pd.DataFrame, min_gap: int, lid: bool):
+    for file in df['wav_source'].unique():
+        has_file = df['wav_source']==file
+        sorted_by_start = df[has_file].sort_values(by='start')
+
+        gap = np.array(sorted_by_start['start'])[1:] - np.array(sorted_by_start['end'])[:-1]
+        within_gap = gap < min_gap
+        sorted_by_start['is_w_gap'] = np.append(within_gap, [False])
+        last_start = None
+        last_text = ''
+        for i, is_w_gap in enumerate(sorted_by_start['is_w_gap']):
+            # when this annotation is within gap of following,
+            # set last_start to annotation start if last_start is None
+            # if not LID, append annotation text to last_text
+            if is_w_gap and (last_start is None):
+                last_start = sorted_by_start.iloc[i]['start']
+            if is_w_gap and (not lid):
+                last_text += sorted_by_start.iloc[i]['text']
+
+            # when this annotation is not within gap of following, add data to dataframe and reset last_start and last_text
+            if (not is_w_gap) and (not last_start is None):
+                sorted_by_start.iloc[i, sorted_by_start.columns.get_loc('start')] = last_start
+                last_start = None
+            if (not is_w_gap) and (not lid):
+                sorted_by_start.iloc[i, sorted_by_start.columns.get_loc('text')] = last_text + ' ' + sorted_by_start.iloc[i]['text']
+                last_text = ''
+        
+        resorted = sorted_by_start.sort_index()
+
+        df.loc[has_file, 'start'] = resorted['start']
+        if not lid:
+            df.loc[has_file, 'text'] = resorted['text']
+        df = df.drop(sorted_by_start[sorted_by_start['is_w_gap']].index)
+    return df

@@ -1,4 +1,4 @@
-from zugubul.models.dataset import init_lid_dataset, split_data, make_lid_labels
+from zugubul.models.dataset import init_lid_dataset, split_data, make_lid_labels, balance_lid_data, process_annotation_length
 import pytest
 import csv
 import os
@@ -97,12 +97,28 @@ def tmp_lid_data():
                     'metalang': 'DDN',
                     'target_labels': '*',
                     'meta_labels': ['DDN', 'DDN1'],
-                    'empty': 'meta'
+                    'empty': 'meta',
+                    'balance': False
                 }
             }
             tomli_w.dump(toml_data, f)
 
         yield dir_path, csv_path, toml_path
+
+@pytest.fixture
+def lid_df():
+    lid_df = pd.DataFrame(data={
+        'lang': ['ENG']*5+['TIC']*2+['DDN']*10,
+        'wav_source': ['file1.wav']*6+['file2.wav']*11,
+        'start':     [0,   400, 700, 1000, 10000] + [12050, 20000] + [100,  3999, 4200, 100000,  100950, 150000, 170000, 20950,  30000, 40000],
+        'end':       [300, 600, 900, 1200, 12000] + [15000, 20900] + [2000, 4050, 4300, 100900,  100999, 155000, 190000, 21900,  30950, 41000],
+        #            ENG                            TIC              DDN
+        #            merge---------------  keep      keep   delete   merge------------  merge+delete---  keep    keep    delete  delete keep
+        #new_start:  [0,                   10000] + [12050       ] + [100,                               150000, 170000,                40000],
+        #new_end:    [               1200, 12000] + [15000       ] + [            4300,                  155000, 190000,                41000],
+    })
+    
+    return lid_df
 
 def test_init_lid_dataset(tmp_dataset):
     dataset = init_lid_dataset(tmp_dataset)
@@ -152,7 +168,8 @@ def test_make_lid_labels(tmp_lid_data):
         targetlang=targetlang,
         metalang=metalang,
         target_labels=target_labels,
-        meta_labels=meta_labels
+        meta_labels=meta_labels,
+        balance=False
     )
 
     assert np.array_equal(
@@ -188,3 +205,19 @@ def test_make_lid_labels1(tmp_lid_data):
 
     assert len(df[df['lang']=='TIC']) == 3
     assert len(df[df['lang']=='DDN']) == 3
+
+def test_balance_lid_data(lid_df):
+    out = balance_lid_data(lid_df)
+
+    assert out['lang'].value_counts()['ENG'] == 2
+    assert out['lang'].value_counts()['TIC'] == 2
+    assert out['lang'].value_counts()['DDN'] == 2
+
+def test_process_annotation_length(lid_df):
+    out = process_annotation_length(lid_df, lid=True)
+
+    new_start = [0, 10000] + [12050] + [100, 150000, 170000, 40000]
+    new_end = [1200, 12000] + [15000] + [4300, 155000, 190000, 41000]
+
+    assert np.array_equal(out['start'], new_start)
+    assert np.array_equal(out['end'], new_end)
