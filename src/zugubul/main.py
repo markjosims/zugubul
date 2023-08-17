@@ -142,8 +142,11 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     lid_labels_parser.add_argument('--toml', type=lambda x: is_valid_file(lid_labels_parser, x),
         help='Path to a .toml file with metadata for args for this script.'
     )
+    lid_labels_parser.add_argument('--no_balance', action='store_true', help='Default behavior is to downsample overrepresented categories so that an equal number of each language is represented in the dataset. '\
+        +'Pass this argument to override this behavior and allow for an unequal number of labels for each language.'
+    )
 
-def init_lid_parser(lid_parser: argparse.ArgumentParser) -> None:
+def init_lid_data_parser(lid_parser: argparse.ArgumentParser) -> None:
     lid_parser.add_argument('EAF_DIR', type=lambda x: is_valid_dir(lid_parser, x),
         help='Folder containing .eafs for processing into Language IDentification (LID) dataset.'
     )
@@ -371,7 +374,7 @@ def handle_eaf_data(args: Mapping) -> int:
             media=media
         )
 
-    df.to_csv(out_fp)
+    df.to_csv(out_fp, index=False)
 
     return 0
 
@@ -417,6 +420,7 @@ def handle_lid_labels(args: Mapping) -> int:
     target_labels = args['target_labels']
     meta_labels = args['meta_labels']
     empty = args['empty']
+    balance = not args['no_balance']
     toml = args['toml']
 
     if target_labels == ['*',]:
@@ -435,6 +439,7 @@ def handle_lid_labels(args: Mapping) -> int:
         target_labels=target_labels,
         meta_labels=meta_labels,
         empty=empty,
+        balance=balance,
         toml=toml
     )
 
@@ -442,7 +447,7 @@ def handle_lid_labels(args: Mapping) -> int:
 
     return 0
 
-def handle_lid(args: Mapping) -> int:
+def handle_lid_dataset(args: Mapping) -> int:
     eaf_dir = Path(args['EAF_DIR'])
     out_dir = Path(args['OUT_DIR'])
 
@@ -531,8 +536,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     init_lid_labels_parser(lid_labels_parser)
 
-    lid_parser = subparsers.add_parser('lid', help='Initialize Language IDentification (LID) model from directory of .eaf files.')
-    init_lid_parser(lid_parser)
+    lid_parser = subparsers.add_parser('lid_data', help='Initialize Language IDentification (LID) model from directory of .eaf files.')
+    init_lid_data_parser(lid_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -549,8 +554,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_split_data(args)
     elif command == 'lid_labels':
         return handle_lid_labels(args)
-    elif command == 'lid':
-        return handle_lid(args)
+    elif command == 'lid_data':
+        return handle_lid_dataset(args)
     return 1
 
 if __name__ == '__main__':
