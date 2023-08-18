@@ -92,7 +92,7 @@ def split_data(
 
     for split, split_df in split_dict.items():
         print(f'Moving {len(split_df)} clips into {split} folder.')
-        split_dir = out_dir / split
+        split_dir = Path(split)
         os.makedirs(split_dir, exist_ok=True)
         split_clips = split_df['wav_clip'].apply(
             lambda fp: move_clip_to_split(Path(fp), split_dir)
