@@ -22,6 +22,8 @@ def vocab_from_list(
         tokens = set(vocab)
     else:
         tokens = set(c for v in vocab for c in v)
+    if ' ' in tokens:
+        tokens.remove(' ')
     tokens_dict = {k: v for v, k in enumerate(tokens)}
     json_path = os.path.join(vocab_dir, 'vocab.json')
     with open(json_path, 'w') as f:
