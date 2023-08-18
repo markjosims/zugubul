@@ -93,7 +93,7 @@ def split_data(
     for split, split_df in split_dict.items():
         print(f'Moving {len(split_df)} clips into {split} folder.')
         split_dir = out_dir / split
-        os.mkdir(split_dir)
+        os.makedirs(split_dir, exist_ok=True)
         split_clips = split_df['wav_clip'].apply(
             lambda fp: move_clip_to_split(Path(fp), split_dir)
         )
@@ -113,9 +113,12 @@ def make_lid_labels(
         target_labels: Union[Sequence[str], Literal['*'], None] = None,
         meta_labels: Union[Sequence[str], Literal['*'], None] = None,
         empty: Union[Literal['target'], Literal['meta'], Literal['exclude']] = 'exclude',
-        toml: Optional[Union[str, os.PathLike]] = None,
+        process_length: bool = True,
+        min_gap: int = 200,
+        min_length: int = 1000,
         balance: bool = True,
         sample_strategy: Literal['downsample', 'upsample'] = 'downsample',
+        toml: Optional[Union[str, os.PathLike]] = None,
     ) -> pd.DataFrame:
     """
     annotations is a dataframe or str pointing to csv with a 'text' column.
@@ -125,6 +128,8 @@ def make_lid_labels(
     meta_labels is a list indicating all strs to be mapped to metalang.
     Either target_labels or meta_labels may be the str '*',
     in which case all non-empty strs not specified by the other arg will be mapped to that language.
+    process_length is a bool indicating whether process_annotation_length should be called.
+    The min_gap and min_length parameters are passed to process_annotation length.
     balance is a bool indicating whether balance_lid_data should be called to ensure each category has an equal number of rows.
     The sample_strategy arg is passed to balance_lid_data if called.
     If toml is not None, ignore other kwargs and read their values from the provided .toml file.
@@ -140,6 +145,9 @@ def make_lid_labels(
         target_labels = lid_params.get('target_labels', target_labels)
         meta_labels = lid_params.get('meta_labels', meta_labels)
         empty = lid_params.get('empty', empty)
+        process_length = lid_params.get('process_length', process_length)
+        min_gap = lid_params.get('min_gap', min_gap)
+        min_length = lid_params.get('min_length', min_length)
         balance - lid_params.get('balance', balance)
         sample_strategy = lid_params.get('sample_strategy', sample_strategy)
     else:
@@ -189,6 +197,9 @@ def make_lid_labels(
         annotations.loc[annotations['text'].isin(meta_labels), 'lang'] = metalang
         annotations = annotations[annotations['lang']!='']
     
+    if process_length:
+        annotations = process_annotation_length(annotations, min_gap=min_gap, min_length=min_length, lid=True)
+
     if balance:
         annotations = balance_lid_data(df=annotations, sample_strategy=sample_strategy)
 
@@ -222,7 +233,7 @@ def balance_lid_data(df: pd.DataFrame, sample_strategy: Literal['upsample', 'dow
 
 def process_annotation_length(
         df: Union[pd.DataFrame, str, os.PathLike],
-        min_gap: int = 2000,
+        min_gap: int = 200,
         min_length: int = 1000,
         lid: bool = False
     ) -> pd.DataFrame: 
@@ -237,7 +248,8 @@ def process_annotation_length(
     if (type(df) is str) or isinstance(df, Path):
         df = pd.read_csv(df)
     df: pd.DataFrame
-
+    num_rows = len(df)
+    print(f'Merging annotations within gap of {min_gap} ms...')
     if lid:
         lang_dfs = []
         for lang in df['lang'].unique():
@@ -247,10 +259,17 @@ def process_annotation_length(
         df = pd.concat(lang_dfs)
     else:
         df = process_annotation_length_innerloop(df, min_gap, lid)
-        
+    merged_len = len(df)
+    print(f'After merging {merged_len} rows remain from {num_rows}.')
+
+    print(f'Dropping rows shorter than {min_length} ms. in duration...')
+
     duration = df['end'] - df['start']
     is_min_duration = duration >= min_length
     df = df[is_min_duration]
+
+    drop_len = len(df)
+    print(f'After dropping {drop_len} rows remain from {merged_len}.')
 
     return df
 

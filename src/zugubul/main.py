@@ -23,6 +23,7 @@ from typing import Optional, Sequence, Mapping
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
 from zugubul.models.dataset import split_data, make_lid_labels
+from zugubul.models.vocab import vocab_from_csv
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
@@ -142,6 +143,11 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     lid_labels_parser.add_argument('--toml', type=lambda x: is_valid_file(lid_labels_parser, x),
         help='Path to a .toml file with metadata for args for this script.'
     )
+    lid_labels_parser.add_argument('--no_length_processing', action='store_true', help='Default behavior is to merge annotations belonging to the same language with a gap of <=2s and delete annotations shorter than 1s.'\
+        +'Pass this argument to override this behavior and skip processing length for annotations.'
+    )
+    lid_labels_parser.add_argument('--min_gap', type=int, help='If performing length processing, the minimum duration (in ms) between to annotations of the same language to avoid merging them.', default=200)
+    lid_labels_parser.add_argument('--min_length', type=int, help='If performing length processing, the minimum duration (in ms) an annotation must be to not be excluded.', default=1000)
     lid_labels_parser.add_argument('--no_balance', action='store_true', help='Default behavior is to downsample overrepresented categories so that an equal number of each language is represented in the dataset. '\
         +'Pass this argument to override this behavior and allow for an unequal number of labels for each language.'
     )
@@ -420,6 +426,9 @@ def handle_lid_labels(args: Mapping) -> int:
     target_labels = args['target_labels']
     meta_labels = args['meta_labels']
     empty = args['empty']
+    process_length = not args['no_length_processing']
+    min_gap = args['min_gap']
+    min_length = args['min_length']
     balance = not args['no_balance']
     toml = args['toml']
 
@@ -439,6 +448,9 @@ def handle_lid_labels(args: Mapping) -> int:
         target_labels=target_labels,
         meta_labels=meta_labels,
         empty=empty,
+        process_length=process_length,
+        min_gap=min_gap,
+        min_length=min_length,
         balance=balance,
         toml=toml
     )
@@ -472,6 +484,8 @@ def handle_lid_dataset(args: Mapping) -> int:
     args['EAF_DATA'] = args['output']
     args['lid'] = True
     handle_split_data(args)
+
+    # make tokenizer
 
     # TODO: train
 
