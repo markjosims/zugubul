@@ -6,8 +6,7 @@ from typing import Optional, List
 import torch
 
 from zugubul.models.infer import infer
-from zugubul.models.models import MODELS
-from zugubul.models.train import Trainer
+from zugubul.models.train import train
 
 
 def _get_parser() -> ArgumentParser:

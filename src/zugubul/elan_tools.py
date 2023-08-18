@@ -34,7 +34,7 @@ def trim(
     Remove all annotations of the given tier which contain only the given stopword.
     By default, remove empty annotations from all tiers.
     """
-    if type(eaf) is str:
+    if (type(eaf) is not Elan.Eaf):
         eaf = Elan.Eaf(eaf)
     else:
         # avoid side effects from editing original eaf object
@@ -108,10 +108,10 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
     If it is a str containing a path to a directory, then eaf2 must be a path to an eaf file.
     Join filename of eaf2 to directory indicated by eaf1, instantiate Eaf object and return.
     """
-    if type(eaf1) is str:
+    if os.path.isfile(eaf1):
         if os.path.isdir(eaf1):
             try:
-                assert (type(eaf2) is str) and (os.path.isfile(eaf2))
+                assert (type(eaf2) is not Elan.Eaf) and (os.path.isfile(eaf2))
                 eaf2_name = os.path.split(eaf2)[-1]
             except AssertionError:
                 raise ValueError(
@@ -190,7 +190,7 @@ def snip_audio(
     elif type(annotations) is pd.DataFrame:
         df = annotations
     else:
-        # type(annotations) is str
+        # os.path.isfile(annotations)
         path = Path(annotations)
         suffix = path.suffix
         if suffix == '.eaf':

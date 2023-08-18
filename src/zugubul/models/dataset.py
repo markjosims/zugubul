@@ -47,9 +47,9 @@ def split_data(
     splitsize is a tuple of len 3 containing floats the length of each split (training, validation, test), default (0.8, 0.1, 0.1).
     Returns path to the new metadata.csv.
     """
-    if (type(eaf_data) is str) or isinstance(eaf_data, Path):
+    if (type(eaf_data) is not pd.DataFrame):
         eaf_data = pd.read_csv(eaf_data)
-    if type(out_dir) is str:
+    if os.path.isfile(out_dir):
         out_dir = Path(out_dir)
 
     eaf_data: pd.DataFrame
@@ -162,7 +162,7 @@ def make_lid_labels(
                 + f'{targetlang=}, {metalang=}, {target_labels=}, {meta_labels=}'
             )
 
-    if (type(annotations) is str) or isinstance(annotations, Path):
+    if type(annotations) is not pd.DataFrame:
         annotations = Path(annotations)
         if annotations.suffix == '.csv':
             annotations = pd.read_csv(annotations)
@@ -245,7 +245,7 @@ def process_annotation_length(
     If lid = True, use 'lang' column and only merge adjacent annotations that have the same value for 'lang',
     else merge any adjacent annotations and concatenate the value for the 'text' column.
     """
-    if (type(df) is str) or isinstance(df, Path):
+    if (os.path.isfile(df)) or isinstance(df, Path):
         df = pd.read_csv(df)
     df: pd.DataFrame
     num_rows = len(df)

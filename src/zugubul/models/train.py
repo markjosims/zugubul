@@ -22,7 +22,7 @@ def train(
             raise ValueError('Either processor object or path to vocab.json must be provided.')
         processor = init_processor(vocab)
 
-    if type(model) is str:
+    if type(model) is not Wav2Vec2ForCTC:
         model = download_model(processor, model_name=model, **kwargs)
 
     if not training_args:

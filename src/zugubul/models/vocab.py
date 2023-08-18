@@ -63,20 +63,17 @@ def init_processor(
     lid is a bool indicating whether processor is being made for language identification or not.
     vocab_dir is the directory for the vocab.json to be stored (if not already saved).
     """
-    if type(vocab) is str and Path(vocab).suffix == '.json':
+    if type(vocab) in (list, set):
+        vocab_path = vocab_from_list(vocab, vocab_dir, lid)
+    elif os.path.isfile(vocab) and Path(vocab).suffix == '.json':
         vocab_path = vocab
+    elif os.path.isfile(vocab) and Path(vocab).suffix == '.csv':
+        vocab_path = vocab_from_csv(vocab, vocab_dir, lid)
     else:
-        if not vocab_dir:
-            raise ValueError('If vocab is not a path to a json file, vocab_dir must be passed.')
-        if type(vocab) in (list, set):
-            vocab_path = vocab_from_list(vocab, vocab_dir, lid)
-        elif type(vocab) is str and Path(vocab).suffix == '.csv':
-            vocab_path = vocab_from_csv(vocab, vocab_dir, lid)
-        else:
-            raise ValueError(
-                'vocab argument of unrecognized type. Must be list or set of vocab items, path to vocab.json file, or path to csv file.'
-            )
-        
+        raise ValueError(
+            'vocab argument of unrecognized type. Must be list or set of vocab items, path to vocab.json file, or path to csv file.'
+        )
+
     tokenizer = Wav2Vec2CTCTokenizer(vocab_path)
 
     feature_extractor = Wav2Vec2FeatureExtractor(
