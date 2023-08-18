@@ -32,12 +32,12 @@ def vocab_from_csv(
         csv_path: Union[str, os.PathLike],
         vocab_dir: Union[str, os.PathLike],
         lid: bool = False,
-    ) -> Wav2Vec2CTCTokenizer:
+    ) -> str:
     """
     vocab is a list of strings containing tokens to include in vocabulary.
     vocab_dir is folder to save vocab.json in.
     lid is a bool indicating whether tokenizer is being made for language identification or not.
-    Returns Wav2Vec2CTCTokenizer object.
+    Returns path to vocab.json
     """
     vocab = set()
     label_col = 'text'
