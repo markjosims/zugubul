@@ -486,8 +486,11 @@ def handle_lid_dataset(args: Mapping) -> int:
     handle_split_data(args)
 
     # make tokenizer
-
-    # TODO: train
+    vocab_from_csv(
+        csv_path=args['OUT_DIR']/ 'metadata.csv',
+        vocab_dir=args['OUT_DIR'],
+        lid=True
+    )
 
     return 0
 
