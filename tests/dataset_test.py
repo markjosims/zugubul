@@ -150,7 +150,7 @@ def test_split_data(tmp_unsplit_data):
 
     for clip, text in clip_files.copy().items():
         possible_filenames = [
-            os.path.join(dir_path, s, clip)
+            os.path.join(s, clip)
             for s in splits
         ]
         for f in possible_filenames:
