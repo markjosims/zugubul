@@ -1,45 +1,18 @@
-import torch
-from torchmetrics import Metric
+from evaluate import load
+import numpy as np
 
+wer_metric = load("wer")
 
-class SequenceCharacterAccuracy(Metric):
-    correct_sc: torch.Tensor
-    total_sc: torch.Tensor
+def compute_wer(pred, processor):
+    pred_logits = pred.predictions
+    pred_ids = np.argmax(pred_logits, axis=-1)
 
-    def __init__(self, pad_index: int):
-        super().__init__()
-        self.add_state("correct_sc", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.add_state("total_sc", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.pad_index = pad_index
+    pred.label_ids[pred.label_ids == -100] = processor.tokenizer.pad_token_id
 
-    def update(self, preds: torch.Tensor, target: torch.Tensor):
-        preds = torch.argmax(preds, dim=-1)
+    pred_str = processor.batch_decode(pred_ids)
+    # we do not want to group tokens when computing the metrics
+    label_str = processor.batch_decode(pred.label_ids, group_tokens=False)
 
-        self.correct_sc += torch.sum(
-            torch.logical_and(preds == target, target != self.pad_index)
-        )
-        self.total_sc += torch.sum(target != self.pad_index)
+    wer = wer_metric.compute(predictions=pred_str, references=label_str)
 
-    def compute(self):
-        return self.correct_sc.float() / self.total_sc
-
-
-class SequenceExactAccuracy(Metric):
-    correct_se: torch.Tensor
-    total_se: torch.Tensor
-
-    def __init__(self, pad_index: int):
-        super().__init__()
-        self.add_state("correct_se", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.add_state("total_se", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.pad_index = pad_index
-
-    def update(self, preds: torch.Tensor, target: torch.Tensor):
-        preds = torch.argmax(preds, dim=-1)
-
-        seq = torch.logical_or(preds == target, target == self.pad_index).all(dim=0)
-        self.correct_se += torch.sum(seq)
-        self.total_se += seq.numel()
-
-    def compute(self):
-        return self.correct_se.float() / self.total_se
+    return {"wer": wer}
