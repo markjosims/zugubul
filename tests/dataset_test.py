@@ -98,7 +98,8 @@ def tmp_lid_data():
                     'target_labels': '*',
                     'meta_labels': ['DDN', 'DDN1'],
                     'empty': 'meta',
-                    'balance': False
+                    'balance': False,
+                    'process_length': False
                 }
             }
             tomli_w.dump(toml_data, f)
@@ -123,6 +124,11 @@ def lid_df():
 def test_init_lid_dataset(tmp_dataset):
     dataset = init_lid_dataset(tmp_dataset)
     assert dataset['train'][0]['text'] == 'train'
+
+def test_init_lid_dataset_tira():
+    tira_lid_dir = r'C:\projects\xlsr-sandbox\data\elan\lid_dataset'
+    dataset = init_lid_dataset(tira_lid_dir)
+
 
 def test_split_data(tmp_unsplit_data):
     dir_path, csv_path = tmp_unsplit_data
@@ -169,7 +175,8 @@ def test_make_lid_labels(tmp_lid_data):
         metalang=metalang,
         target_labels=target_labels,
         meta_labels=meta_labels,
-        balance=False
+        balance=False,
+        process_length=False
     )
 
     assert np.array_equal(
@@ -214,7 +221,7 @@ def test_balance_lid_data(lid_df):
     assert out['lang'].value_counts()['DDN'] == 2
 
 def test_process_annotation_length(lid_df):
-    out = process_annotation_length(lid_df, lid=True)
+    out = process_annotation_length(lid_df, min_gap=2000, lid=True)
 
     new_start = [0, 10000] + [12050] + [100, 150000, 170000, 40000]
     new_end = [1200, 12000] + [15000] + [4300, 155000, 190000, 41000]
