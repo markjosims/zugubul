@@ -99,7 +99,7 @@ def label_speech_segments(
     times = rvad_segs_to_ms(segs)
 
     if etf:
-        if type(etf) is str:
+        if (type(etf) is not Elan.Eaf):
             eaf = Elan.Eaf(etf)
         else:
             eaf = etf

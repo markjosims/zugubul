@@ -1,5 +1,8 @@
 pympi-ling
-
 numpy
 scipy
 pyaudio
+transformers
+datasets
+datasets[audio]
+pydub

@@ -1,7 +1,11 @@
 import os
+import pandas as pd
 from pympi import Elan
 from typing import Union, Optional, Sequence, Literal
 from copy import deepcopy
+from pydub import AudioSegment
+from pathlib import Path
+from tqdm import tqdm
 
 """
 Contains following helper functions for processing .eaf files:
@@ -17,6 +21,8 @@ Contains following helper functions for processing .eaf files:
         When an annotation from FILE2 overlaps with one from FILE1, cut annotation from FILE2 to only non-overlapping part,
         and add to FILE1, but only if non-overlapping part is less than OVERLAP (default 200ms).
         If OVERLAP=inf, do not add any overlapping annotations from FILE2.
+- eaf_data:
+        For a given elan file, create a csv with all annotation data for the whole file or for a given tier.
 """
 
 def trim(
@@ -28,7 +34,7 @@ def trim(
     Remove all annotations of the given tier which contain only the given stopword.
     By default, remove empty annotations from all tiers.
     """
-    if type(eaf) is str:
+    if (type(eaf) is not Elan.Eaf):
         eaf = Elan.Eaf(eaf)
     else:
         # avoid side effects from editing original eaf object
@@ -102,17 +108,152 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
     If it is a str containing a path to a directory, then eaf2 must be a path to an eaf file.
     Join filename of eaf2 to directory indicated by eaf1, instantiate Eaf object and return.
     """
-    if type(eaf1) is str:
-        if os.path.isdir(eaf1):
-            try:
-                assert (type(eaf2) is str) and (os.path.isfile(eaf2))
-                eaf2_name = os.path.split(eaf2)[-1]
-            except AssertionError:
-                raise ValueError(
-                    'If either eaf_source or eaf_matrix is a directory path, '\
-                        +'the other must be a str containing a filepath, '\
-                        +'not a directory filepath or an Eaf object.'
-                )
-            eaf1 = os.path.join(eaf1, eaf2_name)
-        return Elan.Eaf(eaf1)
-    return deepcopy(eaf1)
+    if type(eaf1) is Elan.Eaf:
+        return deepcopy(eaf1)
+    if os.path.isdir(eaf1):
+        try:
+            assert (type(eaf2) is not Elan.Eaf) and (os.path.isfile(eaf2))
+            eaf2_name = os.path.split(eaf2)[-1]
+        except AssertionError:
+            raise ValueError(
+                'If either eaf_source or eaf_matrix is a directory path, '\
+                    +'the other must be a str containing a filepath, '\
+                    +'not a directory filepath or an Eaf object.'
+            )
+        eaf1 = os.path.join(eaf1, eaf2_name)
+    return Elan.Eaf(eaf1)
+
+def eaf_data(
+        eaf: str,
+        eaf_obj: Optional[Elan.Eaf] = None,
+        tier: Union[str, Sequence[str], None] = None,
+        media: Optional[str] = None,
+    ) -> pd.DataFrame:
+    if not eaf_obj:
+        eaf_obj = Elan.Eaf(eaf)
+
+    media_paths = eaf_obj.media_descriptors
+    if (media) and (media not in media_paths):
+        raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
+    if not media:
+        media = media_paths[0]['MEDIA_URL']
+        # trim prefix added by ELAN
+        media = media.replace('file:///', '')
+        if len(media_paths) > 1:
+            print(f'No media argument provided and eaf has multiple linked files. {media=}, {media_paths=}')
+
+    if tier and type(tier) is str:
+        tier = [tier,]
+    else:
+        tier = eaf_obj.get_tier_names()
+
+    dfs = []
+
+    for t in tier:
+        annotations = eaf_obj.get_annotation_data_for_tier(t)
+        start_times = [a[0] for a in annotations]
+        end_times = [a[1] for a in annotations]
+        values = [a[2] for a in annotations]
+
+        t_df = pd.DataFrame(data={
+            'start': start_times,
+            'end': end_times,
+            'text': values,
+            'tier': t,
+        })
+        dfs.append(t_df)
+
+    df = pd.concat(dfs)
+    df['wav_source'] = media
+    df['eaf_name'] = eaf
+
+    return df
+
+def snip_audio(
+        annotations: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame],
+        out_dir: Union[str, os.PathLike],
+        audio: Union[str, os.PathLike, AudioSegment, None] = None,
+        tier: Union[str, Sequence[str], None] = None,
+        allow_skip: bool = True,
+    ) -> pd.DataFrame:
+    """
+    annotations may be an Eaf object, a pandas dataframe with the columns 'start', 'end' and 'wav_source',
+    or a filepath pointing to a .eaf file or a .csv file with the same column structure.
+    allow_skip determines whether to raise an error or merely print a warning if an audio file is not found.
+    Returns a dataframe containing information for each annotation with the added column 'wav_clip',
+    which points to a .wav file snipped to the start and end value for each annotation.
+    """
+    if type(annotations) is Elan.Eaf:
+        df = eaf_data(eaf='', eaf_obj=annotations, tier=tier, media=audio)
+        # no filepath for .eaf file passed so name is unknown
+        del df['eaf_name']
+    elif type(annotations) is pd.DataFrame:
+        df = annotations
+    else:
+        # os.path.isfile(annotations)
+        path = Path(annotations)
+        suffix = path.suffix
+        if suffix == '.eaf':
+            df = eaf_data(annotations, tier=tier, media=audio)
+        elif suffix == '.csv':
+            df = pd.read_csv(annotations)
+        else:
+            raise ValueError('If passing filepath for annotations, must point to .eaf or .csv file.')
+        
+    if tier and (type(tier) is str):
+        df = df[df['tier']==tier]
+    elif tier: # type(tier) is Sequence
+        df = df[df['tier'].isin(tier)]
+
+    df['wav_clip'] = ''
+
+    for wav_source in tqdm(df['wav_source'].unique(), desc='Snipping audio'):
+        from_source = df['wav_source'] == wav_source
+        try:
+            wav_obj = AudioSegment.from_wav(wav_source)
+        except FileNotFoundError as error:
+            if allow_skip:
+                num_skip = from_source.value_counts()[True]
+                tqdm.write(f'{wav_source=} not found, skipping audio file and excluding {num_skip} rows from dataset.')
+                df = df[~from_source]
+                continue
+            else:
+                raise error
+
+        wav_clips = df[from_source].apply(
+            lambda r: save_clip(
+                start = int(r['start']),
+                end = int(r['end']),
+                source_fp = wav_source,
+                out_dir = out_dir,
+                wav_obj = wav_obj,
+            ),
+            axis=1
+        )
+        df.loc[from_source, 'wav_clip'] = wav_clips
+
+    return df
+
+def save_clip(
+    start: int,
+    end: int,
+    source_fp: Union[str, os.PathLike],
+    out_dir: Union[str, os.PathLike],
+    wav_obj: Optional[AudioSegment] = None
+    ) -> str:
+    """
+    Cut wav file from source_fp into clip from start to end timestamps (in number of milliseconds).
+    Save clip to path/to/out_dir/source_fp[start-end].wav.
+    Return path clip was saved to.
+    """
+    if not wav_obj:
+        wav_obj = AudioSegment.from_wav(source_fp)
+    
+    source_stem = Path(source_fp).stem
+    out_name = f'{source_stem}[{start}-{end}].wav'
+    out_path = os.path.join(out_dir, out_name)
+    
+    clip = wav_obj[start:end]
+    clip.export(out_path, format='wav')
+
+    return out_path
