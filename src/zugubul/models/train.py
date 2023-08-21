@@ -1,12 +1,13 @@
 from transformers import Trainer, Wav2Vec2ForCTC, DataCollator, TrainingArguments, Wav2Vec2Processor
-from datasets import Dataset, Audio
-import torch
+from datasets import Dataset, Audio, load_dataset
+from safetensors.torch import save_file as safe_save_file
+from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
+
 from typing import Callable, Optional, Union
 import os
 
 from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
 from zugubul.models._metrics import compute_wer
-from zugubul.models.dataset import init_lid_dataset
 
 def train(
         model: Union[str, os.PathLike, Wav2Vec2ForCTC],
@@ -27,7 +28,7 @@ def train(
 
     if type(dataset) is not Dataset:
         print('Loading dataset...')
-        dataset = init_lid_dataset(dataset)
+        dataset = load_dataset(dataset)
     print('Resampling audio to 16kHz...')
     dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
@@ -69,8 +70,13 @@ def train(
         tokenizer=processor.feature_extractor,
     )
     trainer.train()
-
     print('Done training')
+
+    adapter_file = WAV2VEC2_ADAPTER_SAFE_FILE#.format(target_lang)
+    adapter_file = os.path.join(training_args.output_dir, adapter_file)
+
+    safe_save_file(model._get_adapters(), adapter_file, metadata={"format": "pt"})
+
 
 def get_training_args(**kwargs) -> TrainingArguments:
     """

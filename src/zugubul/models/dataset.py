@@ -2,33 +2,13 @@ from typing import Union, Sequence, Tuple, Optional, Literal
 import os
 import pandas as pd
 from datasets import Dataset, load_dataset
+from huggingface_hub import login
 from zugubul.elan_tools import snip_audio, eaf_data
 from math import ceil
 from pathlib import Path
 import shutil
 import tomli
 import numpy as np
-
-def init_lid_dataset(dirpath: Union[str, os.PathLike]) -> Dataset:
-    """
-    dirpath indicates dataset directory
-    directory must be of following structure:
-    dirpath
-        metadata.csv
-        train
-            recording1.wav
-            recording2.wav
-            ...
-        val
-            recording3.wav
-            recording4.wav
-            ...
-        test
-            recording5.wav
-            recording6.wav
-            ...
-    """
-    return load_dataset('audiofolder', data_dir=dirpath)
 
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],
@@ -307,3 +287,17 @@ def process_annotation_length_innerloop(df: pd.DataFrame, min_gap: int, lid: boo
             df.loc[has_file, 'text'] = resorted['text']
         df = df.drop(sorted_by_start[sorted_by_start['is_w_gap']].index)
     return df
+
+def push_to_huggingface(
+        dataset_path: str,
+        repo_url: str,
+        hf_token: str = None,
+        make_vocab: bool = True
+    ) -> dict:
+    """
+    Pushes dataset at dataset_path to Huggingface Hub at repo_url.
+    If hf_token not passed, runs huggingface_hub.login to input auth token.
+    If vocab is True, looks for vocab.json file in dataset_path to initialize tokenizer from.
+    If none found, writes vocab.json using 
+    """
+    ...

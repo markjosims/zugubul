@@ -1,4 +1,5 @@
-from zugubul.models.dataset import init_lid_dataset, split_data, make_lid_labels, balance_lid_data, process_annotation_length
+from zugubul.models.dataset import split_data, make_lid_labels, balance_lid_data, process_annotation_length
+from datasets import load_dataset
 import pytest
 import csv
 import os
@@ -121,13 +122,13 @@ def lid_df():
     
     return lid_df
 
-def test_init_lid_dataset(tmp_dataset):
-    dataset = init_lid_dataset(tmp_dataset)
+def test_load_dataset(tmp_dataset):
+    dataset = load_dataset(tmp_dataset)
     assert dataset['train'][0]['text'] == 'train'
 
-def test_init_lid_dataset_tira():
+def test_load_dataset_tira():
     tira_lid_dir = r'C:\projects\xlsr-sandbox\data\elan\lid_dataset'
-    dataset = init_lid_dataset(tira_lid_dir)
+    dataset = load_dataset(tira_lid_dir)
 
 
 def test_split_data(tmp_unsplit_data):
