@@ -29,8 +29,8 @@ def split_data(
     """
     if (type(eaf_data) is not pd.DataFrame):
         eaf_data = pd.read_csv(eaf_data)
-    if os.path.isfile(out_dir):
-        out_dir = Path(out_dir)
+        
+    out_dir = Path(out_dir)
 
     eaf_data: pd.DataFrame
 
@@ -225,7 +225,7 @@ def process_annotation_length(
     If lid = True, use 'lang' column and only merge adjacent annotations that have the same value for 'lang',
     else merge any adjacent annotations and concatenate the value for the 'text' column.
     """
-    if (os.path.isfile(df)) or isinstance(df, Path):
+    if type(df) is not pd.DataFrame:
         df = pd.read_csv(df)
     df: pd.DataFrame
     num_rows = len(df)

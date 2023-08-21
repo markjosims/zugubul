@@ -22,7 +22,7 @@ def tmp_csv():
             ['[ENG]', 'bar.wav', 4, 5],
         ]
         with open(csv_path, 'w') as f:
-            vocab_writer = csv.writer(f, delimiter='\t', dialect='unix')
+            vocab_writer = csv.writer(f, delimiter=',', dialect='unix')
             vocab_writer.writerows(csv_vocab)
         yield csv_path, vocab_dir
 

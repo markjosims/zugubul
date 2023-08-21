@@ -108,20 +108,20 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
     If it is a str containing a path to a directory, then eaf2 must be a path to an eaf file.
     Join filename of eaf2 to directory indicated by eaf1, instantiate Eaf object and return.
     """
-    if os.path.isfile(eaf1):
-        if os.path.isdir(eaf1):
-            try:
-                assert (type(eaf2) is not Elan.Eaf) and (os.path.isfile(eaf2))
-                eaf2_name = os.path.split(eaf2)[-1]
-            except AssertionError:
-                raise ValueError(
-                    'If either eaf_source or eaf_matrix is a directory path, '\
-                        +'the other must be a str containing a filepath, '\
-                        +'not a directory filepath or an Eaf object.'
-                )
-            eaf1 = os.path.join(eaf1, eaf2_name)
-        return Elan.Eaf(eaf1)
-    return deepcopy(eaf1)
+    if type(eaf1) is Elan.Eaf:
+        return deepcopy(eaf1)
+    if os.path.isdir(eaf1):
+        try:
+            assert (type(eaf2) is not Elan.Eaf) and (os.path.isfile(eaf2))
+            eaf2_name = os.path.split(eaf2)[-1]
+        except AssertionError:
+            raise ValueError(
+                'If either eaf_source or eaf_matrix is a directory path, '\
+                    +'the other must be a str containing a filepath, '\
+                    +'not a directory filepath or an Eaf object.'
+            )
+        eaf1 = os.path.join(eaf1, eaf2_name)
+    return Elan.Eaf(eaf1)
 
 def eaf_data(
         eaf: str,
