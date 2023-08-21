@@ -27,6 +27,11 @@ def vocab_from_list(
     if ' ' in tokens:
         tokens.remove(' ')
     tokens_dict = {k: v for v, k in enumerate(tokens)}
+
+    # add special tokens
+    tokens_dict['<pad>'] = len(tokens_dict)
+    tokens_dict['<unk>'] = len(tokens_dict)
+
     json_path = os.path.join(vocab_dir, 'vocab.json')
     with open(json_path, 'w') as f:
         json.dump(tokens_dict, f)
@@ -48,7 +53,7 @@ def vocab_from_csv(
     if lid:
         label_col = 'lang'
     with open(csv_path) as f:
-        reader = csv.DictReader(f, delimiter='\t')
+        reader = csv.DictReader(f, delimiter=',')
         for row in reader:
             vocab.add(row[label_col])
     return vocab_from_list(vocab=vocab, vocab_dir=vocab_dir, lid=lid)
@@ -74,7 +79,7 @@ def init_processor(
             'vocab argument of unrecognized type. Must be list or set of vocab items, path to vocab.json file, or path to csv file.'
         )
 
-    tokenizer = Wav2Vec2CTCTokenizer(vocab_path)
+    tokenizer = Wav2Vec2CTCTokenizer(vocab_path, unk_token='<unk>', pad_token='<pad>')
 
     feature_extractor = Wav2Vec2FeatureExtractor(
         feature_size=1,
