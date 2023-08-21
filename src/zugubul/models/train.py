@@ -1,5 +1,6 @@
 from transformers import Trainer, Wav2Vec2ForCTC, DataCollator, TrainingArguments, Wav2Vec2Processor
 from datasets import Dataset, Audio, load_dataset
+from huggingface_hub import login, hf_hub_download
 from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 
@@ -10,6 +11,7 @@ from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
 from zugubul.models._metrics import compute_wer
 
 def train(
+        out_dir: Union[str, os.PathLike],
         model: Union[str, os.PathLike, Wav2Vec2ForCTC],
         dataset: Union[str, os.PathLike, Dataset],
         data_collator: Optional[DataCollator] = None,
@@ -17,12 +19,22 @@ def train(
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
+        hf: bool = True,
         **kwargs
     ) -> str:
+
+    if hf:
+        login()
 
     if not processor:
         if not vocab:
             raise ValueError('Either processor object or path to vocab.json must be provided.')
+        if hf:
+            vocab = hf_hub_download(
+                repo_id=dataset,
+                repo_type='dataset',
+                filename='vocab.json'
+            )
         print('Initializing processor...')
         processor = init_processor(vocab)
 
@@ -40,7 +52,7 @@ def train(
         model = download_model(processor, model_name=model, **kwargs)
 
     if not training_args:
-        training_args = get_training_args(out_dir=r'C:\projects\xlsr-sandbox\data\elan\lid_dataset\model', **kwargs)
+        training_args = get_training_args(out_dir=out_dir, push_to_hub=hf, **kwargs)
 
     if not data_collator:
         print('Initializing data collator...')
@@ -76,6 +88,9 @@ def train(
     adapter_file = os.path.join(training_args.output_dir, adapter_file)
 
     safe_save_file(model._get_adapters(), adapter_file, metadata={"format": "pt"})
+
+    if hf:
+        trainer.push_to_hub()
 
 
 def get_training_args(**kwargs) -> TrainingArguments:
