@@ -24,6 +24,7 @@ from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
 from zugubul.models.dataset import split_data, make_lid_labels
 from zugubul.models.vocab import vocab_from_csv
+from zugubul.models.train import train
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 
@@ -169,8 +170,23 @@ def init_lid_data_parser(lid_parser: argparse.ArgumentParser) -> None:
     )
     init_lid_labels_parser(lid_parser)
 
+def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
+    vocab_parser.add_argument('CSV_PATH', type=lambda x: is_valid_file(vocab_parser, x),
+        help='Path to eaf_data.csv or metadata.csv containing data to create vocab with.'                              
+    )
+    vocab_parser.add_argument('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
+    vocab_parser.add_argument('--out_dir', type=lambda x: is_valid_dir(vocab_parser, x),
+        help='Path to directory to save vocab.json in. Default is to save it to parent directory of CSV_PATH.'                          
+    )
 
-    
+def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
+    train_parser.add_argument('DATA_DIR', type=lambda x: is_valid_dir(train_parser, x),
+        help='Folder containing dataset for language identification and/or automatic speech recognition.'                          
+    )
+    train_parser.add_argument('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
+    train_parser.add_argument('-m', '--model_url', default='facebook/mms-1b-all',
+        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
+    )
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -494,6 +510,29 @@ def handle_lid_dataset(args: Mapping) -> int:
 
     return 0
 
+def handle_vocab(args: Mapping) -> int:
+    csv_path = Path(args['CSV_PATH'])
+    task = args['TASK']
+    lid = task == 'LID'
+    vocab_dir = args['out_dir'] or csv_path.parent
+    vocab_from_csv(
+        csv_path=csv_path,
+        vocab_dir=vocab_dir,
+        lid=lid
+    )
+    return 0
+
+def handle_train(args: Mapping) -> int:
+    data_dir = Path(args['DATA_DIR'])
+    task = args['TASK'].lower()
+    model_name = args['model_url']
+    train(
+        model=model_name,
+        dataset=data_dir,
+        vocab=data_dir/'vocab.json'
+    )
+
+
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
     Returns path to .eaf file with same name as data_file
@@ -553,8 +592,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     init_lid_labels_parser(lid_labels_parser)
 
-    lid_parser = subparsers.add_parser('lid_data', help='Initialize Language IDentification (LID) model from directory of .eaf files.')
+    lid_parser = subparsers.add_parser('lid_data', help='Initialize Language IDentification (LID) dataset from directory of .eaf files.')
     init_lid_data_parser(lid_parser)
+
+    vocab_parser = subparsers.add_parser('vocab', help='Create vocab.json for initializing a tokenizer from a datafile (eaf_data.csv or metadata.csv).')
+    init_vocab_parser(vocab_parser)
+
+    train_parser = subparsers.add_parser('train', help='Train Language IDentification (LID) or Automatic Speech Recognition (ASR) model on given dataset.')
+    init_train_parser(train_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -573,6 +618,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_lid_labels(args)
     elif command == 'lid_data':
         return handle_lid_dataset(args)
+    elif command == 'vocab':
+        return handle_vocab(args)
+    elif command == 'train':
+        return handle_train(args)
     return 1
 
 if __name__ == '__main__':
