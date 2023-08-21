@@ -20,6 +20,8 @@ from pathlib import Path
 import pandas as pd
 import argparse
 from typing import Optional, Sequence, Mapping
+from datasets import load_dataset
+from huggingface_hub import login, HfApi
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
 from zugubul.models.dataset import split_data, make_lid_labels
@@ -168,6 +170,8 @@ def init_lid_data_parser(lid_parser: argparse.ArgumentParser) -> None:
     lid_parser.add_argument('-r', '--recursive', action='store_true',
         help='Recurse over all subdirectories in EAF_DIR.'
     )
+    lid_parser.add_argument('--hf_user', help='User name for Huggingface Hub. Only pass if wanting to save dataset to Huggingface Hub, otherwise saves locally only.')
+    lid_parser.add_argument('--hf_repo', help='Repo name for Huggingface Hub. Recommended format is lang-task, e.g. tira-asr or sjpm-lid.')
     init_lid_labels_parser(lid_parser)
 
 def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
@@ -187,6 +191,7 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     train_parser.add_argument('-m', '--model_url', default='facebook/mms-1b-all',
         help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
     )
+
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -502,11 +507,32 @@ def handle_lid_dataset(args: Mapping) -> int:
     handle_split_data(args)
 
     # make tokenizer
-    vocab_from_csv(
-        csv_path=args['OUT_DIR']/ 'metadata.csv',
-        vocab_dir=args['OUT_DIR'],
+    vocab_path = vocab_from_csv(
+        csv_path=out_dir/ 'metadata.csv',
+        vocab_dir=out_dir,
         lid=True
     )
+
+    # push to hf, if indicated by user
+    hf_user = args['hf_user']
+    hf_repo = args['hf_repo']
+
+    if hf_user or hf_repo:
+        if not (hf_user and hf_repo):
+            print('In order to save to Huggingface Hub, both hf_user and hf_repo must be passed.')
+            return 1
+        
+        login()
+        repo_name = hf_user + '/' + hf_repo
+        dataset = load_dataset(out_dir)
+        dataset.push_to_hub(hf_user, private=True)
+        api = HfApi()
+        api.upload_file(
+            path_or_fileobj=vocab_path,
+            path_in_repo='vocab.json',
+            repo_id=repo_name,
+            repo_type='dataset'
+        )
 
     return 0
 
