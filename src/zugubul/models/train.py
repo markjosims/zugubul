@@ -1,14 +1,16 @@
 from transformers import Trainer, Wav2Vec2ForCTC, DataCollator, TrainingArguments, Wav2Vec2Processor
-from datasets import Dataset
+from datasets import Dataset, Audio
+import torch
 from typing import Callable, Optional, Union
 import os
 
 from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
 from zugubul.models._metrics import compute_wer
+from zugubul.models.dataset import init_lid_dataset
 
 def train(
-        model: Union[str, Wav2Vec2ForCTC],
-        dataset: Dataset,
+        model: Union[str, os.PathLike, Wav2Vec2ForCTC],
+        dataset: Union[str, os.PathLike, Dataset],
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         compute_metrics: Optional[Callable] = None,
@@ -20,21 +22,34 @@ def train(
     if not processor:
         if not vocab:
             raise ValueError('Either processor object or path to vocab.json must be provided.')
+        print('Initializing processor...')
         processor = init_processor(vocab)
 
+    if type(dataset) is not Dataset:
+        print('Loading dataset...')
+        dataset = init_lid_dataset(dataset)
+    print('Resampling audio to 16kHz...')
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
+
+    print('Reshaping data columns for training...')
+    dataset = dataset.map(lambda x: prepare_dataset(x, processor, 'lang'))
+
     if type(model) is not Wav2Vec2ForCTC:
+        print('Downloading model...')
         model = download_model(processor, model_name=model, **kwargs)
 
     if not training_args:
-        training_args = get_training_args(kwargs)
+        training_args = get_training_args(out_dir=r'C:\projects\xlsr-sandbox\data\elan\lid_dataset\model', **kwargs)
 
     if not data_collator:
+        print('Initializing data collator...')
         data_collator = DataCollatorCTCWithPadding(processor, padding=True)
 
     if not compute_metrics:
         # use wer by default
         compute_metrics = lambda pred : compute_wer(pred, processor)
 
+    print('Preparing model for finetuning...')
     # taken from https://huggingface.co/blog/mms_adapters
     # prepare model for finetuning
     model.init_adapter_layers()
@@ -43,17 +58,19 @@ def train(
     for param in adapter_weights.values():
         param.requires_grad = True
 
+    print('Starting training...')
     trainer = Trainer(
         model=model,
         data_collator=data_collator,
         args=training_args,
         compute_metrics=compute_metrics,
         train_dataset=dataset['train'],
-        eval_dataset=dataset['val'],
-        test_dataset=dataset['test'],
+        eval_dataset=dataset['validation'],
         tokenizer=processor.feature_extractor,
     )
     trainer.train()
+
+    print('Done training')
 
 def get_training_args(**kwargs) -> TrainingArguments:
     """
@@ -69,13 +86,13 @@ def get_training_args(**kwargs) -> TrainingArguments:
         num_train_epochs= kwargs.get('num_train_epochs',                        4),
         gradient_checkpointing= kwargs.get('gradient_checkpointing',            True),
         fp16= kwargs.get('fp16',                                                True),
-        save_steps= kwargs.get('save_steps',                                    200),
+        save_steps= kwargs.get('save_steps',                                    100),
         eval_steps= kwargs.get('eval_steps',                                    100),
         logging_steps= kwargs.get('logging_steps',                              100),
         learning_rate= kwargs.get('learning_rate',                              1e-3),
         warmup_steps= kwargs.get('warmup_steps',                                100),
         save_total_limit= kwargs.get('save_total_limit',                        2),
-        push_to_hub= kwargs.get('push_to_hub',                                  True),
+        push_to_hub= kwargs.get('push_to_hub',                                  False),
     )
 
 def download_model(
@@ -98,3 +115,15 @@ def download_model(
         vocab_size=kwargs.get('vocab_size',                             len(processor.tokenizer)),
         ignore_mismatched_sizes=kwargs.get('ignore_mismatched_sizes',   True),
     )
+
+def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str) -> Dataset:
+    """
+    Puts dataset in format needed for training.
+    Taken from https://huggingface.co/blog/mms_adapters
+    """
+    audio = batch["audio"]
+    batch["input_values"] = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_values[0]
+    batch["input_length"] = len(batch["input_values"])
+
+    batch["labels"] = processor(text=batch[label_col]).input_ids
+    return batch
