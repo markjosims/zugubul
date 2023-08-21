@@ -29,7 +29,7 @@ def split_data(
     """
     if (type(eaf_data) is not pd.DataFrame):
         eaf_data = pd.read_csv(eaf_data)
-        
+
     out_dir = Path(out_dir)
 
     eaf_data: pd.DataFrame
@@ -287,17 +287,3 @@ def process_annotation_length_innerloop(df: pd.DataFrame, min_gap: int, lid: boo
             df.loc[has_file, 'text'] = resorted['text']
         df = df.drop(sorted_by_start[sorted_by_start['is_w_gap']].index)
     return df
-
-def push_to_huggingface(
-        dataset_path: str,
-        repo_url: str,
-        hf_token: str = None,
-        make_vocab: bool = True
-    ) -> dict:
-    """
-    Pushes dataset at dataset_path to Huggingface Hub at repo_url.
-    If hf_token not passed, runs huggingface_hub.login to input auth token.
-    If vocab is True, looks for vocab.json file in dataset_path to initialize tokenizer from.
-    If none found, writes vocab.json using 
-    """
-    ...
