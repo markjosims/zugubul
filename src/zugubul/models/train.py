@@ -3,6 +3,9 @@ from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download
 from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
+import bitsandbytes as bnb
+from torch import nn
+from transformers.trainer_pt_utils import get_parameter_names
 
 from typing import Callable, Optional, Union
 import os
@@ -16,6 +19,7 @@ def train(
         dataset: Union[str, os.PathLike, Dataset],
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
+        optimizers = None,
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
@@ -27,14 +31,15 @@ def train(
         login()
 
     if not processor:
-        if not vocab:
-            raise ValueError('Either processor object or path to vocab.json must be provided.')
         if hf:
             vocab = hf_hub_download(
                 repo_id=dataset,
                 repo_type='dataset',
                 filename='vocab.json'
             )
+        if (not hf) and (not vocab):
+            raise ValueError('Either processor object or path to vocab.json must be provided.')
+
         print('Initializing processor...')
         processor = init_processor(vocab)
 
@@ -52,7 +57,19 @@ def train(
         model = download_model(processor, model_name=model, **kwargs)
 
     if not training_args:
-        training_args = get_training_args(out_dir=out_dir, push_to_hub=hf, **kwargs)
+        if True:#('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
+            training_args = get_training_args(
+                out_dir=out_dir,
+                push_to_hub=hf,
+                # experimenting with hyperparameters to reduce memory footprint
+                per_device_train_batch_size=1,
+                save_steps=50,
+                fp16=False,
+                torch_compile=True,
+                **kwargs
+            )
+            optimizers = (get_adam8bit_optimizer(training_args, model), None)
+        else: training_args = get_training_args(out_dir=out_dir, push_to_hub=hf, **kwargs)
 
     if not data_collator:
         print('Initializing data collator...')
@@ -76,6 +93,7 @@ def train(
         model=model,
         data_collator=data_collator,
         args=training_args,
+        optimizers=optimizers,
         compute_metrics=compute_metrics,
         train_dataset=dataset['train'],
         eval_dataset=dataset['validation'],
@@ -90,7 +108,7 @@ def train(
     safe_save_file(model._get_adapters(), adapter_file, metadata={"format": "pt"})
 
     if hf:
-        trainer.push_to_hub()
+        trainer.push_to_hub(private=True)
 
 
 def get_training_args(**kwargs) -> TrainingArguments:
@@ -99,21 +117,28 @@ def get_training_args(**kwargs) -> TrainingArguments:
     kwarg 'out_dir' must be provided, all others are optional.
     Default values taken from https://huggingface.co/blog/mms_adapters
     """
+    default_values = {
+        'group_by_length': True,
+        'per_device_train_batch_size': 32,
+        'evaluation_strategy': "steps",
+        'num_train_epochs': 4,
+        'gradient_checkpointing': True,
+        'fp16': True,
+        'save_steps': 100,
+        'eval_steps': 100,
+        'logging_steps': 100,
+        'learning_rate': 1e-3,
+        'warmup_steps': 100,
+        'save_total_limit': 2,
+        'torch_compile': False,
+        'push_to_hub': False,
+    }
+    for k, v in default_values:
+        if k not in kwargs:
+            kwargs[k] = v
     return TrainingArguments(
         output_dir=kwargs['out_dir'],
-        group_by_length= kwargs.get('group_by_length',                          True),
-        per_device_train_batch_size= kwargs.get('per_device_train_batch_size',  32),
-        evaluation_strategy= kwargs.get('evaluation_strategy',                  "steps"),
-        num_train_epochs= kwargs.get('num_train_epochs',                        4),
-        gradient_checkpointing= kwargs.get('gradient_checkpointing',            True),
-        fp16= kwargs.get('fp16',                                                True),
-        save_steps= kwargs.get('save_steps',                                    100),
-        eval_steps= kwargs.get('eval_steps',                                    100),
-        logging_steps= kwargs.get('logging_steps',                              100),
-        learning_rate= kwargs.get('learning_rate',                              1e-3),
-        warmup_steps= kwargs.get('warmup_steps',                                100),
-        save_total_limit= kwargs.get('save_total_limit',                        2),
-        push_to_hub= kwargs.get('push_to_hub',                                  False),
+        **kwargs
     )
 
 def download_model(
@@ -125,16 +150,22 @@ def download_model(
     Opens Wav2Vec2ForCTC model at given url or path.
     Default parameter values taken from https://huggingface.co/blog/mms_adapters
     """
+    default_values = {
+        'attention_dropout': 0.0,
+        'hidden_dropout': 0.0,
+        'feat_proj_dropout': 0.0,
+        'layerdrop': 0.0,
+        'ctc_loss_reduction': "mean",
+        'pad_token_id': processor.tokenizer.pad_token_id,
+        'vocab_size': len(processor.tokenizer),
+        'ignore_mismatched_sizes': True,
+    }
+    for k, v in default_values:
+        if k not in kwargs:
+            kwargs[k] = v
     return Wav2Vec2ForCTC.from_pretrained(
         model_name,
-        attention_dropout=kwargs.get('attention_dropout',               0.0),
-        hidden_dropout=kwargs.get('hidden_dropout',                     0.0),
-        feat_proj_dropout=kwargs.get('feat_proj_dropout',               0.0),
-        layerdrop=kwargs.get('layerdrop',                               0.0),
-        ctc_loss_reduction=kwargs.get('ctc_loss_reduction',             "mean"),
-        pad_token_id=kwargs.get('pad_token_id',                         processor.tokenizer.pad_token_id),
-        vocab_size=kwargs.get('vocab_size',                             len(processor.tokenizer)),
-        ignore_mismatched_sizes=kwargs.get('ignore_mismatched_sizes',   True),
+        **kwargs
     )
 
 def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str) -> Dataset:
@@ -148,3 +179,34 @@ def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str
 
     batch["labels"] = processor(text=batch[label_col]).input_ids
     return batch
+
+def get_adam8bit_optimizer(training_args: TrainingArguments, model: Wav2Vec2ForCTC) -> bnb.optim.Adam8bit:
+    """
+    Returns adam 8bit optimizer for given training args and model.
+    Code from https://huggingface.co/docs/transformers/perf_train_gpu_one
+    """
+    decay_parameters = get_parameter_names(model, [nn.LayerNorm])
+    decay_parameters = [name for name in decay_parameters if "bias" not in name]
+    optimizer_grouped_parameters = [
+        {
+            "params": [p for n, p in model.named_parameters() if n in decay_parameters],
+            "weight_decay": training_args.weight_decay,
+        },
+        {
+            "params": [p for n, p in model.named_parameters() if n not in decay_parameters],
+            "weight_decay": 0.0,
+        },
+    ]
+
+    optimizer_kwargs = {
+        "betas": (training_args.adam_beta1, training_args.adam_beta2),
+        "eps": training_args.adam_epsilon,
+    }
+    optimizer_kwargs["lr"] = training_args.learning_rate
+    adam_bnb_optim = bnb.optim.Adam8bit(
+        optimizer_grouped_parameters,
+        betas=(training_args.adam_beta1, training_args.adam_beta2),
+        eps=training_args.adam_epsilon,
+        lr=training_args.learning_rate,
+    )
+    return adam_bnb_optim
