@@ -6,8 +6,9 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE
 import bitsandbytes as bnb
 from torch import nn
 from transformers.trainer_pt_utils import get_parameter_names
+import deepspeed
 
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, Tuple
 import os
 
 from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
@@ -24,6 +25,7 @@ def train(
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
         hf: bool = True,
+        use_deepspeed: bool = True,
         **kwargs
     ) -> str:
 
@@ -57,7 +59,15 @@ def train(
         model = download_model(processor, model_name=model, **kwargs)
 
     if not training_args:
-        if True:#('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
+        if use_deepspeed:
+            ds_config, model = init_deepspeed(model)
+            training_args = get_training_args(
+                out_dir=out_dir,
+                push_to_hub=hf,
+                deepspeed=ds_config,
+                **kwargs
+            )
+        elif ('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
             training_args = get_training_args(
                 out_dir=out_dir,
                 push_to_hub=hf,
@@ -133,7 +143,7 @@ def get_training_args(**kwargs) -> TrainingArguments:
         'torch_compile': False,
         'push_to_hub': False,
     }
-    for k, v in default_values:
+    for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
     return TrainingArguments(
@@ -160,7 +170,7 @@ def download_model(
         'vocab_size': len(processor.tokenizer),
         'ignore_mismatched_sizes': True,
     }
-    for k, v in default_values:
+    for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
     return Wav2Vec2ForCTC.from_pretrained(
@@ -210,3 +220,29 @@ def get_adam8bit_optimizer(training_args: TrainingArguments, model: Wav2Vec2ForC
         lr=training_args.learning_rate,
     )
     return adam_bnb_optim
+
+def init_deepspeed(model: Wav2Vec2ForCTC) -> Tuple[dict, deepspeed.DeepSpeedEngine]:
+    """
+    Wraps model with a deepspeed engine.
+    TODO: allow deepspeed configuration to be manually specified or retrieved from .toml.
+    """
+    ds_config = {
+        # default values recommended by ChatGPT
+        "train_batch_size": 8,
+        "optimizer": {
+            "type": "Adam",
+            "params": {
+                "lr": 1e-5,
+            },
+        },
+        "fp16": {
+            "enabled": True,
+            "loss_scale": 0,
+        },
+        "offload": {
+            "enabled": True,
+            "device": "cpu",
+        },
+    }
+    model, _, _, _ = deepspeed.initialize(model=model, model_parameters=model.parameters(), config_params=ds_config)
+    return ds_config, model
