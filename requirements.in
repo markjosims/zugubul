@@ -3,6 +3,12 @@ numpy
 scipy
 pyaudio
 transformers
+transformers[torch]
 datasets
 datasets[audio]
 pydub
+tomli
+torch
+evaluate
+jiwer
+deepspeed
