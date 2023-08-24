@@ -184,10 +184,15 @@ def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
     )
 
 def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
-    train_parser.add_argument('DATA_DIR', type=lambda x: is_valid_dir(train_parser, x),
-        help='Folder containing dataset for language identification and/or automatic speech recognition.'                          
+    train_parser.add_argument('DATA_PATH',# type=lambda x: is_valid_dir(train_parser, x), TODO: create validation function for HF urls
+        help='Folder or HuggingFace URL containing dataset for language identification and/or automatic speech recognition.'                          
+    )
+    train_parser.add_argument('OUT_PATH',# type=lambda x: is_valid_dir(train_parser, x),
+        help='Folder or HuggingFace URL to save language identification and/or automatic speech recognition model to. '\
+            + 'Recommended format is wav2vec2-large-mms-1b-LANGUAGENAME (if using default model mms-1b-all).'                          
     )
     train_parser.add_argument('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
+    train_parser.add_argument('--hf', action='store_true', help='Download dataset from and save model to HuggingFace Hub.')
     train_parser.add_argument('-m', '--model_url', default='facebook/mms-1b-all',
         help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
     )
@@ -525,7 +530,7 @@ def handle_lid_dataset(args: Mapping) -> int:
         login()
         repo_name = hf_user + '/' + hf_repo
         dataset = load_dataset(out_dir)
-        dataset.push_to_hub(hf_user, private=True)
+        dataset.push_to_hub(repo_name, private=True)
         api = HfApi()
         api.upload_file(
             path_or_fileobj=vocab_path,
@@ -549,13 +554,18 @@ def handle_vocab(args: Mapping) -> int:
     return 0
 
 def handle_train(args: Mapping) -> int:
-    data_dir = Path(args['DATA_DIR'])
+    data_dir = args['DATA_PATH']
+    out_dir = args['OUT_PATH']
+    hf = args['hf']
+
     task = args['TASK'].lower()
     model_name = args['model_url']
     train(
+        out_dir=out_dir,
         model=model_name,
         dataset=data_dir,
-        vocab=data_dir/'vocab.json'
+        hf=hf,
+        vocab=os.path.join(data_dir,'vocab.json') if not hf else None
     )
 
 
