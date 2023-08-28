@@ -3,10 +3,9 @@ from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download
 from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
-import bitsandbytes as bnb
-from torch import nn
+#import bitsandbytes as bnb
+import torch
 from transformers.trainer_pt_utils import get_parameter_names
-import deepspeed
 
 from typing import Callable, Optional, Union, Tuple
 import os
@@ -20,12 +19,11 @@ def train(
         dataset: Union[str, os.PathLike, Dataset],
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
-        optimizers = None,
+        optimizers = (None, None),
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
         hf: bool = True,
-        use_deepspeed: bool = True,
         **kwargs
     ) -> str:
 
@@ -45,49 +43,9 @@ def train(
         print('Initializing processor...')
         processor = init_processor(vocab)
 
-    if type(dataset) is not Dataset:
-        print('Loading dataset...')
-        dataset = load_dataset(dataset)
-    print('Resampling audio to 16kHz...')
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
-
-    print('Reshaping data columns for training...')
-    dataset = dataset.map(lambda x: prepare_dataset(x, processor, 'lang'))
-
     if type(model) is not Wav2Vec2ForCTC:
         print('Downloading model...')
         model = download_model(processor, model_name=model, **kwargs)
-
-    if not training_args:
-        if use_deepspeed:
-            ds_config, model = init_deepspeed(model)
-            training_args = get_training_args(
-                out_dir=out_dir,
-                push_to_hub=hf,
-                deepspeed=ds_config,
-                **kwargs
-            )
-        elif ('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
-            training_args = get_training_args(
-                out_dir=out_dir,
-                push_to_hub=hf,
-                # experimenting with hyperparameters to reduce memory footprint
-                per_device_train_batch_size=1,
-                save_steps=50,
-                fp16=False,
-                torch_compile=True,
-                **kwargs
-            )
-            optimizers = (get_adam8bit_optimizer(training_args, model), None)
-        else: training_args = get_training_args(out_dir=out_dir, push_to_hub=hf, **kwargs)
-
-    if not data_collator:
-        print('Initializing data collator...')
-        data_collator = DataCollatorCTCWithPadding(processor, padding=True)
-
-    if not compute_metrics:
-        # use wer by default
-        compute_metrics = lambda pred : compute_wer(pred, processor)
 
     print('Preparing model for finetuning...')
     # taken from https://huggingface.co/blog/mms_adapters
@@ -97,6 +55,38 @@ def train(
     adapter_weights = model._get_adapters()
     for param in adapter_weights.values():
         param.requires_grad = True
+
+    if not training_args:
+        if ('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
+            training_args = get_training_args(
+                output_dir=out_dir,
+                push_to_hub=hf,
+                # experimenting with hyperparameters to reduce memory footprint
+                per_device_train_batch_size=1,
+                save_steps=50,
+                fp16=False,
+                torch_compile=True,
+                **kwargs
+            )
+            optimizers = (get_adam8bit_optimizer(training_args, model), None)
+        else: training_args = get_training_args(output_dir=out_dir, push_to_hub=hf, **kwargs)
+
+    if type(dataset) is not Dataset:
+        print('Loading dataset...')
+        dataset = load_dataset(dataset)
+    print('Resampling audio to 16kHz...')
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
+
+    print('Reshaping data columns for training...')
+    dataset = dataset.map(lambda x: prepare_dataset(x, processor, 'lang'))
+
+    if not data_collator:
+        print('Initializing data collator...')
+        data_collator = DataCollatorCTCWithPadding(processor, padding=True)
+
+    if not compute_metrics:
+        # use wer by default
+        compute_metrics = lambda pred : compute_wer(pred, processor)
 
     print('Starting training...')
     trainer = Trainer(
@@ -146,10 +136,7 @@ def get_training_args(**kwargs) -> TrainingArguments:
     for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
-    return TrainingArguments(
-        output_dir=kwargs['out_dir'],
-        **kwargs
-    )
+    return TrainingArguments(**kwargs)
 
 def download_model(
         processor: Wav2Vec2Processor,
@@ -190,59 +177,33 @@ def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str
     batch["labels"] = processor(text=batch[label_col]).input_ids
     return batch
 
-def get_adam8bit_optimizer(training_args: TrainingArguments, model: Wav2Vec2ForCTC) -> bnb.optim.Adam8bit:
-    """
-    Returns adam 8bit optimizer for given training args and model.
-    Code from https://huggingface.co/docs/transformers/perf_train_gpu_one
-    """
-    decay_parameters = get_parameter_names(model, [nn.LayerNorm])
-    decay_parameters = [name for name in decay_parameters if "bias" not in name]
-    optimizer_grouped_parameters = [
-        {
-            "params": [p for n, p in model.named_parameters() if n in decay_parameters],
-            "weight_decay": training_args.weight_decay,
-        },
-        {
-            "params": [p for n, p in model.named_parameters() if n not in decay_parameters],
-            "weight_decay": 0.0,
-        },
-    ]
+# def get_adam8bit_optimizer(training_args: TrainingArguments, model: Wav2Vec2ForCTC) -> bnb.optim.Adam8bit:
+#     """
+#     Returns adam 8bit optimizer for given training args and model.
+#     Code from https://huggingface.co/docs/transformers/perf_train_gpu_one
+#     """
+#     decay_parameters = get_parameter_names(model, [torch.nn.LayerNorm])
+#     decay_parameters = [name for name in decay_parameters if "bias" not in name]
+#     optimizer_grouped_parameters = [
+#         {
+#             "params": [p for n, p in model.named_parameters() if n in decay_parameters],
+#             "weight_decay": training_args.weight_decay,
+#         },
+#         {
+#             "params": [p for n, p in model.named_parameters() if n not in decay_parameters],
+#             "weight_decay": 0.0,
+#         },
+#     ]
 
-    optimizer_kwargs = {
-        "betas": (training_args.adam_beta1, training_args.adam_beta2),
-        "eps": training_args.adam_epsilon,
-    }
-    optimizer_kwargs["lr"] = training_args.learning_rate
-    adam_bnb_optim = bnb.optim.Adam8bit(
-        optimizer_grouped_parameters,
-        betas=(training_args.adam_beta1, training_args.adam_beta2),
-        eps=training_args.adam_epsilon,
-        lr=training_args.learning_rate,
-    )
-    return adam_bnb_optim
-
-def init_deepspeed(model: Wav2Vec2ForCTC) -> Tuple[dict, deepspeed.DeepSpeedEngine]:
-    """
-    Wraps model with a deepspeed engine.
-    TODO: allow deepspeed configuration to be manually specified or retrieved from .toml.
-    """
-    ds_config = {
-        # default values recommended by ChatGPT
-        "train_batch_size": 8,
-        "optimizer": {
-            "type": "Adam",
-            "params": {
-                "lr": 1e-5,
-            },
-        },
-        "fp16": {
-            "enabled": True,
-            "loss_scale": 0,
-        },
-        "offload": {
-            "enabled": True,
-            "device": "cpu",
-        },
-    }
-    model, _, _, _ = deepspeed.initialize(model=model, model_parameters=model.parameters(), config_params=ds_config)
-    return ds_config, model
+#     optimizer_kwargs = {
+#         "betas": (training_args.adam_beta1, training_args.adam_beta2),
+#         "eps": training_args.adam_epsilon,
+#     }
+#     optimizer_kwargs["lr"] = training_args.learning_rate
+#     adam_bnb_optim = bnb.optim.Adam8bit(
+#         optimizer_grouped_parameters,
+#         betas=(training_args.adam_beta1, training_args.adam_beta2),
+#         eps=training_args.adam_epsilon,
+#         lr=training_args.learning_rate,
+#     )
+#     return adam_bnb_optim
