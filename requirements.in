@@ -11,4 +11,3 @@ tomli
 torch
 evaluate
 jiwer
-deepspeed

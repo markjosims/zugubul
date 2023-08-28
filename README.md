@@ -3,7 +3,8 @@
 automatic annotation pipeline for ELAN files
 
 # Non-python requirements:
-- git LFS (mac and linux)
+- git and git LFS (if saving to HF)
 - python3-dev (linux)
-- libportaudio (linux)
-- mpi
+- libportaudio (linux?)
+- mpi (linux?)
+- async_io (DeepSpeed; windows)
