@@ -9,9 +9,19 @@ from transformers.trainer_pt_utils import get_parameter_names
 
 from typing import Callable, Optional, Union, Tuple
 import os
+import json
 
 from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
 from zugubul.models._metrics import compute_wer
+
+# # try setting environment variables to mimic DeepSpeed emulator
+# # might avoid RuntimeError from pytorch
+# # taken from https://huggingface.co/docs/transformers/main_classes/deepspeed#deployment-with-multiple-gpus
+# os.environ["MASTER_ADDR"] = "localhost"
+# os.environ["MASTER_PORT"] = "9994"  # modify if RuntimeError: Address already in use
+# os.environ["RANK"] = "0"
+# os.environ["LOCAL_RANK"] = "0"
+# os.environ["WORLD_SIZE"] = "1"
 
 def train(
         out_dir: Union[str, os.PathLike],
@@ -23,6 +33,7 @@ def train(
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
+        # deepspeed: Union[str, os.PathLike, None] = None,
         hf: bool = True,
         **kwargs
     ) -> str:
@@ -57,19 +68,19 @@ def train(
         param.requires_grad = True
 
     if not training_args:
-        if ('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
-            training_args = get_training_args(
-                output_dir=out_dir,
-                push_to_hub=hf,
-                # experimenting with hyperparameters to reduce memory footprint
-                per_device_train_batch_size=1,
-                save_steps=50,
-                fp16=False,
-                torch_compile=True,
-                **kwargs
-            )
-            optimizers = (get_adam8bit_optimizer(training_args, model), None)
-        else: training_args = get_training_args(output_dir=out_dir, push_to_hub=hf, **kwargs)
+        training_args = get_training_args(
+            output_dir=out_dir,
+            push_to_hub=hf,
+            # deepspeed=deepspeed,
+            **kwargs
+        )
+        # # need to manually set distributed_type so that accelerator uses DeepSpeed engine
+        # if deepspeed:
+        #     from accelerate.utils import DistributedType
+        #     training_args.distributed_state.distributed_type = DistributedType.DEEPSPEED
+        
+        # if ('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
+        #     optimizers = (get_adam8bit_optimizer(training_args, model), None)
 
     if type(dataset) is not Dataset:
         print('Loading dataset...')
@@ -119,11 +130,11 @@ def get_training_args(**kwargs) -> TrainingArguments:
     """
     default_values = {
         'group_by_length': True,
-        'per_device_train_batch_size': 32,
+        'per_device_train_batch_size': 1,
         'evaluation_strategy': "steps",
         'num_train_epochs': 4,
         'gradient_checkpointing': True,
-        'fp16': True,
+        'fp16': False,
         'save_steps': 100,
         'eval_steps': 100,
         'logging_steps': 100,
@@ -136,7 +147,73 @@ def get_training_args(**kwargs) -> TrainingArguments:
     for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
+    # deepspeed = kwargs.get('deepspeed', None)
+    # if deepspeed == 'default':
+    #     kwargs['deepspeed'] = default_ds()
+    # elif deepspeed:
+    #     with open(deepspeed, 'rb') as f:
+    #         kwargs['deepspeed'] = json.load(f)
+
     return TrainingArguments(**kwargs)
+
+# def default_ds() -> dict:
+#     return {
+#         "fp16": {
+#             "enabled": "auto",
+#             "loss_scale": 0,
+#             "loss_scale_window": 1000,
+#             "initial_scale_power": 16,
+#             "hysteresis": 2,
+#             "min_loss_scale": 1
+#         },
+
+#         "optimizer": {
+#             "type": "AdamW",
+#             "params": {
+#                 "lr": "auto",
+#                 "betas": "auto",
+#                 "eps": "auto",
+#                 "weight_decay": "auto"
+#             }
+#         },
+
+#         "scheduler": {
+#             "type": "WarmupLR",
+#             "params": {
+#                 "warmup_min_lr": "auto",
+#                 "warmup_max_lr": "auto",
+#                 "warmup_num_steps": "auto"
+#             }
+#         },
+
+#         "zero_optimization": {
+#             "stage": 3,
+#             "offload_optimizer": {
+#                 "device": "cpu",
+#                 "pin_memory": True
+#             },
+#             "offload_param": {
+#                 "device": "cpu",
+#                 "pin_memory": True
+#             },
+#             "overlap_comm": True,
+#             "contiguous_gradients": True,
+#             "sub_group_size": 1e9,
+#             "reduce_bucket_size": "auto",
+#             "stage3_prefetch_bucket_size": "auto",
+#             "stage3_param_persistence_threshold": "auto",
+#             "stage3_max_live_parameters": 1e9,
+#             "stage3_max_reuse_distance": 1e9,
+#             "stage3_gather_16bit_weights_on_model_save": True
+#         },
+
+#         "gradient_accumulation_steps": "auto",
+#         "gradient_clipping": "auto",
+#         "steps_per_print": 2000,
+#         "train_batch_size": "auto",
+#         "train_micro_batch_size_per_gpu": "auto",
+#         "wall_clock_breakdown": False
+#     }
 
 def download_model(
         processor: Wav2Vec2Processor,
@@ -177,6 +254,7 @@ def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str
     batch["labels"] = processor(text=batch[label_col]).input_ids
     return batch
 
+# TODO: reimplement this
 # def get_adam8bit_optimizer(training_args: TrainingArguments, model: Wav2Vec2ForCTC) -> bnb.optim.Adam8bit:
 #     """
 #     Returns adam 8bit optimizer for given training args and model.
@@ -207,3 +285,6 @@ def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str
 #         lr=training_args.learning_rate,
 #     )
 #     return adam_bnb_optim
+
+if __name__ == '__main__':
+    ...
