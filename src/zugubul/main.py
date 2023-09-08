@@ -26,7 +26,7 @@ from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
 from zugubul.models.dataset import split_data, make_lid_labels
 from zugubul.models.vocab import vocab_from_csv
-from zugubul.models.train import train
+from zugubul.models.train import train, init_train_parser
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
@@ -193,23 +193,6 @@ def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
         help='Path to directory to save vocab.json in. Default is to save it to parent directory of CSV_PATH.'                          
     )
 
-def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
-    add_arg = train_parser.add_argument
-    add_arg('DATA_PATH',# type=lambda x: is_valid_dir(train_parser, x), TODO: create validation function for HF urls
-        help='Folder or HuggingFace URL containing dataset for language identification and/or automatic speech recognition.'                          
-    )
-    add_arg('OUT_PATH',# type=lambda x: is_valid_dir(train_parser, x),
-        help='Folder or HuggingFace URL to save language identification and/or automatic speech recognition model to. '\
-            + 'Recommended format is wav2vec2-large-mms-1b-LANGUAGENAME (if using default model mms-1b-all).'                          
-    )
-    add_arg('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
-    add_arg('--hf', action='store_true', help='Download dataset from and save model to HuggingFace Hub.')
-    add_arg('-m', '--model_url', default='facebook/mms-1b-all',
-        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
-    )
-    add_arg('-ds', '--deepspeed', type=lambda x: 'default' if x=='default' else is_valid_file(train_parser, x),
-        help="Filepath to deepspeed_config.json file, or 'default' to use default configuration."
-    )
 
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
@@ -574,14 +557,12 @@ def handle_train(args: Dict[str, Any]) -> int:
     hf = args['hf']
 
     task = args['TASK'].lower()
-    deepspeed = args['deepspeed']
     model_name = args['model_url']
     train(
         out_dir=out_dir,
         model=model_name,
         dataset=data_dir,
         hf=hf,
-        deepspeed=deepspeed,
         vocab=os.path.join(data_dir,'vocab.json') if not hf else None
     )
     return 0

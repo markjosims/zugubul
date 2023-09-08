@@ -7,12 +7,14 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE
 import torch
 from transformers.trainer_pt_utils import get_parameter_names
 
-from typing import Callable, Optional, Union, Tuple
+from typing import Callable, Optional, Union, Tuple, Sequence
 import os
 import json
+import argparse
 
 from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
 from zugubul.models._metrics import compute_wer
+from zugubul.utils import is_valid_file
 
 # # try setting environment variables to mimic DeepSpeed emulator
 # # might avoid RuntimeError from pytorch
@@ -286,5 +288,42 @@ def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str
 #     )
 #     return adam_bnb_optim
 
+def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
+    add_arg = train_parser.add_argument
+    add_arg('DATA_PATH',# type=lambda x: is_valid_dir(train_parser, x), TODO: create validation function for HF urls
+        help='Folder or HuggingFace URL containing dataset for language identification and/or automatic speech recognition.'                          
+    )
+    add_arg('OUT_PATH',# type=lambda x: is_valid_dir(train_parser, x),
+        help='Folder or HuggingFace URL to save language identification and/or automatic speech recognition model to. '\
+            + 'Recommended format is wav2vec2-large-mms-1b-LANGUAGENAME (if using default model mms-1b-all).'                          
+    )
+    add_arg('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
+    add_arg('--hf', action='store_true', help='Download dataset from and save model to HuggingFace Hub.')
+    add_arg('-m', '--model_url', default='facebook/mms-1b-all',
+        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
+    )
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description='Train Language IDentification (LID) or Automatic Speech Recognition (ASR) model on given dataset.')
+    init_train_parser(parser)
+    args = vars(parser.parse_args(argv))
+
+    data_dir = args['DATA_PATH']
+    out_dir = args['OUT_PATH']
+    hf = args['hf']
+
+    task = args['TASK'].lower()
+    model_name = args['model_url']
+    train(
+        out_dir=out_dir,
+        model=model_name,
+        dataset=data_dir,
+        hf=hf,
+        vocab=os.path.join(data_dir,'vocab.json') if not hf else None
+    )
+    return 0
+
+    
+
 if __name__ == '__main__':
-    ...
+    main()
