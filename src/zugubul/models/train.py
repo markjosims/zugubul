@@ -1,4 +1,4 @@
-from transformers import Trainer, Wav2Vec2ForCTC, DataCollator, TrainingArguments, Wav2Vec2Processor
+from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification, Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download
 from safetensors.torch import save_file as safe_save_file
@@ -16,32 +16,24 @@ from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
 from zugubul.models._metrics import compute_wer
 from zugubul.utils import is_valid_file
 
-# # try setting environment variables to mimic DeepSpeed emulator
-# # might avoid RuntimeError from pytorch
-# # taken from https://huggingface.co/docs/transformers/main_classes/deepspeed#deployment-with-multiple-gpus
-# os.environ["MASTER_ADDR"] = "localhost"
-# os.environ["MASTER_PORT"] = "9994"  # modify if RuntimeError: Address already in use
-# os.environ["RANK"] = "0"
-# os.environ["LOCAL_RANK"] = "0"
-# os.environ["WORLD_SIZE"] = "1"
 
 def train(
         out_dir: Union[str, os.PathLike],
         model: Union[str, os.PathLike, Wav2Vec2ForCTC],
         dataset: Union[str, os.PathLike, Dataset],
+        model_wrapper : Union[Wav2Vec2Model, None] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         optimizers = (None, None),
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
-        # deepspeed: Union[str, os.PathLike, None] = None,
         hf: bool = True,
         **kwargs
     ) -> str:
 
-    if hf:
-        login()
+    # if hf:
+    #     login()
 
     if not processor:
         if hf:
@@ -58,7 +50,7 @@ def train(
 
     if type(model) is not Wav2Vec2ForCTC:
         print('Downloading model...')
-        model = download_model(processor, model_name=model, **kwargs)
+        model = download_model(processor, model_name=model, model_wrapper=model_wrapper, **kwargs)
 
     print('Preparing model for finetuning...')
     # taken from https://huggingface.co/blog/mms_adapters
@@ -73,16 +65,8 @@ def train(
         training_args = get_training_args(
             output_dir=out_dir,
             push_to_hub=hf,
-            # deepspeed=deepspeed,
             **kwargs
         )
-        # # need to manually set distributed_type so that accelerator uses DeepSpeed engine
-        # if deepspeed:
-        #     from accelerate.utils import DistributedType
-        #     training_args.distributed_state.distributed_type = DistributedType.DEEPSPEED
-        
-        # if ('optim' in kwargs) and (kwargs['optim']=='adam8bit'):
-        #     optimizers = (get_adam8bit_optimizer(training_args, model), None)
 
     if type(dataset) is not Dataset:
         print('Loading dataset...')
@@ -121,7 +105,7 @@ def train(
     safe_save_file(model._get_adapters(), adapter_file, metadata={"format": "pt"})
 
     if hf:
-        trainer.push_to_hub(private=True)
+        trainer.push_to_hub()
 
 
 def get_training_args(**kwargs) -> TrainingArguments:
@@ -149,76 +133,12 @@ def get_training_args(**kwargs) -> TrainingArguments:
     for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
-    # deepspeed = kwargs.get('deepspeed', None)
-    # if deepspeed == 'default':
-    #     kwargs['deepspeed'] = default_ds()
-    # elif deepspeed:
-    #     with open(deepspeed, 'rb') as f:
-    #         kwargs['deepspeed'] = json.load(f)
 
     return TrainingArguments(**kwargs)
 
-# def default_ds() -> dict:
-#     return {
-#         "fp16": {
-#             "enabled": "auto",
-#             "loss_scale": 0,
-#             "loss_scale_window": 1000,
-#             "initial_scale_power": 16,
-#             "hysteresis": 2,
-#             "min_loss_scale": 1
-#         },
-
-#         "optimizer": {
-#             "type": "AdamW",
-#             "params": {
-#                 "lr": "auto",
-#                 "betas": "auto",
-#                 "eps": "auto",
-#                 "weight_decay": "auto"
-#             }
-#         },
-
-#         "scheduler": {
-#             "type": "WarmupLR",
-#             "params": {
-#                 "warmup_min_lr": "auto",
-#                 "warmup_max_lr": "auto",
-#                 "warmup_num_steps": "auto"
-#             }
-#         },
-
-#         "zero_optimization": {
-#             "stage": 3,
-#             "offload_optimizer": {
-#                 "device": "cpu",
-#                 "pin_memory": True
-#             },
-#             "offload_param": {
-#                 "device": "cpu",
-#                 "pin_memory": True
-#             },
-#             "overlap_comm": True,
-#             "contiguous_gradients": True,
-#             "sub_group_size": 1e9,
-#             "reduce_bucket_size": "auto",
-#             "stage3_prefetch_bucket_size": "auto",
-#             "stage3_param_persistence_threshold": "auto",
-#             "stage3_max_live_parameters": 1e9,
-#             "stage3_max_reuse_distance": 1e9,
-#             "stage3_gather_16bit_weights_on_model_save": True
-#         },
-
-#         "gradient_accumulation_steps": "auto",
-#         "gradient_clipping": "auto",
-#         "steps_per_print": 2000,
-#         "train_batch_size": "auto",
-#         "train_micro_batch_size_per_gpu": "auto",
-#         "wall_clock_breakdown": False
-#     }
-
 def download_model(
         processor: Wav2Vec2Processor,
+        model_wrapper: Wav2Vec2Model,
         model_name: str = "facebook/mms-1b-all",
         **kwargs
     ) -> Wav2Vec2ForCTC:
@@ -239,7 +159,7 @@ def download_model(
     for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
-    return Wav2Vec2ForCTC.from_pretrained(
+    return model_wrapper.from_pretrained(
         model_name,
         **kwargs
     )
@@ -313,10 +233,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     hf = args['hf']
 
     task = args['TASK'].lower()
+    model_wrapper = Wav2Vec2ForCTC if task == 'asr'\
+        else Wav2Vec2ForSequenceClassification
     model_name = args['model_url']
     train(
         out_dir=out_dir,
         model=model_name,
+        model_wrapper=model_wrapper,
         dataset=data_dir,
         hf=hf,
         vocab=os.path.join(data_dir,'vocab.json') if not hf else None
