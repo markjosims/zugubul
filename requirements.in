@@ -1,13 +1,15 @@
-pympi-ling
-numpy
-scipy
-pyaudio
-transformers
-transformers[torch]
-datasets
-datasets[audio]
-pydub
+transformers==4.32.1
+huggingface_hub==0.16.4
+safetensors==0.3.3
+accelerate==0.22.0
+torch --index-url https://download.pytorch.org/whl/cu118
+torchaudio --index-url https://download.pytorch.org/whl/cu118
+flax==0.7.2
+datasets[audio]==2.14.4
+evaluate==0.4.0
+jiwer==3.0.2
+mpi4py==3.1.4
 tomli
-torch
-evaluate
-jiwer
+tomli_w
+pympi-ling
+pydub
