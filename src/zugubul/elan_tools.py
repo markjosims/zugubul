@@ -124,7 +124,7 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
     return Elan.Eaf(eaf1)
 
 def eaf_data(
-        eaf: str,
+        eaf: Optional[str] = None,
         eaf_obj: Optional[Elan.Eaf] = None,
         tier: Union[str, Sequence[str], None] = None,
         media: Optional[str] = None,
