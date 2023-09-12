@@ -6,6 +6,7 @@ from huggingface_hub import login
 from zugubul.elan_tools import snip_audio, eaf_data
 from math import ceil
 from pathlib import Path
+from pympi import Elan
 import shutil
 import tomli
 import numpy as np
@@ -212,7 +213,7 @@ def balance_lid_data(df: pd.DataFrame, sample_strategy: Literal['upsample', 'dow
     return df
 
 def process_annotation_length(
-        df: Union[pd.DataFrame, str, os.PathLike],
+        data: Union[pd.DataFrame, Elan.Eaf, str, os.PathLike],
         min_gap: int = 200,
         min_length: int = 1000,
         lid: bool = False
@@ -225,33 +226,43 @@ def process_annotation_length(
     If lid = True, use 'lang' column and only merge adjacent annotations that have the same value for 'lang',
     else merge any adjacent annotations and concatenate the value for the 'text' column.
     """
-    if type(df) is not pd.DataFrame:
-        df = pd.read_csv(df)
-    df: pd.DataFrame
-    num_rows = len(df)
+    if type(data) is not pd.DataFrame:
+        suffix = Path(data).suffix
+        if suffix == '.csv':
+            data = pd.read_csv(data)
+        elif suffix == '.eaf':
+            data = eaf_data(eaf=data)
+        elif type(data) is Elan.Eaf:
+            data = eaf_data(eaf_obj=data)
+        else:
+            raise ValueError(
+                "data must be pandas DataFrame, path to a .csv or .eaf file, or an Eaf object."
+            )
+    data: pd.DataFrame
+    num_rows = len(data)
     print(f'Merging annotations within gap of {min_gap} ms...')
     if lid:
         lang_dfs = []
-        for lang in df['lang'].unique():
-            has_lang = df['lang']==lang
-            lang_df = process_annotation_length_innerloop(df[has_lang], min_gap, lid)
+        for lang in data['lang'].unique():
+            has_lang = data['lang']==lang
+            lang_df = process_annotation_length_innerloop(data[has_lang], min_gap, lid)
             lang_dfs.append(lang_df)
-        df = pd.concat(lang_dfs)
+        data = pd.concat(lang_dfs)
     else:
-        df = process_annotation_length_innerloop(df, min_gap, lid)
-    merged_len = len(df)
+        data = process_annotation_length_innerloop(data, min_gap, lid)
+    merged_len = len(data)
     print(f'After merging {merged_len} rows remain from {num_rows}.')
 
     print(f'Dropping rows shorter than {min_length} ms. in duration...')
 
-    duration = df['end'] - df['start']
+    duration = data['end'] - data['start']
     is_min_duration = duration >= min_length
-    df = df[is_min_duration]
+    data = data[is_min_duration]
 
-    drop_len = len(df)
+    drop_len = len(data)
     print(f'After dropping {drop_len} rows remain from {merged_len}.')
 
-    return df
+    return data
 
 def process_annotation_length_innerloop(df: pd.DataFrame, min_gap: int, lid: bool):
     for file in df['wav_source'].unique():
