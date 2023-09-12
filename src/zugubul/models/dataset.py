@@ -227,17 +227,18 @@ def process_annotation_length(
     else merge any adjacent annotations and concatenate the value for the 'text' column.
     """
     if type(data) is not pd.DataFrame:
-        suffix = Path(data).suffix
-        if suffix == '.csv':
-            data = pd.read_csv(data)
-        elif suffix == '.eaf':
-            data = eaf_data(eaf=data)
-        elif type(data) is Elan.Eaf:
+        if type(data) is Elan.Eaf:
             data = eaf_data(eaf_obj=data)
         else:
-            raise ValueError(
-                "data must be pandas DataFrame, path to a .csv or .eaf file, or an Eaf object."
-            )
+            suffix = Path(data).suffix
+            if suffix == '.csv':
+                data = pd.read_csv(data)
+            elif suffix == '.eaf':
+                data = eaf_data(eaf=data)
+            else:
+                raise ValueError(
+                    "data must be pandas DataFrame, path to a .csv or .eaf file, or an Eaf object."
+                )
     data: pd.DataFrame
     num_rows = len(data)
     print(f'Merging annotations within gap of {min_gap} ms...')
