@@ -13,7 +13,7 @@ import json
 import argparse
 
 from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
-from zugubul.models._metrics import compute_wer
+from zugubul.models._metrics import compute_wer, compute_acc
 from zugubul.utils import is_valid_file
 
 
@@ -238,6 +238,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     task = args['TASK'].lower()
     model_wrapper = Wav2Vec2ForCTC if task == 'asr'\
         else Wav2Vec2ForSequenceClassification
+    compute_metrics = compute_wer if task == 'asr'\
+        else compute_acc
     model_name = args['model_url']
     train(
         out_dir=out_dir,
@@ -245,6 +247,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         model_wrapper=model_wrapper,
         dataset=data_dir,
         hf=hf,
+        compute_metrics=compute_metrics,
         vocab=os.path.join(data_dir,'vocab.json') if not hf else None
     )
     return 0
