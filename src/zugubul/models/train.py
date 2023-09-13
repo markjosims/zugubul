@@ -1,4 +1,5 @@
-from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification, Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor
+from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
+    Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
@@ -7,7 +8,7 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE
 import torch
 from transformers.trainer_pt_utils import get_parameter_names
 
-from typing import Callable, Optional, Union, Tuple, Sequence
+from typing import Callable, Optional, Union, Literal, Sequence
 import os
 import json
 import argparse
@@ -24,10 +25,10 @@ def train(
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         optimizers = (None, None),
-        task: str = 'asr',
+        task: Literal['LID', 'ASR'] = 'ASR',
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
-        processor: Optional[Wav2Vec2Processor] = None,
+        processor: Union[Wav2Vec2Processor, Wav2Vec2FeatureExtractor, None] = None,
         hf: bool = True,
         **kwargs
     ) -> str:
@@ -38,7 +39,7 @@ def train(
             login()
             token = HfFolder.get_token()
 
-    if not processor:
+    if (not processor) and (task == 'ASR'):
         if hf:
             vocab = hf_hub_download(
                 repo_id=dataset,
@@ -50,9 +51,18 @@ def train(
 
         print('Initializing processor...')
         processor = init_processor(vocab)
+        feature_extractor = processor.feature_extractor
+    elif (not processor):
+        feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model)
 
     if not isinstance(model, Wav2Vec2Model):
         print('Downloading model...')
+        if task == 'ASR':
+            print('Instantiating model as Wav2Vec2ForCTC for ASR.')
+            model_wrapper = Wav2Vec2ForCTC
+        else:
+            print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
+            model_wrapper = Wav2Vec2ForSequenceClassification
         model = download_model(processor, model_name=model, model_wrapper=model_wrapper, **kwargs)
 
     print('Preparing model for finetuning...')
@@ -85,8 +95,10 @@ def train(
         data_collator = DataCollatorCTCWithPadding(processor, padding=True)
 
     if not compute_metrics:
-        # use wer by default
-        compute_metrics = lambda pred : compute_wer(pred, processor)
+        if task == 'ASR':
+            compute_metrics = lambda pred : compute_wer(pred, processor)
+        else:
+            compute_metrics = compute_acc
 
     print('Starting training...')
     trainer = Trainer(
@@ -97,7 +109,7 @@ def train(
         compute_metrics=compute_metrics,
         train_dataset=dataset['train'],
         eval_dataset=dataset['validation'],
-        tokenizer=processor.feature_extractor,
+        tokenizer=feature_extractor,
     )
     trainer.train()
     print('Done training')
