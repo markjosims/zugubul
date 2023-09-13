@@ -19,7 +19,7 @@ from zugubul.utils import is_valid_file
 
 def train(
         out_dir: Union[str, os.PathLike],
-        model: Union[str, os.PathLike, Wav2Vec2ForCTC],
+        model: Union[str, os.PathLike, Wav2Vec2Model],
         dataset: Union[str, os.PathLike, Dataset],
         model_wrapper : Union[Wav2Vec2Model, None] = None,
         data_collator: Optional[DataCollator] = None,
