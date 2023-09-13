@@ -40,19 +40,12 @@ def train(
             token = HfFolder.get_token()
 
     if (not processor) and (task == 'ASR'):
-        if hf:
-            vocab = hf_hub_download(
-                repo_id=dataset,
-                repo_type='dataset',
-                filename='vocab.json'
-            )
-        if (not hf) and (not vocab):
-            raise ValueError('Either processor object or path to vocab.json must be provided.')
-
+        vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
         processor = init_processor(vocab)
         feature_extractor = processor.feature_extractor
     elif (not processor):
+        print('Downloading feature extractor...')
         feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model)
 
     if not isinstance(model, Wav2Vec2Model):
@@ -60,10 +53,26 @@ def train(
         if task == 'ASR':
             print('Instantiating model as Wav2Vec2ForCTC for ASR.')
             model_wrapper = Wav2Vec2ForCTC
+            model = download_model(
+                processor,
+                model_name=model,
+                model_wrapper=model_wrapper,
+            )
         else:
             print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
             model_wrapper = Wav2Vec2ForSequenceClassification
-        model = download_model(processor, model_name=model, model_wrapper=model_wrapper, **kwargs)
+            vocab = _get_vocab_path(vocab, dataset, hf)
+            with open(vocab, 'r') as f:
+                vocab = json.load(f)
+            label2id = {label: id for label, id in vocab.items()}
+            id2label = {id: label for label, id in vocab.items()}
+            model = download_model(
+                model_name=model,
+                model_wrapper=model_wrapper,
+                num_labels=len(vocab),
+                label2id=label2id,
+                id2label=id2label,
+            )
 
     print('Preparing model for finetuning...')
     # taken from https://huggingface.co/blog/mms_adapters
@@ -122,6 +131,17 @@ def train(
     if hf:
         trainer.push_to_hub()
 
+def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool) -> dict:
+    if hf:
+        vocab = hf_hub_download(
+            repo_id=dataset,
+            repo_type='dataset',
+            filename='vocab.json'
+        )
+    elif not vocab:
+        raise ValueError('Either processor object or path to vocab.json must be provided if not loading from HuggingFace.')
+    return vocab
+
 
 def get_training_args(**kwargs) -> TrainingArguments:
     """
@@ -152,13 +172,13 @@ def get_training_args(**kwargs) -> TrainingArguments:
     return TrainingArguments(**kwargs)
 
 def download_model(
-        processor: Wav2Vec2Processor,
-        model_wrapper: Wav2Vec2Model,
         model_name: str = "facebook/mms-1b-all",
+        model_wrapper: Wav2Vec2Model = Wav2Vec2Model,
+        processor: Optional[Wav2Vec2Processor] = None,
         **kwargs
-    ) -> Wav2Vec2ForCTC:
+    ) -> Union[Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification]:
     """
-    Opens Wav2Vec2ForCTC model at given url or path.
+    Opens Wav2Vec2 model at given url or path.
     Default parameter values taken from https://huggingface.co/blog/mms_adapters
     """
     default_values = {
@@ -167,10 +187,11 @@ def download_model(
         'feat_proj_dropout': 0.0,
         'layerdrop': 0.0,
         'ctc_loss_reduction': "mean",
-        'pad_token_id': processor.tokenizer.pad_token_id,
-        'vocab_size': len(processor.tokenizer),
         'ignore_mismatched_sizes': True,
     }
+    if processor:
+        default_values['pad_token_id'] = processor.tokenizer.pad_token_id,
+        default_values['vocab_size'] = len(processor.tokenizer)
     for k, v in default_values.items():
         if k not in kwargs:
             kwargs[k] = v
