@@ -51,7 +51,7 @@ def train(
         print('Initializing processor...')
         processor = init_processor(vocab)
 
-    if type(model) is not Wav2Vec2ForCTC:
+    if not isinstance(model, Wav2Vec2Model):
         print('Downloading model...')
         model = download_model(processor, model_name=model, model_wrapper=model_wrapper, **kwargs)
 
