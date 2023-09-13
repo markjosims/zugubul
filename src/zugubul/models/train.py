@@ -202,7 +202,12 @@ def download_model(
         **kwargs
     )
 
-def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str) -> Dataset:
+def prepare_dataset(
+        batch: Dataset,
+        processor: Wav2Vec2Processor,
+        label_col: str,
+        task: Literal['ASR', 'LID'],
+    ) -> Dataset:
     """
     Puts dataset in format needed for training.
     Taken from https://huggingface.co/blog/mms_adapters
@@ -211,7 +216,10 @@ def prepare_dataset(batch: Dataset, processor: Wav2Vec2Processor, label_col: str
     batch["input_values"] = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_values[0]
     batch["input_length"] = len(batch["input_values"])
 
-    batch["labels"] = processor(text=batch[label_col]).input_ids
+    if task == 'ASR':
+        batch["labels"] = processor(text=batch[label_col]).input_ids
+    else:
+        batch["labels"] = batch[label_col]
     return batch
 
 # TODO: reimplement this
