@@ -57,7 +57,7 @@ def train(
 
     print('Preparing model for finetuning...')
     # taken from https://huggingface.co/blog/mms_adapters
-    # prepare model for finetuning
+    # freeze non adapter parameters
     model.init_adapter_layers()
     model.freeze_base_model()
     adapter_weights = model._get_adapters()
