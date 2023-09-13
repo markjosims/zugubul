@@ -18,7 +18,7 @@ def compute_wer(pred, processor):
 
     return {"wer": wer}
 
-# from https://huggingface.co/docs/transformers/tasks/audio_classification
+# taken from https://huggingface.co/docs/transformers/tasks/audio_classification on Sep 12 2023
 def compute_acc(pred):
     pred_logits = pred.predictions
     pred_ids = np.argmax(pred_logits, axis=-1)
