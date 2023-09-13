@@ -165,22 +165,15 @@ class DataCollatorSeqClassification:
         # split inputs and labels since they have to be of different lenghts and need
         # different padding methods
         input_features = [{"input_values": feature["input_values"]} for feature in features]
-        label_features = [{"input_ids": feature["labels"]} for feature in features]
+        label_features = [feature["labels"] for feature in features]
+
+        d_type = torch.long if isinstance(label_features[0], int) else torch.float
 
         batch = self.processor.pad(
             input_features,
             padding=self.padding,
             return_tensors="pt",
         )
-        labels_batch = self.processor.pad(
-            labels=label_features,
-            padding=self.padding,
-            return_tensors="pt",
-        )
-
-        # replace padding with -100 to ignore loss correctly
-        labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
-
-        batch["labels"] = labels
+        batch["labels"] = torch.tensor(label_features, dtype=d_type)
 
         return batch

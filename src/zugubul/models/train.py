@@ -5,8 +5,6 @@ from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 #import bitsandbytes as bnb
-import torch
-from transformers.trainer_pt_utils import get_parameter_names
 
 from typing import Callable, Optional, Union, Literal, Sequence
 import os
@@ -15,7 +13,6 @@ import argparse
 
 from zugubul.models.vocab import DataCollatorCTC, DataCollatorSeqClassification, init_processor
 from zugubul.models._metrics import compute_wer, compute_acc
-from zugubul.utils import is_valid_file
 
 
 def train(
@@ -64,7 +61,7 @@ def train(
             vocab = _get_vocab_path(vocab, dataset, hf)
             with open(vocab, 'r') as f:
                 vocab = json.load(f)
-            label2id = {label: id for label, id in vocab.items()}
+            label2id = vocab
             id2label = {id: label for label, id in vocab.items()}
             model = download_model(
                 model_name=model,
@@ -98,7 +95,11 @@ def train(
     dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
     print('Reshaping data columns for training...')
-    dataset = dataset.map(lambda x: prepare_dataset(x, processor, 'lang'))
+    label_col = 'text' if task=='ASR' else 'lang'
+    dataset = dataset.map(
+        lambda x: prepare_dataset(x, processor, label_col, task, vocab),
+        remove_columns=dataset['train'].column_names
+    )
 
     if not data_collator:
         print('Initializing data collator...')
@@ -210,6 +211,7 @@ def prepare_dataset(
         processor: Wav2Vec2Processor,
         label_col: str,
         task: Literal['ASR', 'LID'],
+        label2id: Optional[dict] = None,
     ) -> Dataset:
     """
     Puts dataset in format needed for training.
@@ -222,7 +224,9 @@ def prepare_dataset(
     if task == 'ASR':
         batch["labels"] = processor(text=batch[label_col]).input_ids
     else:
-        batch["labels"] = batch[label_col]
+        if not label2id:
+            raise ValueError("label2id must be passed for LID task.")
+        batch["labels"] = label2id.get(batch[label_col], -1)
     return batch
 
 # TODO: reimplement this
@@ -281,7 +285,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = args['OUT_PATH']
     hf = args['hf']
 
-    task = args['TASK'].lower()
+    task = args['TASK']
     model_name = args['model_url']
     train(
         out_dir=out_dir,
