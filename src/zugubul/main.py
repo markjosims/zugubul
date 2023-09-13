@@ -27,6 +27,7 @@ from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
 from zugubul.models.dataset import split_data, make_lid_labels
 from zugubul.models.vocab import vocab_from_csv
 from zugubul.models.train import train, init_train_parser
+from zugubul.models.infer import infer, annotate
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
@@ -199,6 +200,10 @@ def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
         help='Path to .wav file to run inference on.'
     )
     add_arg("MODEL_URL", help="Path to HuggingFace model to use for inference.")
+    add_arg("TASK", help="Task to use for inference.", choices=['ASR', 'LID'])
+    add_arg("OUT",
+        help='Path to .eaf file to save annotations to.'
+    )
 
 def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_arg = annotate_parser.add_argument
@@ -207,6 +212,10 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     )
     add_arg("LID_URL", help="Path to HuggingFace model to use for language identification.")
     add_arg("ASR_URL", help="Path to HuggingFace model to use for automatic speech recognition.")
+    add_arg("LANG", help="ISO code for target language to annotate.")
+    add_arg("OUT",
+        help='Path to .eaf file to save annotations to.'
+    )
 
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
@@ -581,6 +590,38 @@ def handle_train(args: Dict[str, Any]) -> int:
     )
     return 0
 
+def handle_infer(args: Dict[str, Any]) -> int:
+    wav_file = args['WAV_FILE']
+    model = args['MODEL_URL']
+    task = args['TASK']
+    out_fp = args['OUT']
+
+    eaf = infer(
+        source=wav_file,
+        model=model,
+        task=task,
+    )
+    eaf.to_file(out_fp)
+
+    return 0
+
+def handle_annotate(args: Dict[str, Any]) -> int:
+    wav_file = args['WAV_FILE']
+    lid_model = args['LID_URL']
+    asr_model = args['ASR_URL']
+    tgt_lang = args['LANG']
+    out_fp = args['OUT']
+
+    eaf = annotate(
+        source=wav_file,
+        lid_model=lid_model,
+        asr_model=asr_model,
+        tgt_lang=tgt_lang,
+        inference_method='local',
+    )
+    eaf.to_file(out_fp)
+
+    return 0
 
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
@@ -650,6 +691,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     train_parser = subparsers.add_parser('train', help='Train Language IDentification (LID) or Automatic Speech Recognition (ASR) model on given dataset.')
     init_train_parser(train_parser)
 
+    infer_parser = subparsers.add_parser('infer', help='Run inference on a given audio file.')
+    init_infer_parser(infer_parser)
+
+    annotate_parser = subparsers.add_parser('annotate', help='Automatically annotate a fieldwork recording in the target language.')
+    init_annotate_parser(annotate_parser)
+
     args = vars(parser.parse_args(argv))
 
     command = args['COMMAND']
@@ -671,6 +718,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_vocab(args)
     elif command == 'train':
         return handle_train(args)
+    elif command == 'infer':
+        return handle_infer(args)
+    elif command == 'annotate':
+        return handle_annotate(args)
     return 1
 
 if __name__ == '__main__':
