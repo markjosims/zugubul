@@ -29,9 +29,11 @@ def trim(
         eaf: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
         stopword: str = '',
+        keepword: Optional[str] = None,
     ) -> Elan.Eaf:
     """
-    Remove all annotations of the given tier which contain only the given stopword.
+    Remove all annotations of the given tier which contain only the given stopword,
+    or which don't contain the given keepword.
     By default, remove empty annotations from all tiers.
     """
     if (type(eaf) is not Elan.Eaf):
@@ -39,6 +41,9 @@ def trim(
     else:
         # avoid side effects from editing original eaf object
         eaf = deepcopy(eaf)
+
+    if stopword and keepword:
+        raise ValueError("Either stopword or keepword may be passed, not both.")
 
     if tier is None:
         tier = eaf.get_tier_names()
@@ -51,7 +56,10 @@ def trim(
             a_end = a[1]
             a_mid = (a_start + a_end)/2
             a_value = a[2]
-            if a_value == stopword:
+            if (keepword) and (a_value != keepword):
+                removed = eaf.remove_annotation(t, a_mid)
+                assert removed >= 1
+            elif (not keepword) and (a_value == stopword):
                 removed = eaf.remove_annotation(t, a_mid)
                 assert removed >= 1
     return eaf
