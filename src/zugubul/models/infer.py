@@ -9,7 +9,7 @@ from huggingface_hub import HfFolder, login
 
 from zugubul.rvad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
-from zugubul.elan_tools import snip_audio
+from zugubul.elan_tools import snip_audio, trim
 
 
 
@@ -51,25 +51,35 @@ def infer(
         source: Union[str, os.PathLike],
         model: Union[str, os.PathLike],
         tier: str = 'default-lt',
-        etf: Optional[Union[str, Elan.Eaf]] = None,
+        eaf: Union[str, os.PathLike, Elan.Eaf, None] = None,
+        etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         task: Literal['LID', 'ASR'] = 'ASR',
         inference_method: Literal['api', 'local'] = 'api'
     ) -> Elan.Eaf:
     """
     source is a path to a .wav file,
     model is a path (local or url) to a HF LID model, or the model object itself.
-    Performs VAD on source, preprocesses 
+    tier is a str indicating which tier to add annotations to in .eaf file.
+    eaf is an Eaf obj or a path to a .eaf file.
+    If eaf is not passed, VAD is performed on source and the output is used for annotation.
+    etf is an Eaf object of a .etf template file or a path to a .etf file.
+    task is a str indicating whether language identification or automatic speech recognition is being performed.
+    inference_method is a str indicating whether the HuggingFace api should be used for inference,
+    or whether the model should be downloaded for local inference.
     """
-    eaf = label_speech_segments(
-        wav_fp=source,
-        tier=tier,
-        etf=etf
-    )
-    trimmed_data = process_annotation_length(eaf)
+    if not eaf:
+        eaf = label_speech_segments(
+            wav_fp=source,
+            tier=tier,
+            etf=etf
+        )
+        eaf = process_annotation_length(eaf)
+    elif type(eaf) is not Elan.Eaf:
+        eaf = Elan.Eaf(eaf)
     
     with tempfile.TemporaryDirectory() as tmpdir:
         clip_data = snip_audio(
-            annotations=trimmed_data,
+            annotations=eaf,
             out_dir=tmpdir,
             audio=source
         )
@@ -92,6 +102,35 @@ def infer(
     clip_data.apply(add_rows_to_eaf, axis=1)
 
     return eaf
+
+def annotate(
+        source: Union[str, os.PathLike],
+        lid_model: Union[str, os.PathLike],
+        asr_model: Union[str, os.PathLike],
+        tgt_lang: str,
+        tier: str = 'default-lt',
+        etf: Optional[Union[str, Elan.Eaf]] = None,
+        inference_method: Literal['api', 'local'] = 'api'
+    ) -> Elan.Eaf:
+    lid_eaf = infer(
+        source=source,
+        model=lid_model,
+        tier=tier,
+        etf=etf,
+        task='LID',
+        inference_method=inference_method,
+    )
+    tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
+    annotated_eaf = infer(
+        source=source,
+        model=asr_model,
+        eaf=tgt_eaf,
+        tier=tier,
+        etf=etf,
+        task='ASR',
+        inference_method=inference_method,
+    )
+    return annotated_eaf
 
 if __name__ == '__main__':
     f=r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
