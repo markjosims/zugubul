@@ -1,6 +1,6 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification, Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor
 from datasets import Dataset, Audio, load_dataset
-from huggingface_hub import login, hf_hub_download
+from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 #import bitsandbytes as bnb
@@ -32,8 +32,11 @@ def train(
         **kwargs
     ) -> str:
 
-    # if hf:
-    #     login()
+    if hf:
+        token = HfFolder.get_token()
+        while not token:
+            login()
+            token = HfFolder.get_token()
 
     if not processor:
         if hf:
