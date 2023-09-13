@@ -21,10 +21,10 @@ def train(
         out_dir: Union[str, os.PathLike],
         model: Union[str, os.PathLike, Wav2Vec2Model],
         dataset: Union[str, os.PathLike, Dataset],
-        model_wrapper : Union[Wav2Vec2Model, None] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         optimizers = (None, None),
+        task: str = 'asr',
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Optional[Wav2Vec2Processor] = None,
@@ -236,18 +236,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     hf = args['hf']
 
     task = args['TASK'].lower()
-    model_wrapper = Wav2Vec2ForCTC if task == 'asr'\
-        else Wav2Vec2ForSequenceClassification
-    compute_metrics = compute_wer if task == 'asr'\
-        else compute_acc
     model_name = args['model_url']
     train(
         out_dir=out_dir,
         model=model_name,
-        model_wrapper=model_wrapper,
         dataset=data_dir,
+        task=task,
         hf=hf,
-        compute_metrics=compute_metrics,
         vocab=os.path.join(data_dir,'vocab.json') if not hf else None
     )
     return 0
