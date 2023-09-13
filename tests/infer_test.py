@@ -11,4 +11,4 @@ def test_infer_lid():
     annotations = eaf.get_annotation_data_for_tier('default-lt')
 
     for a in annotations:
-        assert a[0] in ('ENG', 'TIC')
+        assert a[2] in ('ENG', 'TIC')
