@@ -154,7 +154,7 @@ def get_training_args(**kwargs) -> TrainingArguments:
     """
     default_values = {
         'group_by_length': True,
-        'per_device_train_batch_size': 1,
+        'per_device_train_batch_size': 8,
         'evaluation_strategy': "steps",
         'num_train_epochs': 4,
         'gradient_checkpointing': True,
