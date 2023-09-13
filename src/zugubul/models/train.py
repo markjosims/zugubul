@@ -43,10 +43,9 @@ def train(
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
         processor = init_processor(vocab)
-        feature_extractor = processor.feature_extractor
     elif (not processor):
         print('Downloading feature extractor...')
-        feature_extractor = Wav2Vec2FeatureExtractor.from_pretrained(model)
+        processor = Wav2Vec2Processor.from_pretrained(model)
 
     if not isinstance(model, Wav2Vec2Model):
         print('Downloading model...')
@@ -57,6 +56,7 @@ def train(
                 processor,
                 model_name=model,
                 model_wrapper=model_wrapper,
+                task=task,
             )
         else:
             print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -69,6 +69,7 @@ def train(
             model = download_model(
                 model_name=model,
                 model_wrapper=model_wrapper,
+                task=task,
                 num_labels=len(vocab),
                 label2id=label2id,
                 id2label=id2label,
@@ -120,7 +121,7 @@ def train(
         compute_metrics=compute_metrics,
         train_dataset=dataset['train'],
         eval_dataset=dataset['validation'],
-        tokenizer=feature_extractor,
+        tokenizer=processor.feature_extractor,
     )
     trainer.train()
     print('Done training')
@@ -176,27 +177,29 @@ def get_training_args(**kwargs) -> TrainingArguments:
 def download_model(
         model_name: str = "facebook/mms-1b-all",
         model_wrapper: Wav2Vec2Model = Wav2Vec2Model,
+        task: Literal['LID', 'ASR'] = 'ASR',
         processor: Optional[Wav2Vec2Processor] = None,
         **kwargs
     ) -> Union[Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification]:
     """
     Opens Wav2Vec2 model at given url or path.
-    Default parameter values taken from https://huggingface.co/blog/mms_adapters
+    Default parameter values for ASR taken from https://huggingface.co/blog/mms_adapters
     """
-    default_values = {
-        'attention_dropout': 0.0,
-        'hidden_dropout': 0.0,
-        'feat_proj_dropout': 0.0,
-        'layerdrop': 0.0,
-        'ctc_loss_reduction': "mean",
-        'ignore_mismatched_sizes': True,
-    }
-    if processor:
-        default_values['pad_token_id'] = processor.tokenizer.pad_token_id,
-        default_values['vocab_size'] = len(processor.tokenizer)
-    for k, v in default_values.items():
-        if k not in kwargs:
-            kwargs[k] = v
+    if task == 'ASR':
+        default_values = {
+            'attention_dropout': 0.0,
+            'hidden_dropout': 0.0,
+            'feat_proj_dropout': 0.0,
+            'layerdrop': 0.0,
+            'ctc_loss_reduction': "mean",
+            'ignore_mismatched_sizes': True,
+        }
+        if processor:
+            default_values['pad_token_id'] = processor.tokenizer.pad_token_id,
+            default_values['vocab_size'] = len(processor.tokenizer)
+        for k, v in default_values.items():
+            if k not in kwargs:
+                kwargs[k] = v
     return model_wrapper.from_pretrained(
         model_name,
         **kwargs
