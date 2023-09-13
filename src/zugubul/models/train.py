@@ -13,7 +13,7 @@ import os
 import json
 import argparse
 
-from zugubul.models.vocab import DataCollatorCTCWithPadding, init_processor
+from zugubul.models.vocab import DataCollatorCTC, init_processor
 from zugubul.models._metrics import compute_wer, compute_acc
 from zugubul.utils import is_valid_file
 
@@ -101,7 +101,7 @@ def train(
 
     if not data_collator:
         print('Initializing data collator...')
-        data_collator = DataCollatorCTCWithPadding(processor, padding=True)
+        data_collator = DataCollatorCTC(processor, padding=True)
 
     if not compute_metrics:
         if task == 'ASR':
