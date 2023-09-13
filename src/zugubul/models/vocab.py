@@ -28,9 +28,10 @@ def vocab_from_list(
         tokens.remove(' ')
     tokens_dict = {k: v for v, k in enumerate(tokens)}
 
-    # add special tokens
-    tokens_dict['<pad>'] = len(tokens_dict)
-    tokens_dict['<unk>'] = len(tokens_dict)
+    if not lid:
+        # add special tokens (ASR only)
+        tokens_dict['<pad>'] = len(tokens_dict)
+        tokens_dict['<unk>'] = len(tokens_dict)
 
     json_path = os.path.join(vocab_dir, 'vocab.json')
     with open(json_path, 'w') as f:
