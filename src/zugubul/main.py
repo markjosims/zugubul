@@ -193,6 +193,20 @@ def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
         help='Path to directory to save vocab.json in. Default is to save it to parent directory of CSV_PATH.'                          
     )
 
+def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
+    add_arg = infer_parser.add_argument
+    add_arg("WAV_FILE", type=lambda x: is_valid_file(infer_parser, x),
+        help='Path to .wav file to run inference on.'
+    )
+    add_arg("MODEL_URL", help="Path to HuggingFace model to use for inference.")
+
+def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
+    add_arg = annotate_parser.add_argument
+    add_arg("WAV_FILE", type=lambda x: is_valid_file(annotate_parser, x),
+        help='Path to .wav file to run inference on.'
+    )
+    add_arg("LID_URL", help="Path to HuggingFace model to use for language identification.")
+    add_arg("ASR_URL", help="Path to HuggingFace model to use for automatic speech recognition.")
 
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
