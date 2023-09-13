@@ -222,8 +222,8 @@ def snip_audio(
 
         wav_clips = df[from_source].apply(
             lambda r: save_clip(
-                start = int(r['start']),
-                end = int(r['end']),
+                start = r['start'],
+                end = r['end'],
                 source_fp = wav_source,
                 out_dir = out_dir,
                 wav_obj = wav_obj,
@@ -231,7 +231,8 @@ def snip_audio(
             axis=1
         )
         df.loc[from_source, 'wav_clip'] = wav_clips
-
+        df['start'] = df['start'].astype(int)
+        df['end'] = df['end'].astype(int)
     return df
 
 def save_clip(
