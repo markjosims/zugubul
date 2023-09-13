@@ -98,7 +98,8 @@ def train(
     dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
     print('Reshaping data columns for training...')
-    dataset = dataset.map(lambda x: prepare_dataset(x, processor, 'lang'))
+    label_col = 'text' if task=='ASR' else 'lang'
+    dataset = dataset.map(lambda x: prepare_dataset(x, processor, label_col, task))
 
     if not data_collator:
         print('Initializing data collator...')
