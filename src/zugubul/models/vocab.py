@@ -28,9 +28,10 @@ def vocab_from_list(
         tokens.remove(' ')
     tokens_dict = {k: v for v, k in enumerate(tokens)}
 
-    # add special tokens
-    tokens_dict['<pad>'] = len(tokens_dict)
-    tokens_dict['<unk>'] = len(tokens_dict)
+    if not lid:
+        # add special tokens (ASR only)
+        tokens_dict['<pad>'] = len(tokens_dict)
+        tokens_dict['<unk>'] = len(tokens_dict)
 
     json_path = os.path.join(vocab_dir, 'vocab.json')
     with open(json_path, 'w') as f:
@@ -93,7 +94,7 @@ def init_processor(
 
 # taken from https://huggingface.co/blog/mms_adapters on 08 August 2023.
 @dataclass
-class DataCollatorCTCWithPadding:
+class DataCollatorCTC:
     """
     Data collator that will dynamically pad the inputs received.
     Args:
@@ -134,5 +135,45 @@ class DataCollatorCTCWithPadding:
         labels = labels_batch["input_ids"].masked_fill(labels_batch.attention_mask.ne(1), -100)
 
         batch["labels"] = labels
+
+        return batch
+    
+# taken from https://colab.research.google.com/github/m3hrdadfi/soxan/blob/main/notebooks/Emotion_recognition_in_Greek_speech_using_Wav2Vec2.ipynb#scrollTo=ZXVl9qW1Gw_-
+# on 13 Sep 2023
+@dataclass
+class DataCollatorSeqClassification:
+    """
+    Data collator that will dynamically pad the inputs received.
+    Args:
+        processor (:class:`~transformers.Wav2Vec2Processor`)
+            The processor used for proccessing the data.
+        padding (:obj:`bool`, :obj:`str` or :class:`~transformers.tokenization_utils_base.PaddingStrategy`, `optional`, defaults to :obj:`True`):
+            Select a strategy to pad the returned sequences (according to the model's padding side and padding index)
+            among:
+            * :obj:`True` or :obj:`'longest'`: Pad to the longest sequence in the batch (or no padding if only a single
+              sequence if provided).
+            * :obj:`'max_length'`: Pad to a maximum length specified with the argument :obj:`max_length` or to the
+              maximum acceptable input length for the model if that argument is not provided.
+            * :obj:`False` or :obj:`'do_not_pad'` (default): No padding (i.e., can output a batch with sequences of
+              different lengths).
+    """
+
+    processor: Wav2Vec2Processor
+    padding: Union[bool, str] = True
+
+    def __call__(self, features: List[Dict[str, Union[List[int], torch.Tensor]]]) -> Dict[str, torch.Tensor]:
+        # split inputs and labels since they have to be of different lenghts and need
+        # different padding methods
+        input_features = [{"input_values": feature["input_values"]} for feature in features]
+        label_features = [feature["labels"] for feature in features]
+
+        d_type = torch.long if isinstance(label_features[0], int) else torch.float
+
+        batch = self.processor.pad(
+            input_features,
+            padding=self.padding,
+            return_tensors="pt",
+        )
+        batch["labels"] = torch.tensor(label_features, dtype=d_type)
 
         return batch

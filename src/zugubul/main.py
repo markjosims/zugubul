@@ -19,33 +19,36 @@ import os
 from pathlib import Path
 import pandas as pd
 import argparse
-from typing import Optional, Sequence, Mapping
+from typing import Optional, Sequence, Dict, Union, Any
 from datasets import load_dataset
 from huggingface_hub import login, HfApi
 from zugubul.rvad_to_elan import label_speech_segments, RvadError
 from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
 from zugubul.models.dataset import split_data, make_lid_labels
 from zugubul.models.vocab import vocab_from_csv
-from zugubul.models.train import train
+from zugubul.models.train import train, init_train_parser
+from zugubul.models.infer import infer, annotate
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
-
+from pympi import Elan
+import importlib.util
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
-    merge_parser.add_argument('EAF_SOURCE', type=lambda x: is_valid_file(merge_parser, x),
+    add_arg = merge_parser.add_argument
+    add_arg('EAF_SOURCE', type=lambda x: is_valid_file(merge_parser, x),
         help='Filepath for eaf file to take output from (or parent directory of eafs).'
     )
-    merge_parser.add_argument('EAF_MATRIX', type=lambda x: is_valid_file(merge_parser, x),
+    add_arg('EAF_MATRIX', type=lambda x: is_valid_file(merge_parser, x),
         help='Filepath for eaf file to insert annotations into (or parent directory of eafs). '\
     )
-    merge_parser.add_argument('-o', '--eaf_out', type=lambda x: file_in_valid_dir(merge_parser, x),
+    add_arg('-o', '--eaf_out', type=lambda x: file_in_valid_dir(merge_parser, x),
         help='Filepath for eaf file to output to (or parent directory of eafs).'
     )
-    merge_parser.add_argument('-t', '--tier', required=False, nargs='+',
+    add_arg('-t', '--tier', required=False, nargs='+',
         help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
             +'For multiple tiers write tier names separated by space.'
     ) 
-    merge_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
+    add_arg('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
         help='Behavior for treating segments that overlap between the two .eafs. '
             +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
             +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
@@ -55,143 +58,169 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_batch_args(merge_parser)
     
 def init_trim_parser(trim_parser: argparse.ArgumentParser):
-    trim_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(trim_parser, x),
+    add_arg = trim_parser.add_argument
+    add_arg('EAF_FILEPATH', type=lambda x: is_valid_file(trim_parser, x),
         help='Filepath for eaf file to trim (or parent directory of eafs).'
     )
-    trim_parser.add_argument('-o', '--eaf_out', type=lambda x: file_in_valid_dir(trim_parser, x),
+    add_arg('-o', '--eaf_out', type=lambda x: file_in_valid_dir(trim_parser, x),
         help='Filepath for eaf file to output to (or parent directory of eafs).'
     )
-    trim_parser.add_argument('-t', '--tier', required=False, nargs='+',
+    add_arg('-t', '--tier', required=False, nargs='+',
         help='Remove annotations on tier(s). By default removes annotations for all tiers. '\
             +'For multiple tiers write tier names separated by space.'
     ) 
-    trim_parser.add_argument('-s', '--stopword', type=str, default='',
+    add_arg('-s', '--stopword', type=str, default='',
         help='Remove all annotations with this value. By default removes all annotations with no text.'
     ) 
     add_batch_args(trim_parser)
 
 def init_vad_parser(vad_parser: argparse.ArgumentParser):
-    vad_parser.add_argument('WAV_FILEPATH', type=lambda x: is_valid_file(vad_parser, x),
+    add_arg = vad_parser.add_argument
+    add_arg('WAV_FILEPATH', type=lambda x: is_valid_file(vad_parser, x),
         help='Filepath for wav file to be processed (or parent directory).'
     )
-    vad_parser.add_argument('EAF_FILEPATH', type=lambda x: file_in_valid_dir(vad_parser, x),
+    add_arg('EAF_FILEPATH', type=lambda x: file_in_valid_dir(vad_parser, x),
         help='Filepath for eaf file to output to (or parent directory).'
     )
-    vad_parser.add_argument('-s', '--source', type=lambda x: is_valid_file(vad_parser, x),
+    add_arg('-s', '--source', type=lambda x: is_valid_file(vad_parser, x),
         help='Source .eaf file to merge output into (or parent directory).'
     )
-    # vad_parser.add_argument('-m', '--merge_output', help='Filepath to output  to merge output into (or parent directory).')
-    vad_parser.add_argument('--template', type=lambda x: is_valid_file(vad_parser, x),
+    # add_arg('-m', '--merge_output', help='Filepath to output  to merge output into (or parent directory).')
+    add_arg('--template', type=lambda x: is_valid_file(vad_parser, x),
         help='Template .etf file for generating output .eafs.'
     )
-    vad_parser.add_argument('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
+    add_arg('--overlap_behavior', choices=['keep_source', 'keep_matrix', 'keep_both'], default='keep_source', nargs='?',
         help='Behavior for treating segments that overlap between the two .eafs. '
             +'If keep_source: Do not add annotations from EAF_MATRIX that overlap with annotations found in EAF_SOURCE. '\
             +'If keep_matrix: Do not add annotations from EAF_SOURCE that overlap with annotations found in EAF_MATRIX. '\
             +'If keep_both: Add all annotations from EAF_SOURCE, whether they overlap with EAF_MATRIX or not. '\
     )
-    vad_parser.add_argument('-v', '--vad', type=lambda x: is_valid_file(vad_parser, x),
+    add_arg('-v', '--vad', type=lambda x: is_valid_file(vad_parser, x),
         help='Filepath for .vad file linked to the recording. '\
             +'If passed, reads VAD data from file instead of running rVAD_fast.'
     )
-    vad_parser.add_argument('-t', '--tier', nargs='+',
+    add_arg('-t', '--tier', nargs='+',
         help='Tier label(s) to add annotations to. If none specified uses `default-lt`'\
     )
     add_batch_args(vad_parser)
 
 def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
-    eaf_data_parser.add_argument('EAF_FILEPATH', type=lambda x: is_valid_file(eaf_data_parser, x),
+    add_arg = eaf_data_parser.add_argument
+    add_arg('EAF_FILEPATH', type=lambda x: is_valid_file(eaf_data_parser, x),
         help='.eaf file to process metadata for.'
     )
-    eaf_data_parser.add_argument('-o', '--output', type=lambda x: is_valid_file(eaf_data_parser, x),
+    add_arg('-o', '--output', type=lambda x: is_valid_file(eaf_data_parser, x),
         help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
             +'or if EAF_FILEPATH is a directory, create a file named eaf_data.csv in the given directory.'
     )
-    eaf_data_parser.add_argument('-t', '--tier', nargs='+',
+    add_arg('-t', '--tier', nargs='+',
         help='Tier label(s) to read annotation data from. If none specified read from all tiers.'
     )
-    eaf_data_parser.add_argument('-m', '--media',
+    add_arg('-m', '--media',
         help='Path to media file, if different than media path specified in .eaf file.'
     )
     add_batch_args(eaf_data_parser)
 
 def init_split_data_parser(split_data_parser: argparse.ArgumentParser) -> None:
-    split_data_parser.add_argument('EAF_DATA', type=lambda x: is_valid_file(split_data_parser, x),
+    add_arg = split_data_parser.add_argument
+    add_arg('EAF_DATA', type=lambda x: is_valid_file(split_data_parser, x),
         help='Path to eaf_data.csv (output of eaf_data command) to generate data splits from.'
     )
-    split_data_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(split_data_parser, x),
+    add_arg('OUT_DIR', type=lambda x: is_valid_dir(split_data_parser, x),
         help='.csv path to output to. Default behavior is to use same filename as EAF_FILEPATH, '\
             +'or if EAF_FILEPATH is a directory, create a file named split_data.csv in the given directory.'
     )
-    split_data_parser.add_argument('-s', '--splitsize', type=float, nargs=3,
+    add_arg('-s', '--splitsize', type=float, nargs=3,
         help='Size of training, validation and test splits, given as floats where 0 < size < 1. Default is (0.8, 0.1, 0.1).'
     )
-    split_data_parser.add_argument('--lid', action='store_true', help="Indicates data split is being made for LID model (split_data will use 'lang' columns instead of 'text')")
+    add_arg('--lid', action='store_true', help="Indicates data split is being made for LID model (split_data will use 'lang' columns instead of 'text')")
 
 def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
-    snip_audio_parser.add_argument('ANNOTATIONS', type=lambda x: is_valid_file(snip_audio_parser, x),
+    add_arg = snip_audio_parser.add_argument
+    add_arg('ANNOTATIONS', type=lambda x: is_valid_file(snip_audio_parser, x),
         help='Path to eaf_data.csv or .eaf file.'
     )
-    snip_audio_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(snip_audio_parser, x),
+    add_arg('OUT_DIR', type=lambda x: is_valid_dir(snip_audio_parser, x),
         help='Path to folder to save output in.'
     )
-    snip_audio_parser.add_argument('-t', '--tier', nargs='+', help='Tier label(s) to read annotations from (default is to use all tiers).')
+    add_arg('-t', '--tier', nargs='+', help='Tier label(s) to read annotations from (default is to use all tiers).')
 
 def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
-    lid_labels_parser.add_argument('-tl', '--targetlang', help='ISO code or other unique identifier for target (fieldwork) language.')
-    lid_labels_parser.add_argument('-ml', '--metalang', help='ISO code or other unique identifier for meta language.')
-    lid_labels_parser.add_argument('--target_labels', help="Strings to map to target language, or '*' to map all strings except those specified by --meta_labels.", nargs='+')
-    lid_labels_parser.add_argument('--meta_labels', help="Strings to map to meta language, or '*' to map all strings except those specified by --target_labels.", nargs='+')
-    lid_labels_parser.add_argument('-e', '--empty', choices=['target', 'meta', 'exclude'], help='Whether empty annotations should be mapped to target language, meta language, or excluded.')
-    lid_labels_parser.add_argument('--toml', type=lambda x: is_valid_file(lid_labels_parser, x),
+    add_arg = lid_labels_parser.add_argument
+    add_arg('-tl', '--targetlang', help='ISO code or other unique identifier for target (fieldwork) language.')
+    add_arg('-ml', '--metalang', help='ISO code or other unique identifier for meta language.')
+    add_arg('--target_labels', help="Strings to map to target language, or '*' to map all strings except those specified by --meta_labels.", nargs='+')
+    add_arg('--meta_labels', help="Strings to map to meta language, or '*' to map all strings except those specified by --target_labels.", nargs='+')
+    add_arg('-e', '--empty', choices=['target', 'meta', 'exclude'], help='Whether empty annotations should be mapped to target language, meta language, or excluded.')
+    add_arg('--toml', type=lambda x: is_valid_file(lid_labels_parser, x),
         help='Path to a .toml file with metadata for args for this script.'
     )
-    lid_labels_parser.add_argument('--no_length_processing', action='store_true', help='Default behavior is to merge annotations belonging to the same language with a gap of <=2s and delete annotations shorter than 1s.'\
+    add_arg('--no_length_processing', action='store_true', help='Default behavior is to merge annotations belonging to the same language with a gap of <=2s and delete annotations shorter than 1s.'\
         +'Pass this argument to override this behavior and skip processing length for annotations.'
     )
-    lid_labels_parser.add_argument('--min_gap', type=int, help='If performing length processing, the minimum duration (in ms) between to annotations of the same language to avoid merging them.', default=200)
-    lid_labels_parser.add_argument('--min_length', type=int, help='If performing length processing, the minimum duration (in ms) an annotation must be to not be excluded.', default=1000)
-    lid_labels_parser.add_argument('--no_balance', action='store_true', help='Default behavior is to downsample overrepresented categories so that an equal number of each language is represented in the dataset. '\
+    add_arg('--min_gap', type=int, help='If performing length processing, the minimum duration (in ms) between to annotations of the same language to avoid merging them.', default=200)
+    add_arg('--min_length', type=int, help='If performing length processing, the minimum duration (in ms) an annotation must be to not be excluded.', default=1000)
+    add_arg('--no_balance', action='store_true', help='Default behavior is to downsample overrepresented categories so that an equal number of each language is represented in the dataset. '\
         +'Pass this argument to override this behavior and allow for an unequal number of labels for each language.'
     )
 
 def init_lid_data_parser(lid_parser: argparse.ArgumentParser) -> None:
-    lid_parser.add_argument('EAF_DIR', type=lambda x: is_valid_dir(lid_parser, x),
+    add_arg = lid_parser.add_argument
+    add_arg('EAF_DIR', type=lambda x: is_valid_dir(lid_parser, x),
         help='Folder containing .eafs for processing into Language IDentification (LID) dataset.'
     )
-    lid_parser.add_argument('OUT_DIR', type=lambda x: is_valid_dir(lid_parser, x),
+    add_arg('OUT_DIR', type=lambda x: is_valid_dir(lid_parser, x),
         help='Folder to initalize Language IDentification (LID) dataset in.'
     )
-    lid_parser.add_argument('-t', '--tier', nargs='+', help='Tier label(s) to read annotations from (default is to use all tiers).')
+    add_arg('-t', '--tier', nargs='+', help='Tier label(s) to read annotations from (default is to use all tiers).')
 
-    lid_parser.add_argument('-s', '--splitsize', type=float, nargs=3,
+    add_arg('-s', '--splitsize', type=float, nargs=3,
         help='Size of training, validation and test splits, given as floats where 0 < size < 1. Default is (0.8, 0.1, 0.1).'
     )
-    lid_parser.add_argument('-r', '--recursive', action='store_true',
+    add_arg('-r', '--recursive', action='store_true',
         help='Recurse over all subdirectories in EAF_DIR.'
     )
-    lid_parser.add_argument('--hf_user', help='User name for Huggingface Hub. Only pass if wanting to save dataset to Huggingface Hub, otherwise saves locally only.')
-    lid_parser.add_argument('--hf_repo', help='Repo name for Huggingface Hub. Recommended format is lang-task, e.g. tira-asr or sjpm-lid.')
+    add_arg('--hf_user', help='User name for Huggingface Hub. Only pass if wanting to save dataset to Huggingface Hub, otherwise saves locally only.')
+    add_arg('--hf_repo', help='Repo name for Huggingface Hub. Recommended format is lang-task, e.g. tira-asr or sjpm-lid.')
     init_lid_labels_parser(lid_parser)
 
 def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
-    vocab_parser.add_argument('CSV_PATH', type=lambda x: is_valid_file(vocab_parser, x),
+    add_arg = vocab_parser.add_argument
+    add_arg('CSV_PATH', type=lambda x: is_valid_file(vocab_parser, x),
         help='Path to eaf_data.csv or metadata.csv containing data to create vocab with.'                              
     )
-    vocab_parser.add_argument('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
-    vocab_parser.add_argument('--out_dir', type=lambda x: is_valid_dir(vocab_parser, x),
+    add_arg('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
+    add_arg('--out_dir', type=lambda x: is_valid_dir(vocab_parser, x),
         help='Path to directory to save vocab.json in. Default is to save it to parent directory of CSV_PATH.'                          
     )
 
-def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
-    train_parser.add_argument('DATA_DIR', type=lambda x: is_valid_dir(train_parser, x),
-        help='Folder containing dataset for language identification and/or automatic speech recognition.'                          
+def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
+    add_arg = infer_parser.add_argument
+    add_arg("WAV_FILE", type=lambda x: is_valid_file(infer_parser, x),
+        help='Path to .wav file to run inference on.'
     )
-    train_parser.add_argument('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
-    train_parser.add_argument('-m', '--model_url', default='facebook/mms-1b-all',
-        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
+    add_arg("MODEL_URL", help="Path to HuggingFace model to use for inference.")
+    add_arg("TASK", help="Task to use for inference.", choices=['ASR', 'LID'])
+    add_arg("OUT",
+        help='Path to .eaf file to save annotations to.'
     )
 
+def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
+    add_arg = annotate_parser.add_argument
+    add_arg("WAV_FILE", type=lambda x: is_valid_file(annotate_parser, x),
+        help='Path to .wav file to run inference on.'
+    )
+    add_arg("LID_URL", help="Path to HuggingFace model to use for language identification.")
+    add_arg("ASR_URL", help="Path to HuggingFace model to use for automatic speech recognition.")
+    add_arg("LANG", help="ISO code for target language to annotate.")
+    add_arg("OUT",
+        help='Path to .eaf file to save annotations to.'
+    )
+    add_arg("--inference_method", "-im", choices=['local', 'api', 'try_api'], default='try_api',
+        help='Method for running inference. If local, download model if not already downloaded and '\
+            +'run pipeline. If api, use HuggingFace inference API. If try_api, call HuggingFace API '\
+            +'but run locally if API returns error.'        
+    )
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -205,7 +234,7 @@ def add_batch_args(parser: argparse.ArgumentParser) -> None:
                             +'Default behavior is to skip files already present.'
                     )
 
-def handle_merge(args: Mapping) -> int:
+def handle_merge(args: Dict[str, Any]) -> int:
     eaf_source = args['EAF_SOURCE']
     eaf_matrix = args['EAF_MATRIX']
     eaf_out = args['eaf_out']
@@ -255,7 +284,7 @@ def handle_merge(args: Mapping) -> int:
         eaf_to_file_safe(eaf ,eaf_out)
     return 0
 
-def handle_vad(args: Mapping) -> int:
+def handle_vad(args: Dict[str, Any]) -> int:
     wav_fp = args['WAV_FILEPATH']
     eaf_fp = args['EAF_FILEPATH']
     eaf_source = args['source']
@@ -331,7 +360,7 @@ def handle_vad_batch(
         desc='Running voice activity detection',
     )
 
-def handle_trim(args: Mapping) -> int:
+def handle_trim(args: Dict[str, Any]) -> int:
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['eaf_out']
     if not out_fp:
@@ -349,6 +378,7 @@ def handle_trim(args: Mapping) -> int:
         batch_funct(
             f=trim,
             dir=eaf_fp,
+            file_arg='eaf',
             suffix='.eaf',
             kwargs={
                 'tier': tier,
@@ -365,7 +395,7 @@ def handle_trim(args: Mapping) -> int:
         eaf_to_file_safe(eaf, out_fp)
     return 0
 
-def handle_eaf_data(args: Mapping) -> int:
+def handle_eaf_data(args: Dict[str, Any]) -> int:
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['output']
     if not out_fp:
@@ -405,7 +435,7 @@ def handle_eaf_data(args: Mapping) -> int:
 
     return 0
 
-def handle_split_data(args: Mapping) -> int:
+def handle_split_data(args: Dict[str, Any]) -> int:
     eaf_data_fp = args['EAF_DATA']
     out_dir = args['OUT_DIR']
     lid = args['lid']
@@ -422,7 +452,7 @@ def handle_split_data(args: Mapping) -> int:
 
     return 0
 
-def handle_snip_audio(args: Mapping) -> int:
+def handle_snip_audio(args: Dict[str, Any]) -> int:
     annotations = Path(args['ANNOTATIONS'])
     out_dir = Path(args['OUT_DIR'])
     tier = args['tier']
@@ -439,7 +469,7 @@ def handle_snip_audio(args: Mapping) -> int:
 
     return 0
 
-def handle_lid_labels(args: Mapping) -> int:
+def handle_lid_labels(args: Dict[str, Any]) -> int:
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
     targetlang = args['targetlang']
@@ -480,7 +510,7 @@ def handle_lid_labels(args: Mapping) -> int:
 
     return 0
 
-def handle_lid_dataset(args: Mapping) -> int:
+def handle_lid_dataset(args: Dict[str, Any]) -> int:
     eaf_dir = Path(args['EAF_DIR'])
     out_dir = Path(args['OUT_DIR'])
 
@@ -525,7 +555,7 @@ def handle_lid_dataset(args: Mapping) -> int:
         login()
         repo_name = hf_user + '/' + hf_repo
         dataset = load_dataset(out_dir)
-        dataset.push_to_hub(hf_user, private=True)
+        dataset.push_to_hub(repo_name, private=True)
         api = HfApi()
         api.upload_file(
             path_or_fileobj=vocab_path,
@@ -536,7 +566,7 @@ def handle_lid_dataset(args: Mapping) -> int:
 
     return 0
 
-def handle_vocab(args: Mapping) -> int:
+def handle_vocab(args: Dict[str, Any]) -> int:
     csv_path = Path(args['CSV_PATH'])
     task = args['TASK']
     lid = task == 'LID'
@@ -548,16 +578,55 @@ def handle_vocab(args: Mapping) -> int:
     )
     return 0
 
-def handle_train(args: Mapping) -> int:
-    data_dir = Path(args['DATA_DIR'])
+def handle_train(args: Dict[str, Any]) -> int:
+    data_dir = args['DATA_PATH']
+    out_dir = args['OUT_PATH']
+    hf = args['hf']
+
     task = args['TASK'].lower()
     model_name = args['model_url']
     train(
+        out_dir=out_dir,
         model=model_name,
         dataset=data_dir,
-        vocab=data_dir/'vocab.json'
+        hf=hf,
+        vocab=os.path.join(data_dir,'vocab.json') if not hf else None
     )
+    return 0
 
+def handle_infer(args: Dict[str, Any]) -> int:
+    wav_file = args['WAV_FILE']
+    model = args['MODEL_URL']
+    task = args['TASK']
+    out_fp = args['OUT']
+
+    eaf = infer(
+        source=wav_file,
+        model=model,
+        task=task,
+    )
+    eaf.to_file(out_fp)
+
+    return 0
+
+def handle_annotate(args: Dict[str, Any]) -> int:
+    wav_file = args['WAV_FILE']
+    lid_model = args['LID_URL']
+    asr_model = args['ASR_URL']
+    tgt_lang = args['LANG']
+    out_fp = args['OUT']
+    inference_method = args['inference_method']
+
+    eaf = annotate(
+        source=wav_file,
+        lid_model=lid_model,
+        asr_model=asr_model,
+        tgt_lang=tgt_lang,
+        inference_method=inference_method,
+    )
+    eaf.to_file(out_fp)
+
+    return 0
 
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
@@ -567,7 +636,7 @@ def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     return os.path.join(out_folder, Path(data_file).stem + '.eaf')
 
 
-def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
+def save_eaf_batch(data_file: str, out: Elan.Eaf, out_folder: str) -> str:
     """
     Saves output provided by batch_funct to filepath with same name as data_file
     in directory out_folder.
@@ -578,7 +647,7 @@ def save_eaf_batch(data_file: str, out, out_folder: str) -> str:
     out_path = out_path
     if out:
         eaf_to_file_safe(out ,out_path)
-        return out_path
+    return out_path
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -627,6 +696,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     train_parser = subparsers.add_parser('train', help='Train Language IDentification (LID) or Automatic Speech Recognition (ASR) model on given dataset.')
     init_train_parser(train_parser)
 
+    infer_parser = subparsers.add_parser('infer', help='Run inference on a given audio file.')
+    init_infer_parser(infer_parser)
+
+    annotate_parser = subparsers.add_parser('annotate', help='Automatically annotate a fieldwork recording in the target language.')
+    init_annotate_parser(annotate_parser)
+
     args = vars(parser.parse_args(argv))
 
     command = args['COMMAND']
@@ -648,6 +723,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_vocab(args)
     elif command == 'train':
         return handle_train(args)
+    elif command == 'infer':
+        return handle_infer(args)
+    elif command == 'annotate':
+        return handle_annotate(args)
     return 1
 
 if __name__ == '__main__':

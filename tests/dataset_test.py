@@ -126,10 +126,6 @@ def test_load_dataset(tmp_dataset):
     dataset = load_dataset(tmp_dataset)
     assert dataset['train'][0]['text'] == 'train'
 
-def test_load_dataset_tira():
-    tira_lid_dir = r'C:\projects\xlsr-sandbox\data\elan\lid_dataset'
-    dataset = load_dataset(tira_lid_dir)
-
 
 def test_split_data(tmp_unsplit_data):
     dir_path, csv_path = tmp_unsplit_data

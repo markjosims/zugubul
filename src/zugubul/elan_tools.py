@@ -29,9 +29,11 @@ def trim(
         eaf: Union[str, Elan.Eaf],
         tier: Optional[Union[str, Sequence]] = None,
         stopword: str = '',
+        keepword: Optional[str] = None,
     ) -> Elan.Eaf:
     """
-    Remove all annotations of the given tier which contain only the given stopword.
+    Remove all annotations of the given tier which contain only the given stopword,
+    or which don't contain the given keepword.
     By default, remove empty annotations from all tiers.
     """
     if (type(eaf) is not Elan.Eaf):
@@ -39,6 +41,9 @@ def trim(
     else:
         # avoid side effects from editing original eaf object
         eaf = deepcopy(eaf)
+
+    if stopword and keepword:
+        raise ValueError("Either stopword or keepword may be passed, not both.")
 
     if tier is None:
         tier = eaf.get_tier_names()
@@ -51,7 +56,10 @@ def trim(
             a_end = a[1]
             a_mid = (a_start + a_end)/2
             a_value = a[2]
-            if a_value == stopword:
+            if (keepword) and (a_value != keepword):
+                removed = eaf.remove_annotation(t, a_mid)
+                assert removed >= 1
+            elif (not keepword) and (a_value == stopword):
                 removed = eaf.remove_annotation(t, a_mid)
                 assert removed >= 1
     return eaf
@@ -124,7 +132,7 @@ def open_eaf_safe(eaf1: Union[str, Elan.Eaf], eaf2: Union[str, Elan.Eaf]) -> Ela
     return Elan.Eaf(eaf1)
 
 def eaf_data(
-        eaf: str,
+        eaf: Optional[str] = None,
         eaf_obj: Optional[Elan.Eaf] = None,
         tier: Union[str, Sequence[str], None] = None,
         media: Optional[str] = None,
@@ -132,11 +140,11 @@ def eaf_data(
     if not eaf_obj:
         eaf_obj = Elan.Eaf(eaf)
 
-    media_paths = eaf_obj.media_descriptors
+    media_paths = [x['MEDIA_URL'] for x in eaf_obj.media_descriptors]
     if (media) and (media not in media_paths):
         raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
     if not media:
-        media = media_paths[0]['MEDIA_URL']
+        media = media_paths[0]
         # trim prefix added by ELAN
         media = media.replace('file:///', '')
         if len(media_paths) > 1:
@@ -222,8 +230,8 @@ def snip_audio(
 
         wav_clips = df[from_source].apply(
             lambda r: save_clip(
-                start = int(r['start']),
-                end = int(r['end']),
+                start = r['start'],
+                end = r['end'],
                 source_fp = wav_source,
                 out_dir = out_dir,
                 wav_obj = wav_obj,
@@ -231,7 +239,8 @@ def snip_audio(
             axis=1
         )
         df.loc[from_source, 'wav_clip'] = wav_clips
-
+        df['start'] = df['start'].astype(int)
+        df['end'] = df['end'].astype(int)
     return df
 
 def save_clip(
