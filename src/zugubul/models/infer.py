@@ -1,9 +1,10 @@
-from typing import Union, Optional, Literal
+from typing import Union, Optional, Literal, Sequence, List
 
 import os
 import tempfile
 import requests
 from pympi import Elan
+from time import sleep
 from transformers import pipeline
 from huggingface_hub import HfFolder, login
 
@@ -13,7 +14,7 @@ from zugubul.elan_tools import snip_audio, trim
 
 
 
-def query(filename: str, model: str, label_only: bool = False) -> dict:
+def query(filename: str, model: str, label_only: bool = False, task: Literal['ASR', 'LID'] = 'ASR') -> dict:
     api_url = f"https://api-inference.huggingface.co/models/{model}"
     token = HfFolder.get_token()
     while not token:
@@ -26,11 +27,46 @@ def query(filename: str, model: str, label_only: bool = False) -> dict:
 
     response = requests.post(api_url, headers=headers, data=data)
     while response.status_code == 503:
-        print("Model still loading, stand by...")
+        wait_time = response.json()['estimated_time']
+        print(f"Model still loading, waiting for {wait_time} seconds...")
+        sleep(wait_time)
         response = requests.post(api_url, headers=headers, data=data)
+    print("Fetched query.")
     if label_only:
-        return get_label_from_query(response.json())
+        if task == 'LID':
+            return get_label_from_query(response.json())
+        return response.json()['text']
     return response.json()
+
+def query_list(
+        filename: Sequence[str],
+        model: str,
+        task: Literal['ASR', 'LID'] = 'ASR',
+        label_only: bool = False,
+    ) -> List[Union[str, dict[str, str]]]:
+    # only build pipeline if API query returns error
+    pipe = None
+    outputs = []
+    for f in filename:
+        if pipe:
+            response_obj = pipe(f)
+        else:
+            response_obj = query(f, model)
+            if 'error' in response_obj:
+                print("API returned error, building local pipeline...")
+                pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
+                    else 'audio-classification'
+                pipe = pipeline(pipeline_class, model)
+                response_obj = pipe(f)
+
+        if label_only and (task=='LID'):
+            outputs.append(get_label_from_query(response_obj))
+        elif label_only and (task=='ASR'):
+            outputs.append(response_obj['text'])
+        else:
+            outputs.append(response_obj)
+    
+    return outputs
 
 def get_label_from_query(response_obj: list) -> str:
     max_score = 0
@@ -39,13 +75,8 @@ def get_label_from_query(response_obj: list) -> str:
         score, label = score_dict['score'], score_dict['label']
         if score > max_score:
             pred = label
-    # need to get model to replace "LABEL_n" with ISO code
-    # for now replace manually
-    id2label = {
-        'LABEL_0': 'TIC',
-        'LABEL_1': 'ENG',
-    }
-    return id2label[pred]
+            max_score = score
+    return pred
 
 def infer(
         source: Union[str, os.PathLike],
@@ -54,7 +85,7 @@ def infer(
         eaf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         task: Literal['LID', 'ASR'] = 'ASR',
-        inference_method: Literal['api', 'local'] = 'api'
+        inference_method: Literal['api', 'local', 'try_api'] = 'try_api'
     ) -> Elan.Eaf:
     """
     source is a path to a .wav file,
@@ -68,31 +99,47 @@ def infer(
     or whether the model should be downloaded for local inference.
     """
     if not eaf:
+        print("Performing VAD...")
         eaf = label_speech_segments(
             wav_fp=source,
             tier=tier,
             etf=etf
         )
-        eaf = process_annotation_length(eaf)
-    elif type(eaf) is not Elan.Eaf:
-        eaf = Elan.Eaf(eaf)
+        data = process_annotation_length(eaf)
+    else:
+        if type(eaf) is not Elan.Eaf:
+            eaf = Elan.Eaf(eaf)
+        data = eaf
+    
     
     with tempfile.TemporaryDirectory() as tmpdir:
         clip_data = snip_audio(
-            annotations=eaf,
+            annotations=data,
             out_dir=tmpdir,
             audio=source
         )
-    
+
+        print(f"Running inference for {task}...")
         if inference_method == 'local':
             pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
                 else 'audio-classification'
             pipe = pipeline(pipeline_class, model)
-            pipe_out = pipe(clip_data['wav_clip'])
-            labels = [get_label_from_query(x) for x in pipe_out]
-        else:
+            pipe_out = clip_data['wav_clip'].apply(pipe)
+            if task == 'LID':
+                labels = [get_label_from_query(x) for x in pipe_out]
+            else:
+                labels = [x['text'] for x in pipe_out]
+        elif inference_method == 'api':
             query_rows = lambda clip_f: query(clip_f, model, label_only=True)
             labels = clip_data['wav_clip'].apply(query_rows)
+        else:
+            # inference_method == 'try_api'
+            labels = query_list(
+                clip_data['wav_clip'],
+                model,
+                task,
+                label_only=True
+            )
         clip_data['text'] = labels
 
 
@@ -120,7 +167,9 @@ def annotate(
         task='LID',
         inference_method=inference_method,
     )
+    print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
     tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
+    print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
     annotated_eaf = infer(
         source=source,
         model=asr_model,
@@ -131,8 +180,3 @@ def annotate(
         inference_method=inference_method,
     )
     return annotated_eaf
-
-if __name__ == '__main__':
-    f=r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
-    model = 'markjosims/wav2vec2-large-mms-1b-tira-lid'
-    query(f, model)
