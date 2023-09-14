@@ -216,7 +216,11 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_arg("OUT",
         help='Path to .eaf file to save annotations to.'
     )
-
+    add_arg("--inference_method", "-im", choices=['local', 'api', 'try_api'], default='try_api',
+        help='Method for running inference. If local, download model if not already downloaded and '\
+            +'run pipeline. If api, use HuggingFace inference API. If try_api, call HuggingFace API '\
+            +'but run locally if API returns error.'        
+    )
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
@@ -611,13 +615,14 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     asr_model = args['ASR_URL']
     tgt_lang = args['LANG']
     out_fp = args['OUT']
+    inference_method = args['inference_method']
 
     eaf = annotate(
         source=wav_file,
         lid_model=lid_model,
         asr_model=asr_model,
         tgt_lang=tgt_lang,
-        inference_method='local',
+        inference_method=inference_method,
     )
     eaf.to_file(out_fp)
 
