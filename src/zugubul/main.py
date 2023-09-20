@@ -19,19 +19,10 @@ import os
 from pathlib import Path
 import pandas as pd
 import argparse
-from typing import Optional, Sequence, Dict, Union, Any
-from datasets import load_dataset
-from huggingface_hub import login, HfApi
-from zugubul.rvad_to_elan import label_speech_segments, RvadError
-from zugubul.elan_tools import merge, trim, eaf_data, snip_audio
-from zugubul.models.dataset import split_data, make_lid_labels
-from zugubul.models.vocab import vocab_from_csv
-from zugubul.models.train import train, init_train_parser
-from zugubul.models.infer import infer, annotate
+from typing import Optional, Sequence, Dict, Any
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
-import importlib.util
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = merge_parser.add_argument
@@ -194,6 +185,21 @@ def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
         help='Path to directory to save vocab.json in. Default is to save it to parent directory of CSV_PATH.'                          
     )
 
+def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
+    add_arg = train_parser.add_argument
+    add_arg('DATA_PATH',# type=lambda x: is_valid_dir(train_parser, x), TODO: create validation function for HF urls
+        help='Folder or HuggingFace URL containing dataset for language identification and/or automatic speech recognition.'                          
+    )
+    add_arg('OUT_PATH',# type=lambda x: is_valid_dir(train_parser, x),
+        help='Folder or HuggingFace URL to save language identification and/or automatic speech recognition model to. '\
+            + 'Recommended format is wav2vec2-large-mms-1b-LANGUAGENAME (if using default model mms-1b-all).'                          
+    )
+    add_arg('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
+    add_arg('--hf', action='store_true', help='Download dataset from and save model to HuggingFace Hub.')
+    add_arg('-m', '--model_url', default='facebook/mms-1b-all',
+        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
+    )
+
 def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
     add_arg = infer_parser.add_argument
     add_arg("WAV_FILE", type=lambda x: is_valid_file(infer_parser, x),
@@ -243,6 +249,8 @@ def add_batch_args(parser: argparse.ArgumentParser) -> None:
                     )
 
 def handle_merge(args: Dict[str, Any]) -> int:
+    from zugubul.elan_tools import merge
+
     eaf_source = args['EAF_SOURCE']
     eaf_matrix = args['EAF_MATRIX']
     eaf_out = args['eaf_out']
@@ -293,6 +301,8 @@ def handle_merge(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_vad(args: Dict[str, Any]) -> int:
+    from zugubul.rvad_to_elan import label_speech_segments
+
     wav_fp = args['WAV_FILEPATH']
     eaf_fp = args['EAF_FILEPATH']
     eaf_source = args['source']
@@ -338,6 +348,9 @@ def handle_vad_batch(
     """
     Helper for batch processing of handle_vad
     """
+    from zugubul.rvad_to_elan import label_speech_segments, RvadError
+
+
     assert os.path.isdir(wav_fp) and os.path.isdir(eaf_fp),\
             'If running batch process both WAV_FILEPATH and EAF_FILEPATH must be folders.'
     if eaf_source:
@@ -369,6 +382,8 @@ def handle_vad_batch(
     )
 
 def handle_trim(args: Dict[str, Any]) -> int:
+    from zugubul.elan_tools import trim
+
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['eaf_out']
     if not out_fp:
@@ -404,6 +419,8 @@ def handle_trim(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_eaf_data(args: Dict[str, Any]) -> int:
+    from zugubul.elan_tools import eaf_data
+
     eaf_fp = args['EAF_FILEPATH']
     out_fp = args['output']
     if not out_fp:
@@ -444,6 +461,8 @@ def handle_eaf_data(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_split_data(args: Dict[str, Any]) -> int:
+    from zugubul.models.dataset import split_data
+
     eaf_data_fp = args['EAF_DATA']
     out_dir = args['OUT_DIR']
     lid = args['lid']
@@ -461,6 +480,8 @@ def handle_split_data(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_snip_audio(args: Dict[str, Any]) -> int:
+    from zugubul.elan_tools import snip_audio
+
     annotations = Path(args['ANNOTATIONS'])
     out_dir = Path(args['OUT_DIR'])
     tier = args['tier']
@@ -478,6 +499,8 @@ def handle_snip_audio(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_lid_labels(args: Dict[str, Any]) -> int:
+    from zugubul.models.dataset import make_lid_labels
+
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
     targetlang = args['targetlang']
@@ -519,6 +542,12 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_lid_dataset(args: Dict[str, Any]) -> int:
+    from datasets import load_dataset
+    from huggingface_hub import login, HfApi
+    from zugubul.models.vocab import vocab_from_csv
+
+
+
     eaf_dir = Path(args['EAF_DIR'])
     out_dir = Path(args['OUT_DIR'])
 
@@ -575,6 +604,8 @@ def handle_lid_dataset(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_vocab(args: Dict[str, Any]) -> int:
+    from zugubul.models.vocab import vocab_from_csv
+    
     csv_path = Path(args['CSV_PATH'])
     task = args['TASK']
     lid = task == 'LID'
@@ -587,6 +618,8 @@ def handle_vocab(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_train(args: Dict[str, Any]) -> int:
+    from zugubul.models.train import train
+
     data_dir = args['DATA_PATH']
     out_dir = args['OUT_PATH']
     hf = args['hf']
@@ -604,6 +637,9 @@ def handle_train(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_infer(args: Dict[str, Any]) -> int:
+    from zugubul.models.infer import infer
+
+
     wav_file = args['WAV_FILE']
     model = args['MODEL_URL']
     task = args['TASK']
@@ -619,6 +655,8 @@ def handle_infer(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_annotate(args: Dict[str, Any]) -> int:
+    from zugubul.models.infer import annotate
+
     wav_file = args['WAV_FILE']
     lid_model = args['LID_URL']
     asr_model = args['ASR_URL']
