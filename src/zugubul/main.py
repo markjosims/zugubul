@@ -591,6 +591,7 @@ def handle_train(args: Dict[str, Any]) -> int:
         model=model_name,
         dataset=data_dir,
         hf=hf,
+        task=task,
         vocab=os.path.join(data_dir,'vocab.json') if not hf else None
     )
     return 0
