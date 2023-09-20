@@ -651,15 +651,15 @@ def handle_annotate(args: Dict[str, Any]) -> int:
             recursive=recursive,
             overwrite=overwrite
         )
-
-    eaf = annotate(
-        source=wav_file,
-        lid_model=lid_model,
-        asr_model=asr_model,
-        tgt_lang=tgt_lang,
-        inference_method=inference_method,
-    )
-    eaf.to_file(out_fp)
+    else:
+        eaf = annotate(
+            source=wav_file,
+            lid_model=lid_model,
+            asr_model=asr_model,
+            tgt_lang=tgt_lang,
+            inference_method=inference_method,
+        )
+        eaf.to_file(out_fp)
 
     return 0
 
