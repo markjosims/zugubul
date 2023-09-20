@@ -218,6 +218,7 @@ def snip_audio(
     df['wav_clip'] = ''
 
     for wav_source in tqdm(df['wav_source'].unique(), desc='Snipping audio'):
+        tqdm.write(f'Snipping clips from audio source {wav_source}.')
         from_source = df['wav_source'] == wav_source
         try:
             wav_obj = AudioSegment.from_wav(wav_source)
@@ -239,7 +240,6 @@ def snip_audio(
                 wav_obj = wav_obj,
             ),
             axis=1,
-            desc=f'Snipping clips from audio source {wav_source}.'
         )
         df.loc[from_source, 'wav_clip'] = wav_clips
         df['start'] = df['start'].astype(int)
