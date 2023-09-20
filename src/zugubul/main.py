@@ -664,7 +664,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     out_fp = args['OUT']
     inference_method = args['inference_method']
     tier = args['tier']
-    etf = args['etf']
+    etf = args['template']
 
     batch = args['batch']
     recursive = args['recursive']
