@@ -24,8 +24,8 @@ def run_script_on_server(
             server_fp = server_dir/filename
             
             print(f'Putting {local_fp} to {server_fp}')
-            c.put(str(local_fp), str(server_fp))
-            argv = [arg if arg!=local_fp else server_fp for arg in argv]
+            #c.put(str(local_fp), str(server_fp))
+            argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         # replace local fps with server fp but don't put to server
         server_out_files = []
@@ -33,10 +33,10 @@ def run_script_on_server(
             filename = Path(local_fp).name
             server_fp = server_dir/filename
             server_out_files.append(server_fp)
-            argv = [arg if arg!=local_fp else server_fp for arg in argv]
+            argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         print('Executing command on server...')
-        argv = [server_python, 'zugubul.main'] + argv[1:]
+        argv = [server_python, '-m', 'zugubul.main'] + argv[1:]
         c.run(' '.join(argv))
 
         print('Downloading output files from server...')
@@ -68,6 +68,7 @@ if __name__ == '__main__':
     run_script_on_server(
         argv=[
             'python',
+            'annotate',
             wav_file,
             'markjosims/wav2vec2-large-mms-1b-tira-lid'
             'markjosims/wav2vec2-large-xls-r-300m-tira-colab',
