@@ -1,4 +1,4 @@
-from typing import Union, Optional, Literal, Sequence, List
+from typing import Union, Optional, Literal, Sequence, List, Dict
 
 import os
 import tempfile
@@ -43,7 +43,7 @@ def query_list(
         model: str,
         task: Literal['ASR', 'LID'] = 'ASR',
         label_only: bool = False,
-    ) -> List[Union[str, dict[str, str]]]:
+    ) -> List[Union[str, Dict[str, str]]]:
     # only build pipeline if API query returns error
     pipe = None
     outputs = []
