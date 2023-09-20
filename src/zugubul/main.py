@@ -221,6 +221,13 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
             +'run pipeline. If api, use HuggingFace inference API. If try_api, call HuggingFace API '\
             +'but run locally if API returns error.'        
     )
+    add_arg('-t', '--tier', default='default-lt',
+        help="Add ASR annotations to given tier. By default `default-lt`."
+    )
+    add_arg('--template', type=lambda x: is_valid_file(annotate_parser, x),
+        help='Template .etf file for generating output .eafs.'
+    )
+    
     add_batch_args(annotate_parser)
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
@@ -618,6 +625,8 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     tgt_lang = args['LANG']
     out_fp = args['OUT']
     inference_method = args['inference_method']
+    tier = args['tier']
+    etf = args['etf']
 
     batch = args['batch']
     recursive = args['recursive']
@@ -633,7 +642,9 @@ def handle_annotate(args: Dict[str, Any]) -> int:
                 'lid_model': lid_model,
                 'asr_model': asr_model,
                 'tgt_lang': tgt_lang,
-                'inference_method': inference_method
+                'inference_method': inference_method,
+                'tier': tier,
+                'etf': etf,
             },
             out_path_f=get_eaf_outpath,
             save_f=save_eaf_batch,
