@@ -14,3 +14,4 @@ tomli_w
 tqdm>=4.8
 pympi-ling
 pydub
+fabric
