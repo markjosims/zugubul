@@ -161,6 +161,13 @@ def annotate(
         etf: Optional[Union[str, Elan.Eaf]] = None,
         inference_method: Literal['api', 'local'] = 'api'
     ) -> Elan.Eaf:
+    """
+    Perform LID on source file using model at lid_model (a filepath or URL).
+    Remove all annotations not belonging to the target language, then run ASR
+    using model at asr_model.
+    If tier is provided, add annotations to tier of that name.
+    If etf is provided, use as template for output .eaf file.
+    """
     lid_eaf = infer(
         source=source,
         model=lid_model,
