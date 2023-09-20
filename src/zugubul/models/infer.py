@@ -121,7 +121,7 @@ def infer(
             audio=source
         )
 
-        print(f"Running inference for {task}...")
+        print(f"Running inference for {task} using {model}...")
         if inference_method == 'local':
             pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
                 else 'audio-classification'
