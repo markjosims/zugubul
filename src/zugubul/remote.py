@@ -85,15 +85,15 @@ if __name__ == '__main__':
             'python',
             'annotate',
             wav_file,
-            'markjosims/wav2vec2-large-mms-1b-tira-lid'
+            'markjosims/wav2vec2-large-mms-1b-tira-lid',
             'markjosims/wav2vec2-large-xls-r-300m-tira-colab',
             'TIC',
             eaf_file,
             '--inference_method', 'local',
             '-t', 'IPA Transcription',
-            etf_file,
+            '--template', etf_file,
         ],
-        in_files=[wav_file],
+        in_files=[wav_file, etf_file],
         out_files=[eaf_file],
         server='mjsimmons@grice.ucsd.edu',
         server_python='zugubul/.venv/bin/python'
