@@ -221,6 +221,7 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
             +'run pipeline. If api, use HuggingFace inference API. If try_api, call HuggingFace API '\
             +'but run locally if API returns error.'        
     )
+    add_batch_args(annotate_parser)
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument('-b', '--batch', action='store_true',
