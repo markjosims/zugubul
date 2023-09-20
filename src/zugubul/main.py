@@ -619,6 +619,28 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     out_fp = args['OUT']
     inference_method = args['inference_method']
 
+    batch = args['batch']
+    recursive = args['recursive']
+    overwrite = args['overwrite']
+
+    if batch:
+        batch_funct(
+            f=annotate,
+            dir=wav_file,
+            suffx='.wav',
+            file_arg='source',
+            kwargs={
+                'lid_model': lid_model,
+                'asr_model': asr_model,
+                'tgt_lang': tgt_lang,
+                'inference_method': inference_method
+            },
+            out_path_f=get_eaf_outpath,
+            save_f=save_eaf_batch,
+            recursive=recursive,
+            overwrite=overwrite
+        )
+
     eaf = annotate(
         source=wav_file,
         lid_model=lid_model,
