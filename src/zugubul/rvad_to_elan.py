@@ -71,6 +71,7 @@ def rvad_segs_to_ms(segs: List) -> List:
     return [(start*frame_width, end*frame_width) for start, end in segs]
 
 
+# TODO: add option to run process_length before returning
 def label_speech_segments(
         wav_fp: str,
         rvad_fp: Optional[str] = None,
