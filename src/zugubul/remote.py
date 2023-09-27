@@ -3,9 +3,8 @@
 import os
 from fabric import Connection
 from paramiko.ssh_exception import PasswordRequiredException
-from typing import Sequence, List
+from typing import Sequence
 from pathlib import Path
-from time import time
 
 def run_script_on_server(
         argv: Sequence[str],
@@ -18,9 +17,8 @@ def run_script_on_server(
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
         print(f'Uploading input files to server {server}...')
-        #server_dir = Path(f'/tmp/annotate_{time():.0f}/')
-        server_dir = Path('/tmp/annotate_1695240969/')
-        #c.run(f'mkdir {server_dir}')
+        server_dir = Path('/tmp/annotate/')
+        c.run(f'mkdir {server_dir}')
         for local_fp in in_files:
             filename = Path(local_fp).name
             server_fp = server_dir/filename
