@@ -216,11 +216,11 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_arg("WAV_FILE", type=lambda x: is_valid_file(annotate_parser, x),
         help='Path to .wav file to run inference on.'
     )
-    add_arg("LID_URL", help="Path to HuggingFace model to use for language identification.")
-    add_arg("ASR_URL", help="Path to HuggingFace model to use for automatic speech recognition.")
     add_arg("OUT",
         help='Path to .eaf file to save annotations to.'
     )
+    add_arg("LID_URL", help="Path to HuggingFace model to use for language identification.")
+    add_arg("ASR_URL", help="Path to HuggingFace model to use for automatic speech recognition.")
     add_arg("LANG", help="ISO code for target language to annotate.")
     add_arg("--inference_method", "-im", choices=['local', 'api', 'try_api'], default='try_api',
         help='Method for running inference. If local, download model if not already downloaded and '\
