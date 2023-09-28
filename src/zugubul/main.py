@@ -696,6 +696,8 @@ def handle_annotate(args: Dict[str, Any]) -> int:
             asr_model=asr_model,
             tgt_lang=tgt_lang,
             inference_method=inference_method,
+            tier=tier,
+            etf=etf
         )
         eaf.to_file(out_fp)
 
