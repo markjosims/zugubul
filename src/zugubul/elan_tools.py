@@ -7,6 +7,8 @@ from pydub import AudioSegment
 from pathlib import Path
 from tqdm import tqdm
 
+tqdm.pandas()
+
 """
 Contains following helper functions for processing .eaf files:
 - trim:
@@ -216,6 +218,7 @@ def snip_audio(
     df['wav_clip'] = ''
 
     for wav_source in tqdm(df['wav_source'].unique(), desc='Snipping audio'):
+        tqdm.write(f'Snipping clips from audio source {wav_source}.')
         from_source = df['wav_source'] == wav_source
         try:
             wav_obj = AudioSegment.from_wav(wav_source)
@@ -228,7 +231,7 @@ def snip_audio(
             else:
                 raise error
 
-        wav_clips = df[from_source].apply(
+        wav_clips = df[from_source].progress_apply(
             lambda r: save_clip(
                 start = r['start'],
                 end = r['end'],
@@ -236,7 +239,7 @@ def snip_audio(
                 out_dir = out_dir,
                 wav_obj = wav_obj,
             ),
-            axis=1
+            axis=1,
         )
         df.loc[from_source, 'wav_clip'] = wav_clips
         df['start'] = df['start'].astype(int)
