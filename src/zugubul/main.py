@@ -23,6 +23,7 @@ from typing import Optional, Sequence, Dict, Any
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
+from gooey_tools import HybridGooey, HybridGooeyParser
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = merge_parser.add_argument
@@ -724,9 +725,9 @@ def save_eaf_batch(data_file: str, out: Elan.Eaf, out_folder: str) -> str:
         eaf_to_file_safe(out ,out_path)
     return out_path
 
-
+@HybridGooey
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description='Tools for automatic transcription of audio files with ELAN.')
+    parser = HybridGooeyParser(description='Tools for automatic transcription of audio files with ELAN.')
     subparsers = parser.add_subparsers(dest='COMMAND')
     
     merge_parser = subparsers.add_parser('merge', help='Add all annotations in eaf2 not present in eaf1')
