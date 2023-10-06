@@ -13,20 +13,21 @@ def run_script_on_server(
         in_files: Sequence[str],
         out_files: Sequence[str],
         server: str,
-        server_python: str
+        server_python: str,
+        passphrase: str,
     ) -> int:
-    with connect(server) as c:
+    with connect(server, passphrase) as c:
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
         print(f'Uploading input files to server {server}...')
         server_dir = Path('/tmp/annotate/')
-        c.run(f'mkdir {server_dir}')
+        c.run(f'mkdir -p {server_dir}')
         for local_fp in in_files:
             filename = Path(local_fp).name
             server_fp = server_dir/filename
             
             print(f'Putting {local_fp} to {server_fp}')
-            #c.put(str(local_fp), str(server_fp))
+            c.put(str(local_fp), str(server_fp))
             argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         # replace local fps with server fp but don't put to server
