@@ -24,6 +24,8 @@ from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_
 from tqdm import tqdm
 from pympi import Elan
 from gooey_tools import HybridGooey, HybridGooeyParser
+import importlib_resources
+
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = merge_parser.add_argument
@@ -725,7 +727,10 @@ def save_eaf_batch(data_file: str, out: Elan.Eaf, out_folder: str) -> str:
         eaf_to_file_safe(out ,out_path)
     return out_path
 
-@HybridGooey
+@HybridGooey(
+        program_name='Zugubul',
+        image_dir=importlib_resources.files('zugubul_icons')
+)
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = HybridGooeyParser(description='Tools for automatic transcription of audio files with ELAN.')
     subparsers = parser.add_subparsers(dest='COMMAND')

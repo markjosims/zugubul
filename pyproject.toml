@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["rVAD", "zugubul"]
+packages = ["rVAD", "zugubul", "zugubul_icons"]
 package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
