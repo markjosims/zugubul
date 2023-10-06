@@ -3,8 +3,10 @@
 import os
 from fabric import Connection
 from paramiko.ssh_exception import PasswordRequiredException
-from typing import Sequence
+from typing import Sequence, Optional
 from pathlib import Path
+
+GUI = os.environ.get('GUI')
 
 def run_script_on_server(
         argv: Sequence[str],
@@ -57,14 +59,17 @@ def make_arg_str(argv: Sequence[str]) -> str:
     return arg_str
 
 
-def connect(address: str) -> Connection:
+def connect(address: str, passphrase: Optional[str]) -> Connection:
     connect_kwargs = {
-        'passphrase': os.getenv('SSH_PASSPHRASE')
+        'passphrase': passphrase or os.getenv('SSH_PASSPHRASE')
     }
     r = Connection(address, connect_kwargs=connect_kwargs)
     try:
         r.open()
-    except PasswordRequiredException:
+    except PasswordRequiredException as e:
+        if GUI:
+            # can't use input w/ GUI
+            raise e
         _passphrase = input(f'Type passphrase for connecting to {address}:')
         while not _passphrase:
             _passphrase = input(f'Type passphrase for connecting to {address}:')
