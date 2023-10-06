@@ -1,0 +1,9 @@
+safetensors>=0.3.3
+accelerate>=0.22.0
+torch --index-url https://download.pytorch.org/whl/cu118
+torchaudio --index-url https://download.pytorch.org/whl/cu118
+flax>=0.7.2
+transformers>=4.32.1
+evaluate>=0.4.0
+jiwer>=3.0.2
+mpi4py>=3.1.4
