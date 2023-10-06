@@ -25,7 +25,9 @@ from tqdm import tqdm
 from pympi import Elan
 from gooey_tools import HybridGooey, HybridGooeyParser
 import importlib_resources
+import importlib
 
+TORCH = importlib.util.find_spec('torch') is not None
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = merge_parser.add_argument
@@ -202,6 +204,7 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     add_arg('-m', '--model_url', default='facebook/mms-1b-all',
         help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
     )
+    add_remote_args(train_parser)
 
 def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
     add_arg = infer_parser.add_argument
@@ -213,6 +216,7 @@ def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
     add_arg("OUT",
         help='Path to .eaf file to save annotations to.'
     )
+    add_remote_args(infer_parser)
 
 def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_arg = annotate_parser.add_argument
@@ -238,18 +242,39 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     )
     
     add_batch_args(annotate_parser)
+    add_remote_args(annotate_parser)
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument('-b', '--batch', action='store_true',
+    batch_args = parser.add_argument_group(
+        'batch',
+        'Arguments for running batch command (on directories of files instead of individual files).'
+    )
+    batch_args.add_argument('-b', '--batch', action='store_true',
                         help='Run on all wav files in a given folder.'
                     )
-    parser.add_argument('-r', '--recursive', action='store_true',
+    batch_args.add_argument('-r', '--recursive', action='store_true',
                         help='If running a batch process, recurse over all subdirectories in folder.'
                     )
-    parser.add_argument('--overwrite', action='store_true',
+    batch_args.add_argument('--overwrite', action='store_true',
                         help='If running batch process, overwrite applicable files in already in output directory. '\
                             +'Default behavior is to skip files already present.'
                     )
+
+def add_remote_args(parser: argparse.ArgumentParser) -> None:
+    remote_args = parser.add_argument_group(
+        'remote',
+        description='Arguments for running command on a remote server.'
+    )
+    remote_args.add_argument(
+        "--server",
+        help="Address for server to run command on.",
+        default="mjsimmons@grice.ucsd.edu"
+    )
+    remote_args.add_argument(
+        "--password",
+        help="Password to log in to server.",
+        widget="PasswordField",
+    )
 
 def handle_merge(args: Dict[str, Any]) -> int:
     from zugubul.elan_tools import merge
