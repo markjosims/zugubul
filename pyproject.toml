@@ -6,6 +6,10 @@ build-backend = "setuptools.build_meta"
 packages = ["rVAD", "zugubul"]
 package-dir = {"" = "src"}
 
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+optional-dependencies = {torch = {file = ["torch-requirements.txt"]}}
+
 [project]
 name = "zugubul"
 authors = [
@@ -18,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 version = "0.2.0"
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
 zugubul = "zugubul.main:main"
