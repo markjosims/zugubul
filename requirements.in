@@ -8,3 +8,4 @@ pydub
 fabric
 gooey
 gooey_tools @ git+https://github.com/markjosims/gooey_tools.git
+importlib_resources

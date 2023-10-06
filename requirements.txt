@@ -29,8 +29,6 @@ charset-normalizer==3.3.0
     # via
     #   aiohttp
     #   requests
-colorama==0.4.6
-    # via tqdm
 colored==2.2.3
     # via gooey
 cryptography==41.0.4
@@ -73,6 +71,8 @@ idna==3.4
     # via
     #   requests
     #   yarl
+importlib-resources==6.1.0
+    # via -r requirements.in
 invoke==2.2.0
     # via fabric
 joblib==1.3.2
@@ -195,3 +195,5 @@ xxhash==3.4.1
     # via datasets
 yarl==1.9.2
     # via aiohttp
+zipp==3.17.0
+    # via importlib-resources
