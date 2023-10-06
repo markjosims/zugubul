@@ -175,3 +175,5 @@ cache
 cache/
 sandbox
 sandbox/
+
+.DS_Store
