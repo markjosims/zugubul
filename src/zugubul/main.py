@@ -285,7 +285,14 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
         +'Pass this argument to override this behavior and allow for an unequal number of labels for each language.'
     )
 
-def init_lid_data_parser(lid_parser: argparse.ArgumentParser) -> None:
+def init_asr_labels_parser(asr_labels_parser: argparse.ArgumentParser) -> None:
+    add_arg = asr_labels_parser.add_argument
+    add_arg(
+        '--lang_labels',
+        help='ISO code or other unique identifiers used in LID, to be ignored in ASR.'
+    )
+
+def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
     add_arg = lid_parser.add_argument
     add_arg(
         'EAF_DIR',
@@ -327,7 +334,11 @@ def init_lid_data_parser(lid_parser: argparse.ArgumentParser) -> None:
         '--hf_repo',
         help='Repo name for Huggingface Hub. Recommended format is lang-task, e.g. tira-asr or sjpm-lid.'
     )
-    init_lid_labels_parser(lid_parser)
+    lid_args = lid_parser.add_argument_group('LID', 'Arguments for LID dataset')
+    init_lid_labels_parser(lid_args)
+
+    asr_args = lid_parser.add_argument_group('ASR', 'Arguments for ASR dataset')
+    init_asr_labels_parser(lid_args)
 
 def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
     add_arg = vocab_parser.add_argument
@@ -571,8 +582,13 @@ def handle_vad(args: Dict[str, Any]) -> int:
             recursive=recursive,
             overwrite=overwrite,
         )
-    else:        
+    else: 
+        if not vad:
+            print(f"Performing VAD on {wav_fp}")
+        else:
+            print(f"Reading VAD data from {vad}")
         eaf = label_speech_segments(wav_fp=wav_fp, tier=tier, etf=etf)
+        print(f"Saving EAF file to {eaf_fp}")
         eaf_to_file_safe(eaf, eaf_fp)
     if eaf_source:
         # if eaf_source is passed, perform merge
@@ -788,7 +804,7 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
 
     return 0
 
-def handle_lid_dataset(args: Dict[str, Any]) -> int:
+def handle_dataset(args: Dict[str, Any]) -> int:
     from datasets import load_dataset
     from huggingface_hub import login, HfApi
     from zugubul.models.vocab import vocab_from_csv
@@ -1012,8 +1028,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     init_lid_labels_parser(lid_labels_parser)
 
-    lid_parser = subparsers.add_parser('lid_data', help='Initialize Language IDentification (LID) dataset from directory of .eaf files.')
-    init_lid_data_parser(lid_parser)
+    dataset_parser = subparsers.add_parser('dataset', help='Initialize Language IDentification (LID) and Automatic Speech Recognition (ASR) datasets from directory of .eaf files.')
+    init_dataset_parser(dataset_parser)
 
     vocab_parser = subparsers.add_parser('vocab', help='Create vocab.json for initializing a tokenizer from a datafile (eaf_data.csv or metadata.csv).')
     init_vocab_parser(vocab_parser)
@@ -1042,8 +1058,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_split_data(args)
     elif command == 'lid_labels':
         return handle_lid_labels(args)
-    elif command == 'lid_data':
-        return handle_lid_dataset(args)
+    elif command == 'dataset':
+        return handle_dataset(args)
     elif command == 'vocab':
         return handle_vocab(args)
     elif command == 'train':
