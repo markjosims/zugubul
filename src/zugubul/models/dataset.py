@@ -87,6 +87,38 @@ def split_data(
 
     return out_path
 
+def make_asr_labels(
+        annotations: Union[str, pd.DataFrame],
+        lid_labels: Optional[Sequence[str]] = None,
+        process_length: bool = True,
+        min_gap: int = 200,
+        min_length: int = 1000,
+) -> pd.DataFrame:
+    if type(annotations) is not pd.DataFrame:
+        annotations = Path(annotations)
+        if annotations.suffix == '.csv':
+            annotations = pd.read_csv(annotations)
+        elif annotations.suffix == '.eaf':
+            annotations = eaf_data(annotations)
+        else:
+            raise ValueError('If annotations arg is a filepath, must be .csv or .eaf file.')
+    annotations : pd.DataFrame
+
+    print('Removing LID and empty labels from ASR dataset.')
+    num_rows = len(annotations)
+    is_lid_label = annotations['text'].isin(lid_labels)
+    annotations = annotations[~is_lid_label]
+
+    is_empty = annotations['text'] == ''
+    annotations = annotations[~is_empty]
+
+    print(f'Of {num_rows} original labels {len(annotations)} remain.')
+
+    if process_length:
+        annotations = process_annotation_length(annotations, min_gap=min_gap, min_length=min_length, lid=False)
+    
+    return annotations
+
 def make_lid_labels(
         annotations: Union[str, pd.DataFrame],
         targetlang : Optional[str] = None,
