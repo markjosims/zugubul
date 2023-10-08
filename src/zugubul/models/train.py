@@ -10,8 +10,7 @@ from typing import Callable, Optional, Union, Literal, Sequence
 import os
 import json
 import argparse
-
-from zugubul.models.vocab import DataCollatorCTC, DataCollatorSeqClassification, init_processor
+from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models._metrics import compute_wer, compute_acc
 from zugubul.main import init_train_parser
 

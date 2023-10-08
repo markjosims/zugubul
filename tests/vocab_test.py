@@ -3,8 +3,9 @@ import pytest
 import csv
 import json
 import os
+from zugubul.models.processor import init_processor
 
-from zugubul.models.vocab import vocab_from_csv, vocab_from_list, init_processor
+from zugubul.models.vocab import vocab_from_csv, vocab_from_list
 from transformers import Wav2Vec2CTCTokenizer
 
 
