@@ -695,6 +695,8 @@ def handle_eaf_data(args: Dict[str, Any]) -> int:
         # if eaf_fp is folder, create file eaf_data.csv in folder
         else:
             out_fp = os.path.join(eaf_fp, 'eaf_data.csv')
+    if os.path.isdir(out_fp):
+        out_fp = os.path.join('eaf_data.csv')
     tier = args['tier']
     media = args['media']
     batch = args['batch']
