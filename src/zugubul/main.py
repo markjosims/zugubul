@@ -1043,7 +1043,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
             out_files=out_files,
             server=args['server'],
             server_python=args['server_python'],
-            passphrase=args['passphrase'],
+            passphrase=args['password'],
         )
     from zugubul.models.infer import annotate
 
