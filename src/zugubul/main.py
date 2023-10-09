@@ -23,14 +23,14 @@ from typing import Optional, Sequence, Dict, Any
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
-from gooey_tools import HybridGooey, HybridGooeyParser
+from gooey_tools import HybridGooey, HybridGooeyParser, add_hybrid_arg
 import importlib_resources
 import importlib
 
 TORCH = importlib.util.find_spec('torch') is not None
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
-    add_arg = merge_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(merge_parser, *args, **kwargs)
     add_arg(
         'EAF_SOURCE',
         type=lambda x: is_valid_file(merge_parser, x),
@@ -71,7 +71,7 @@ def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_batch_args(merge_parser)
     
 def init_trim_parser(trim_parser: argparse.ArgumentParser):
-    add_arg = trim_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(trim_parser, *args, **kwargs)
     add_arg(
         'EAF_FILEPATH',
         type=lambda x: is_valid_file(trim_parser, x),
@@ -102,7 +102,7 @@ def init_trim_parser(trim_parser: argparse.ArgumentParser):
     add_batch_args(trim_parser)
 
 def init_vad_parser(vad_parser: argparse.ArgumentParser):
-    add_arg = vad_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(vad_parser, *args, **kwargs)
     add_arg(
         'WAV_FILEPATH',
         type=lambda x: is_valid_file(vad_parser, x),
@@ -152,7 +152,7 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
     add_batch_args(vad_parser)
 
 def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
-    add_arg = eaf_data_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(eaf_data_parser, *args, **kwargs)
     add_arg(
         'EAF_FILEPATH',
         type=lambda x: is_valid_file(eaf_data_parser, x),
@@ -180,7 +180,7 @@ def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
     add_batch_args(eaf_data_parser)
 
 def init_split_data_parser(split_data_parser: argparse.ArgumentParser) -> None:
-    add_arg = split_data_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(split_data_parser, *args, **kwargs)
     add_arg(
         'EAF_DATA',
         type=lambda x: is_valid_file(split_data_parser, x),
@@ -207,7 +207,7 @@ def init_split_data_parser(split_data_parser: argparse.ArgumentParser) -> None:
         help="Indicates data split is being made for LID model (split_data will use 'lang' columns instead of 'text')")
 
 def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
-    add_arg = snip_audio_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(snip_audio_parser, *args, **kwargs)
     add_arg(
         'ANNOTATIONS',
         type=lambda x: is_valid_file(snip_audio_parser, x),
@@ -227,7 +227,7 @@ def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
     )
 
 def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
-    add_arg = lid_labels_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_labels_parser, *args, **kwargs)
     add_arg(
         '-tl',
         '--targetlang',
@@ -240,12 +240,12 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     )
     add_arg(
         '--target_labels',
-        help="Strings to map to target language, or '*' to map all strings except those specified by --meta_labels.", 
+        help="Strings to map to target language, or empty to map all strings except those specified by --meta_labels.", 
         nargs='+'
     )
     add_arg(
         '--meta_labels',
-        help="Strings to map to meta language, or '*' to map all strings except those specified by --target_labels.",
+        help="Strings to map to meta language, or empty to map all strings except those specified by --target_labels.",
         nargs='+'
     )
     add_arg(
@@ -286,14 +286,15 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     )
 
 def init_asr_labels_parser(asr_labels_parser: argparse.ArgumentParser) -> None:
-    add_arg = asr_labels_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(asr_labels_parser, *args, **kwargs)
     add_arg(
         '--lang_labels',
-        help='ISO code or other unique identifiers used in LID, to be ignored in ASR.'
+        help='ISO code or other unique identifiers used in LID, to be ignored in ASR.',
+        nargs='+'
     )
 
 def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
-    add_arg = lid_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_parser, *args, **kwargs)
     add_arg(
         'EAF_DIR',
         type=lambda x: is_valid_dir(lid_parser, x),
@@ -343,7 +344,7 @@ def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
     init_asr_labels_parser(asr_args)
 
 def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
-    add_arg = vocab_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(vocab_parser, *args, **kwargs)
     add_arg(
         'CSV_PATH',
         type=lambda x: is_valid_file(vocab_parser, x),
@@ -363,7 +364,7 @@ def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
     )
 
 def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
-    add_arg = train_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(train_parser, *args, **kwargs)
     add_arg(
         'DATA_PATH',
         # type=lambda x: is_valid_dir(train_parser, x), TODO: create validation function for HF urls
@@ -396,7 +397,7 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     add_remote_args(train_parser)
 
 def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
-    add_arg = infer_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(infer_parser, *args, **kwargs)
     add_arg(
         "WAV_FILE",
         type=lambda x: is_valid_file(infer_parser, x),
@@ -419,7 +420,7 @@ def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
     add_remote_args(infer_parser)
 
 def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
-    add_arg = annotate_parser.add_argument
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(annotate_parser, *args, **kwargs)
     add_arg(
         "WAV_FILE",
         type=lambda x: is_valid_file(annotate_parser, x),
@@ -497,12 +498,13 @@ def add_remote_args(parser: argparse.ArgumentParser) -> None:
         'remote',
         description='Arguments for running command on a remote server.'
     )
-    remote_args.add_argument(
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(remote_args, *args, **kwargs)
+    add_arg(
         "--server",
         help="Address for server to run command on.",
         default="mjsimmons@grice.ucsd.edu"
     )
-    remote_args.add_argument(
+    add_arg(
         "--password",
         help="Password to log in to server.",
         widget="PasswordField",
@@ -696,7 +698,7 @@ def handle_eaf_data(args: Dict[str, Any]) -> int:
         else:
             out_fp = os.path.join(eaf_fp, 'eaf_data.csv')
     if os.path.isdir(out_fp):
-        out_fp = os.path.join('eaf_data.csv')
+        out_fp = os.path.join(out_fp, 'eaf_data.csv')
     tier = args['tier']
     media = args['media']
     batch = args['batch']
@@ -776,15 +778,15 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
     meta_labels = args['meta_labels']
     empty = args['empty']
     process_length = not args['no_length_processing']
-    min_gap = args['min_gap']
-    min_length = args['min_length']
+    min_gap = int(args['min_gap'])
+    min_length = int(args['min_length'])
     balance = not args['no_balance']
     toml = args['toml']
 
-    if target_labels == ['*',]:
-        target_labels = '*'
-    if meta_labels == ['*',]:
-        meta_labels = '*'
+    # if target_labels == ['*',]:
+    #     target_labels = '*'
+    # if meta_labels == ['*',]:
+    #     meta_labels = '*'
 
     if not out_path:
         # default behavior is to overwrite annotations
@@ -831,20 +833,21 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
     # lid_labels
     print('Normalizing LID labels...')
-    args['ANNOTATIONS'] = eaf_dir
-    args['out_path'] = lid_dir
+    args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
+    args['out_path'] = lid_dir/'metadata.csv'
     handle_lid_labels(args)
 
     # split_data
     print('Making train/validation/test splits for LID...')
-    args['EAF_DATA'] = lid_dir
+    args['EAF_DATA'] = lid_dir/'metadata.csv'
+    args['OUT_DIR'] = lid_dir
     args['lid'] = True
     handle_split_data(args)
 
     # make LID tokenizer
     print('Making vocab file for LID...')
     lid_vocab = vocab_from_csv(
-        csv_path=lid_dir/ 'metadata.csv',
+        csv_path=lid_dir/'metadata.csv',
         vocab_dir=lid_dir,
         lid=True
     )
@@ -853,21 +856,23 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     print('Normalizing ASR labels')
     make_asr_labels(
         annotations=eaf_dir/'eaf_data.csv',
-        process_length=args['process_length'],
-        min_gap=args['min_gap'],
-        min_length=args['min_length']
-    )
+        lid_labels=args['lang_labels'],
+        process_length = not args['no_length_processing'],
+        min_gap=int(args['min_gap']),
+        min_length=int(args['min_length']),
+    ).to_csv(asr_dir/'metadata.csv')
 
     # split_data
     print('Making train/validation/test splits for ASR...')
-    args['EAF_DATA'] = asr_dir
+    args['EAF_DATA'] = asr_dir/'metadata.csv'
+    args['OUT_DIR'] = asr_dir
     args['lid'] = False
     handle_split_data(args)
 
     # make ASR tokenizer
     print('Making vocab file for ASR...')
     asr_vocab = vocab_from_csv(
-        csv_path=asr_dir/ 'metadata.csv',
+        csv_path=asr_dir/'metadata.csv',
         vocab_dir=asr_dir,
         lid=False
     )
