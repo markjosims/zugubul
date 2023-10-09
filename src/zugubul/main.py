@@ -658,6 +658,7 @@ def handle_vad(args: Dict[str, Any]) -> int:
         args['EAF_MATRIX'] = eaf_fp
         args['EAF_SOURCE'] = eaf_source
         args['eaf_out'] = eaf_fp
+        args['overwrite'] = True
         handle_merge(args)
     return 0
 
