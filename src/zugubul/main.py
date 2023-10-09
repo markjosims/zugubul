@@ -33,7 +33,7 @@ GOOEY = importlib.util.find_spec('gooey_tools') is not None
 if not GOOEY:
     # hacky way of avoiding calling gooey_tools
     # TODO: clean this up
-    def innocent_wrapper(f, **_):
+    def innocent_wrapper(f=None, **_):
         if not callable(f):
             return innocent_wrapper(f)
         return f
