@@ -565,7 +565,7 @@ def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
     }
     for k, v in default_hyper.items():
         if type(v) is bool:
-            add_arg('--'+k, type=type(v), default=v, action='store_true')
+            add_arg('--'+k, default=v, action='store_true')
         else:
             add_arg('--'+k, type=type(v), default=v)
 
