@@ -1,10 +1,11 @@
-from typing import Union, Optional, Literal, Sequence, List
+from typing import Union, Optional, Literal, Sequence, List, Dict
 
 import os
 import tempfile
 import requests
 from pympi import Elan
 from time import sleep
+from tqdm import tqdm
 from transformers import pipeline
 from huggingface_hub import HfFolder, login
 
@@ -12,7 +13,8 @@ from zugubul.rvad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
 from zugubul.elan_tools import snip_audio, trim
 
-
+# enable pandas progress bars
+tqdm.pandas()
 
 def query(filename: str, model: str, label_only: bool = False, task: Literal['ASR', 'LID'] = 'ASR') -> dict:
     api_url = f"https://api-inference.huggingface.co/models/{model}"
@@ -39,15 +41,15 @@ def query(filename: str, model: str, label_only: bool = False, task: Literal['AS
     return response.json()
 
 def query_list(
-        filename: Sequence[str],
+        filenames: Sequence[str],
         model: str,
         task: Literal['ASR', 'LID'] = 'ASR',
         label_only: bool = False,
-    ) -> List[Union[str, dict[str, str]]]:
+    ) -> List[Union[str, Dict[str, str]]]:
     # only build pipeline if API query returns error
     pipe = None
     outputs = []
-    for f in filename:
+    for f in tqdm(filenames):
         if pipe:
             response_obj = pipe(f)
         else:
@@ -119,19 +121,19 @@ def infer(
             audio=source
         )
 
-        print(f"Running inference for {task}...")
+        print(f"Running inference for {task} using {model}...")
         if inference_method == 'local':
             pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
                 else 'audio-classification'
             pipe = pipeline(pipeline_class, model)
-            pipe_out = clip_data['wav_clip'].apply(pipe)
+            pipe_out = clip_data['wav_clip'].progress_apply(pipe)
             if task == 'LID':
                 labels = [get_label_from_query(x) for x in pipe_out]
             else:
                 labels = [x['text'] for x in pipe_out]
         elif inference_method == 'api':
             query_rows = lambda clip_f: query(clip_f, model, label_only=True)
-            labels = clip_data['wav_clip'].apply(query_rows)
+            labels = clip_data['wav_clip'].progress_apply(query_rows)
         else:
             # inference_method == 'try_api'
             labels = query_list(
@@ -159,6 +161,13 @@ def annotate(
         etf: Optional[Union[str, Elan.Eaf]] = None,
         inference_method: Literal['api', 'local'] = 'api'
     ) -> Elan.Eaf:
+    """
+    Perform LID on source file using model at lid_model (a filepath or URL).
+    Remove all annotations not belonging to the target language, then run ASR
+    using model at asr_model.
+    If tier is provided, add annotations to tier of that name.
+    If etf is provided, use as template for output .eaf file.
+    """
     lid_eaf = infer(
         source=source,
         model=lid_model,

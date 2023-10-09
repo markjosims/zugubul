@@ -71,10 +71,11 @@ def rvad_segs_to_ms(segs: List) -> List:
     return [(start*frame_width, end*frame_width) for start, end in segs]
 
 
+# TODO: add option to run process_length before returning
 def label_speech_segments(
         wav_fp: str,
         rvad_fp: Optional[str] = None,
-        tier: str = 'default-lt',
+        tier: Union[str, List[str]] = 'default-lt',
         dialect: str = 'seg',
         etf: Optional[Union[str, Elan.Eaf]] = None
     ) -> Elan.Eaf:
@@ -87,6 +88,9 @@ def label_speech_segments(
 
     # avoid issues w/ adding linked files in pympi
     wav_fp = wav_fp.replace('.WAV', '.wav')
+
+    if type(tier) is str:
+        tier = [tier,]
 
     if rvad_fp:
         if os.path.isdir(rvad_fp):
@@ -104,13 +108,16 @@ def label_speech_segments(
         else:
             eaf = etf
         etf_tiers = eaf.get_tier_names()
-        if tier not in etf_tiers:
-            raise ValueError(f'tier argument must correspond to tier in .etf file. {tier=}, {etf_tiers=}')
+        for t in tier:
+            if t not in etf_tiers:
+                raise ValueError(f'tier argument must correspond to tier in .etf file. {tier=}, {etf_tiers=}')
     else:
         eaf = Elan.Eaf()
-        eaf.add_tier(tier)
+        for t in tier:
+            eaf.add_tier(t)
     eaf.add_linked_file(wav_fp)
     
     for start, end in times:
-        eaf.add_annotation(tier, start, end)
+        for t in tier:
+            eaf.add_annotation(t, start, end)
     return eaf

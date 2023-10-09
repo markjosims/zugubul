@@ -10,9 +10,9 @@ from typing import Callable, Optional, Union, Literal, Sequence
 import os
 import json
 import argparse
-
-from zugubul.models.vocab import DataCollatorCTC, DataCollatorSeqClassification, init_processor
+from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models._metrics import compute_wer, compute_acc
+from zugubul.main import init_train_parser
 
 
 def train(
@@ -260,21 +260,6 @@ def prepare_dataset(
 #         lr=training_args.learning_rate,
 #     )
 #     return adam_bnb_optim
-
-def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
-    add_arg = train_parser.add_argument
-    add_arg('DATA_PATH',# type=lambda x: is_valid_dir(train_parser, x), TODO: create validation function for HF urls
-        help='Folder or HuggingFace URL containing dataset for language identification and/or automatic speech recognition.'                          
-    )
-    add_arg('OUT_PATH',# type=lambda x: is_valid_dir(train_parser, x),
-        help='Folder or HuggingFace URL to save language identification and/or automatic speech recognition model to. '\
-            + 'Recommended format is wav2vec2-large-mms-1b-LANGUAGENAME (if using default model mms-1b-all).'                          
-    )
-    add_arg('TASK', choices=['LID', 'ASR'], help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).')
-    add_arg('--hf', action='store_true', help='Download dataset from and save model to HuggingFace Hub.')
-    add_arg('-m', '--model_url', default='facebook/mms-1b-all',
-        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
-    )
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='Train Language IDentification (LID) or Automatic Speech Recognition (ASR) model on given dataset.')

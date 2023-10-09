@@ -23,8 +23,7 @@ def split_data(
     or an equivalent pandas DataFrame object.
     out_dir is the path to a data folder to save the new metadata.csv and all clipped recordings to.
     lid is a bool indicating whether the split is being made for a language identification model or not (default False).
-    copy is a bool indicating whether the .wav clips should be copied to the new directories or moved
-    (default False, i.e. clips will be moved).
+    copy is a bool indicating whether the .wav clips should be copied to the new directories or moved (default False, i.e. move).
     splitsize is a tuple of len 3 containing floats the length of each split (training, validation, test), default (0.8, 0.1, 0.1).
     Returns path to the new metadata.csv.
     """
@@ -62,19 +61,20 @@ def split_data(
     }
 
     def move_clip_to_split(clip_fp: Path, split_dir: Path) -> str:
-        out_path = split_dir / clip_fp.name
+        out_relpath = split_dir / clip_fp.name
+        out_fpath = out_dir / out_relpath
         if copy:
-            shutil.copy(clip_fp, out_path)
-            return out_path
-        shutil.move(clip_fp, out_path)
-        return str(out_path)
+            shutil.copy(clip_fp, out_fpath)
+            return out_relpath
+        shutil.move(clip_fp, out_fpath)
+        return str(out_relpath)
 
         
 
     for split, split_df in split_dict.items():
         print(f'Moving {len(split_df)} clips into {split} folder.')
         split_dir = Path(split)
-        os.makedirs(split_dir, exist_ok=True)
+        os.makedirs(out_dir / split_dir, exist_ok=True)
         split_clips = split_df['wav_clip'].apply(
             lambda fp: move_clip_to_split(Path(fp), split_dir)
         )
@@ -87,12 +87,44 @@ def split_data(
 
     return out_path
 
+def make_asr_labels(
+        annotations: Union[str, pd.DataFrame],
+        lid_labels: Optional[Sequence[str]] = None,
+        process_length: bool = True,
+        min_gap: int = 200,
+        min_length: int = 1000,
+) -> pd.DataFrame:
+    if type(annotations) is not pd.DataFrame:
+        annotations = Path(annotations)
+        if annotations.suffix == '.csv':
+            annotations = pd.read_csv(annotations)
+        elif annotations.suffix == '.eaf':
+            annotations = eaf_data(annotations)
+        else:
+            raise ValueError('If annotations arg is a filepath, must be .csv or .eaf file.')
+    annotations : pd.DataFrame
+
+    print('Removing LID and empty labels from ASR dataset.')
+    num_rows = len(annotations)
+    is_lid_label = annotations['text'].isin(lid_labels)
+    annotations = annotations[~is_lid_label]
+
+    is_empty = annotations['text'].isna()
+    annotations = annotations[~is_empty]
+
+    print(f'Of {num_rows} original labels {len(annotations)} remain.')
+
+    if process_length:
+        annotations = process_annotation_length(annotations, min_gap=min_gap, min_length=min_length, lid=False)
+    
+    return annotations
+
 def make_lid_labels(
         annotations: Union[str, pd.DataFrame],
         targetlang : Optional[str] = None,
         metalang: Optional[str] = None,
-        target_labels: Union[Sequence[str], Literal['*'], None] = None,
-        meta_labels: Union[Sequence[str], Literal['*'], None] = None,
+        target_labels: Optional[Sequence[str]] = None,
+        meta_labels: Optional[Sequence[str]] = None,
         empty: Union[Literal['target'], Literal['meta'], Literal['exclude']] = 'exclude',
         process_length: bool = True,
         min_gap: int = 200,
@@ -107,7 +139,7 @@ def make_lid_labels(
     for the target and metalanguage to be identified.
     target_labels is a list indicating all strs to be mapped to targetlang,
     meta_labels is a list indicating all strs to be mapped to metalang.
-    Either target_labels or meta_labels may be the str '*',
+    Either target_labels or meta_labels may be None,
     in which case all non-empty strs not specified by the other arg will be mapped to that language.
     process_length is a bool indicating whether process_annotation_length should be called.
     The min_gap and min_length parameters are passed to process_annotation length.
@@ -135,12 +167,10 @@ def make_lid_labels(
         try:
             assert targetlang
             assert metalang
-            assert target_labels
-            assert meta_labels
         except AssertionError:
             raise ValueError(
-                'If no toml argument is passed, targetlang, metalang, target_labels and meta_labels must all be passed. '\
-                + f'{targetlang=}, {metalang=}, {target_labels=}, {meta_labels=}'
+                'If no toml argument is passed, targetlang and metalang must be passed. '\
+                + f'{targetlang=}, {metalang=}'
             )
 
     if type(annotations) is not pd.DataFrame:
@@ -164,13 +194,13 @@ def make_lid_labels(
         annotations = annotations[~is_empty]
     
 
-    if (target_labels == '*') and (meta_labels == '*'):
-        raise ValueError("target_labels and meta_labels cannot both be '*'")
+    if (not target_labels) and (not meta_labels):
+        raise ValueError("target_labels and meta_labels cannot both be empty.")
 
-    if target_labels == '*':
+    if not target_labels:
         annotations.loc[~is_empty,'lang'] = annotations.loc[~is_empty, 'text']\
             .apply(lambda t: metalang if t in meta_labels else targetlang)
-    elif meta_labels == '*':
+    elif not meta_labels:
         annotations.loc[~is_empty, 'lang'] = annotations.loc[~is_empty, 'text']\
             .apply(lambda t: targetlang if t in target_labels else metalang)
     else:

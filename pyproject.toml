@@ -3,8 +3,12 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["rVAD", "zugubul"]
+packages = ["rVAD", "zugubul", "zugubul_icons"]
 package-dir = {"" = "src"}
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+optional-dependencies = {torch = {file = ["torch-requirements.txt"]}}
 
 [project]
 name = "zugubul"
@@ -18,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
 ]
 version = "0.2.0"
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
 zugubul = "zugubul.main:main"
