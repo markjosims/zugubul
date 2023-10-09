@@ -396,6 +396,7 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
     )
     add_remote_args(train_parser)
+    add_hyperparameter_args(train_parser)
 
 def init_infer_parser(infer_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(infer_parser, *args, **kwargs)
@@ -520,6 +521,35 @@ def add_remote_args(parser: argparse.ArgumentParser) -> None:
         "--server_python",
         help="Path to python interpreter to use on server."
     )
+
+def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
+    hyper_args = parser.add_argument_group(
+        'hyperparameters',
+        description='Hyperparameter values for training'
+    )
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(hyper_args, *args, **kwargs)
+
+    default_hyper = {
+        'group_by_length': True,
+        'per_device_train_batch_size': 1,
+        'evaluation_strategy': "steps",
+        'num_train_epochs': 4,
+        'gradient_checkpointing': True,
+        'fp16': False,
+        'save_steps': 100,
+        'eval_steps': 100,
+        'logging_steps': 100,
+        'learning_rate': 1e-3,
+        'warmup_steps': 100,
+        'save_total_limit': 2,
+        'torch_compile': False,
+        'push_to_hub': False,
+    }
+    for k, v in default_hyper.items():
+        if type(v) is bool:
+            add_arg('--'+k, type=type(v), default=v, action='store_true')
+        else:
+            add_arg('--'+k, type=type(v), default=v)
 
 def handle_merge(args: Dict[str, Any]) -> int:
     from zugubul.elan_tools import merge
@@ -938,6 +968,7 @@ def handle_train(args: Dict[str, Any]) -> int:
         return run_script_on_server(
             sys.argv,
             in_files=[args['DATA_PATH']],
+            out_files=[],
             server=args['server'],
             passphrase=args['password'],
             server_python=args['server_python'],
