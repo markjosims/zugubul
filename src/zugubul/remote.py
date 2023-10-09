@@ -16,11 +16,14 @@ def run_script_on_server(
         server_python: str,
         passphrase: str,
     ) -> int:
+    server_args = [
+        '--remote',
+        '--password', passphrase,
+        '--server', server,
+        '--server_python', server_python,
+    ]
+    argv = [x for x in argv if x not in server_args]
 
-    argv = [x for x in argv if x != '--remote']
-    argv = [x for x in argv if x != passphrase]
-    argv = [x for x in argv if x != server]
-    argv = [x for x in argv if x != server_python]
     with connect(server, passphrase) as c:
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
