@@ -148,7 +148,7 @@ def eaf_data(
     if not media:
         media = media_paths[0]
         # trim prefix added by ELAN
-        media = media.replace('file:///', '')
+        media = media.replace('file://', '')
         if len(media_paths) > 1:
             print(f'No media argument provided and eaf has multiple linked files. {media=}, {media_paths=}')
 
