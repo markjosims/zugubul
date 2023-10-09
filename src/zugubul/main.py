@@ -35,7 +35,7 @@ if not GOOEY:
     # TODO: clean this up
     def innocent_wrapper(f=None, **_):
         if not callable(f):
-            return lambda : innocent_wrapper(f)
+            return lambda f: innocent_wrapper(f)
         return f
     HybridGooey = innocent_wrapper
     HybridGooeyParser = argparse.ArgumentParser
