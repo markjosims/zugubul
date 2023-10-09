@@ -33,16 +33,18 @@ GOOEY = importlib.util.find_spec('gooey_tools') is not None
 if not GOOEY:
     # hacky way of avoiding calling gooey_tools
     # TODO: clean this up
-    def innocent_wrapper(f):
+    def innocent_wrapper(f, **_):
+        if not callable(f):
+            return innocent_wrapper(f)
         return f
     HybridGooey = innocent_wrapper
     HybridGooeyParser = argparse.ArgumentParser
-    def add_hybrid_arg_nogui(parser, *args, **kwargs):
+    def add_arg_nogui(parser, *args, **kwargs):
         kwargs.pop('widget', None)
         if kwargs.get('action', None) in ('store_true', 'store_false'):
             kwargs.pop('metavar', None)
         return parser.add_argument(*args, **kwargs)
-    add_hybrid_arg = add_hybrid_arg_nogui
+    add_hybrid_arg = add_arg_nogui
 else:
     from gooey_tools import HybridGooey, HybridGooeyParser, add_hybrid_arg
 
