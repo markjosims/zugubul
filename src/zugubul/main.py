@@ -516,6 +516,10 @@ def add_remote_args(parser: argparse.ArgumentParser) -> None:
         help="Password to log in to server.",
         widget="PasswordField",
     )
+    add_arg(
+        "--server_python",
+        help="Path to python interpreter to use on server."
+    )
 
 def handle_merge(args: Dict[str, Any]) -> int:
     from zugubul.elan_tools import merge
