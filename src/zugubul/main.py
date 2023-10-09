@@ -16,6 +16,7 @@ If -r flag is provided, and WAV_FILEPATH is a directory, search for wavs recursi
 """
 
 import os
+import sys
 from pathlib import Path
 import pandas as pd
 import argparse
@@ -928,6 +929,18 @@ def handle_vocab(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_train(args: Dict[str, Any]) -> int:
+    if args['remote']:
+        from zugubul.remote import run_script_on_server
+        return run_script_on_server(
+            sys.argv,
+            in_files=[args['DATA_PATH']],
+            server=args['server'],
+            passphrase=args['password'],
+            server_python=args['server_python'],
+        )
+    if not TORCH:
+        print("Cannot run train locally if using Zugubul without PyTorch.")
+        return 1
     from zugubul.models.train import train
 
     data_dir = args['DATA_PATH']
