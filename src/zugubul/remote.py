@@ -16,6 +16,8 @@ def run_script_on_server(
         server_python: str,
         passphrase: str,
     ) -> int:
+
+    argv = [x for x in argv if x != '--remote']
     with connect(server, passphrase) as c:
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
