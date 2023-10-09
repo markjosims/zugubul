@@ -1031,6 +1031,20 @@ def handle_infer(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_annotate(args: Dict[str, Any]) -> int:
+    if args['remote']:
+        from zugubul.remote import run_script_on_server
+        in_files=[args['WAV_FILE']]
+        if args['template']:
+            in_files.append(args['template'])
+        out_files=args['OUT']
+        return run_script_on_server(
+            argv=sys.argv,
+            in_files=in_files,
+            out_files=out_files,
+            server=args['server'],
+            server_python=args['server_python'],
+            passphrase=args['passphrase'],
+        )
     from zugubul.models.infer import annotate
 
     wav_file = args['WAV_FILE']
