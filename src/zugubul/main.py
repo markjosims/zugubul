@@ -1036,7 +1036,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         in_files=[args['WAV_FILE']]
         if args['template']:
             in_files.append(args['template'])
-        out_files=args['OUT']
+        out_files=[args['OUT']]
         return run_script_on_server(
             argv=sys.argv,
             in_files=in_files,
