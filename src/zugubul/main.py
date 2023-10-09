@@ -24,11 +24,28 @@ from typing import Optional, Sequence, Dict, Any
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
-from gooey_tools import HybridGooey, HybridGooeyParser, add_hybrid_arg
 import importlib_resources
 import importlib
 
 TORCH = importlib.util.find_spec('torch') is not None
+GOOEY = importlib.util.find_spec('gooey_tools') is not None
+
+if not GOOEY:
+    # hacky way of avoiding calling gooey_tools
+    # TODO: clean this up
+    def innocent_wrapper(f):
+        return f
+    HybridGooey = innocent_wrapper
+    HybridGooeyParser = argparse.ArgumentParser
+    def add_hybrid_arg_nogui(parser, *args, **kwargs):
+        kwargs.pop('widget', None)
+        if kwargs.get('action', None) in ('store_true', 'store_false'):
+            kwargs.pop('metavar', None)
+        return parser.add_argument(*args, **kwargs)
+    add_hybrid_arg = add_hybrid_arg_nogui
+else:
+    from gooey_tools import HybridGooey, HybridGooeyParser, add_hybrid_arg
+
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = lambda *args, **kwargs: add_hybrid_arg(merge_parser, *args, **kwargs)
