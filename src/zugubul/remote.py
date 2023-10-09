@@ -29,7 +29,10 @@ def run_script_on_server(
             server_fp = server_dir/filename
             
             print(f'Putting {local_fp} to {server_fp}')
-            c.put(str(local_fp), str(server_fp))
+            if os.path.isdir(local_fp):
+                put_dir(local_fp, server_fp, c)
+            else:
+                c.put(str(local_fp), str(server_fp))
             argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         # replace local fps with server fp but don't put to server
@@ -61,6 +64,21 @@ def make_arg_str(argv: Sequence[str]) -> str:
     arg_str = ' '.join(argv)
     return arg_str
 
+def put_dir(local_dir: Path, server_dir: Path, connection: Connection) -> None:
+    connection.run(f'mkdir -p {server_dir}')
+    for dirpath, dirnames, filenames in os.walk(local_dir):
+        for fname in filenames:
+            local_fpath = os.path.join(dirpath, fname)
+            relpath = os.path.relpath(local_dir, local_fpath)
+            server_fpath = os.path.join(server_dir, relpath)
+            connection.put(local_fpath, server_fpath)
+        for dir in dirnames:
+            local_subdir = os.path.join(dirpath, dir)
+            relpath = os.path.relpath(local_dir, local_subdir)
+            server_subdir = os.path.join(server_dir, relpath)
+            connection.run(f'mkdir -p {server_subdir}')
+
+        
 
 def connect(address: str, passphrase: Optional[str]) -> Connection:
     connect_kwargs = {
