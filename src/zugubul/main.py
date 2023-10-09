@@ -523,7 +523,6 @@ def add_remote_args(parser: argparse.ArgumentParser) -> None:
     add_arg(
         "--remote",
         help='Run command on remote server. Defaults to True in versions without PyTorch.',
-        type=bool,
         action='store_true',
         default=not TORCH,
     )
