@@ -5,6 +5,7 @@ from fabric import Connection
 from paramiko.ssh_exception import PasswordRequiredException
 from typing import Sequence, Optional
 from pathlib import Path, PurePosixPath
+from tqdm import tqdm
 
 GUI = os.environ.get('GUI')
 
@@ -73,18 +74,21 @@ def make_arg_str(argv: Sequence[str]) -> str:
 def put_dir(local_dir: Path, server_dir: Path, connection: Connection) -> None:
     print('Making dir', server_dir)
     connection.run(f'mkdir -p {server_dir}')
-    for dirpath, dirnames, filenames in os.walk(local_dir):
-        for fname in filenames:
+    for dirpath, dirnames, filenames in tqdm(
+        list(os.walk(local_dir)),
+        desc=f'Putting dir {dirpath} to server'
+    ):
+        for fname in tqdm(filenames, desc=f'Putting files in dir {dirpath}'):
             local_fpath = Path(dirpath)/fname
             relpath = local_fpath.relative_to(local_dir)
             server_fpath = PurePosixPath(server_dir)/relpath
-            print(f'Putting {local_fpath} to {server_fpath}')
+            #print(f'Putting {local_fpath} to {server_fpath}')
             connection.put(str(local_fpath), str(server_fpath))
-        for dir in dirnames:
+        for dir in tqdm(dirnames, desc=f'Putting dirs in dir {dirpath}'):
             local_subdir = Path(dirpath)/dir
             relpath = local_subdir.relative_to(local_dir)
             server_subdir = server_dir/relpath
-            print('Making dir', server_subdir)
+            #print('Making dir', server_subdir)
             connection.run(f'mkdir -p {server_subdir}')
 
         
