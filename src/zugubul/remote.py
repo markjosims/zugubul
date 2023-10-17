@@ -4,7 +4,7 @@ import os
 from fabric import Connection
 from paramiko.ssh_exception import PasswordRequiredException
 from typing import Sequence, Optional
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 GUI = os.environ.get('GUI')
 
@@ -32,7 +32,7 @@ def run_script_on_server(
         c.run(f'mkdir -p {server_dir}')
         for local_fp in in_files:
             filename = Path(local_fp).name
-            server_fp = server_dir/filename
+            server_fp = PurePosixPath(server_dir/filename)
             
             print(f'Putting {local_fp} to {server_fp}')
             if os.path.isdir(local_fp):
@@ -45,7 +45,7 @@ def run_script_on_server(
         server_out_files = []
         for local_fp in out_files:
             filename = Path(local_fp).name
-            server_fp = server_dir/filename
+            server_fp = PurePosixPath(server_dir/filename)
             server_out_files.append(server_fp)
             argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
