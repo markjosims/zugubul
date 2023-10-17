@@ -28,7 +28,7 @@ def run_script_on_server(
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
         print(f'Uploading input files to server {server}...')
-        server_dir = Path('/tmp/annotate/')
+        server_dir = PurePosixPath('/tmp/annotate/')
         c.run(f'mkdir -p {server_dir}')
         for local_fp in in_files:
             filename = Path(local_fp).name
