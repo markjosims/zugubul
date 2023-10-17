@@ -28,7 +28,7 @@ def run_script_on_server(
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
         print(f'Uploading input files to server {server}...')
-        server_dir = PurePosixPath('/tmp/annotate/')
+        server_dir = PurePosixPath('/tmp/zugubul/')
         c.run(f'mkdir -p {server_dir}')
         for local_fp in in_files:
             filename = Path(local_fp).name
@@ -71,17 +71,20 @@ def make_arg_str(argv: Sequence[str]) -> str:
     return arg_str
 
 def put_dir(local_dir: Path, server_dir: Path, connection: Connection) -> None:
+    print('Making dir', server_dir)
     connection.run(f'mkdir -p {server_dir}')
     for dirpath, dirnames, filenames in os.walk(local_dir):
         for fname in filenames:
             local_fpath = os.path.join(dirpath, fname)
             relpath = os.path.relpath(local_dir, local_fpath)
             server_fpath = os.path.join(server_dir, relpath)
+            print(f'Putting {local_fpath} to {server_fpath}')
             connection.put(local_fpath, server_fpath)
         for dir in dirnames:
             local_subdir = os.path.join(dirpath, dir)
             relpath = os.path.relpath(local_dir, local_subdir)
             server_subdir = os.path.join(server_dir, relpath)
+            print('Making dir', server_subdir)
             connection.run(f'mkdir -p {server_subdir}')
 
         
