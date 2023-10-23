@@ -50,10 +50,10 @@ def train(
             print('Instantiating model as Wav2Vec2ForCTC for ASR.')
             model_wrapper = Wav2Vec2ForCTC
             model = download_model(
-                processor,
                 model_name=model,
                 model_wrapper=model_wrapper,
                 task=task,
+                processor=processor,
             )
         else:
             print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
