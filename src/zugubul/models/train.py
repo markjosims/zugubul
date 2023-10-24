@@ -196,7 +196,7 @@ def download_model(
             'ignore_mismatched_sizes': True,
         }
         if processor:
-            default_values['pad_token_id'] = processor.tokenizer.pad_token_id,
+            default_values['pad_token_id'] = processor.tokenizer.pad_token_id
             default_values['vocab_size'] = len(processor.tokenizer)
         for k, v in default_values.items():
             if k not in kwargs:
