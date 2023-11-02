@@ -48,8 +48,8 @@ def tmp_eafdir():
         yield dir_path, annotations, linked_files
 
 def test_eaf_to_file_safe():
-    eaf_fp = r'C:\projects\zugubul\tests\eafs\test_tira1_gold.eaf'
-    bak_fp = r'C:\projects\zugubul\tests\eafs\test_tira1_gold.bak'
+    eaf_fp = '/tests/eafs/test_tira1_gold.eaf'
+    bak_fp = '/tests/eafs/test_tira1_gold.bak'
     eaf = Elan.Eaf(eaf_fp)
     bak = Elan.Eaf(bak_fp)
 

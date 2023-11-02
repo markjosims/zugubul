@@ -8,6 +8,7 @@ from time import sleep
 from tqdm import tqdm
 from transformers import pipeline
 from huggingface_hub import HfFolder, login
+from pydub import AudioSegment
 
 from zugubul.rvad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
@@ -15,6 +16,9 @@ from zugubul.elan_tools import snip_audio, trim
 
 # enable pandas progress bars
 tqdm.pandas()
+
+def split_audio_windows(filename: str, window_len: int, frameshift: int) -> List[List[bytes]]:
+    ...
 
 def query(filename: str, model: str, label_only: bool = False, task: Literal['ASR', 'LID'] = 'ASR') -> dict:
     api_url = f"https://api-inference.huggingface.co/models/{model}"

@@ -24,9 +24,9 @@ def tmp_dataset():
         os.mkdir(test_dir)
         os.mkdir(val_dir)
 
-        shutil.copy(r'C:\projects\zugubul\tests\wavs\train\train.wav', os.path.join(train_dir, 'train.wav'))
-        shutil.copy(r'C:\projects\zugubul\tests\wavs\test\test.wav', os.path.join(test_dir, 'test.wav'))
-        shutil.copy(r'C:\projects\zugubul\tests\wavs\val\val.wav', os.path.join(val_dir, 'val.wav'))
+        shutil.copy('/testswavs/train/train.wav', os.path.join(train_dir, 'train.wav'))
+        shutil.copy('/testswavs/test/test.wav', os.path.join(test_dir, 'test.wav'))
+        shutil.copy('/testswavs/val/val.wav', os.path.join(val_dir, 'val.wav'))
         csv_path = os.path.join(dir_path, 'metadata.csv')
         with open(csv_path, 'w') as f:
             writer = csv.writer(f, delimiter=',')
@@ -45,8 +45,8 @@ def tmp_unsplit_data():
         dir_path = os.path.join(tmpdir, 'dataset1')
         os.mkdir(dir_path)
 
-        dendi_path = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
-        tira_path = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+        dendi_path = 'tests/wavs/test_dendi1.wav'
+        tira_path = 'tests/wavs/test_tira1.wav'
 
         csv_path = os.path.join(dir_path, 'eaf_data.csv')
 
@@ -71,8 +71,8 @@ def tmp_lid_data():
         dir_path = os.path.join(tmpdir, 'dataset1')
         os.mkdir(dir_path)
 
-        dendi_path = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
-        tira_path = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+        dendi_path = 'tests/wavs/test_dendi1.wav'
+        tira_path = 'tests/wavs/test_tira1.wav'
 
         csv_path = os.path.join(dir_path, 'eaf_data.csv')
 
