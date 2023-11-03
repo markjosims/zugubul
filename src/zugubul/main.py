@@ -400,8 +400,8 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     )
     add_arg(
         'TASK',
-        choices=['LID', 'ASR'],
-        help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).'
+        choices=['LID', 'ASR', 'LM'],
+        help='Task to be trained, either Language IDentification (LID), Automatic Speech Recognition (ASR) or Language Modeling (LM).'
     )
     add_arg(
         '--hf',

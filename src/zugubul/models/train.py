@@ -1,5 +1,6 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
-    Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor
+    Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
+    BertForMaskedLM
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
@@ -22,7 +23,7 @@ def train(
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         optimizers = (None, None),
-        task: Literal['LID', 'ASR'] = 'ASR',
+        task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Union[Wav2Vec2Processor, Wav2Vec2FeatureExtractor, None] = None,
