@@ -1016,7 +1016,7 @@ def handle_train(args: Dict[str, Any]) -> int:
         dataset=data_dir,
         hf=hf,
         task=task,
-        vocab=vocab or os.path.join(data_dir, 'vocab.json')
+        vocab=vocab,
     )
     return 0
 
