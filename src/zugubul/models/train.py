@@ -50,10 +50,10 @@ def train(
             print('Instantiating model as Wav2Vec2ForCTC for ASR.')
             model_wrapper = Wav2Vec2ForCTC
             model = download_model(
-                processor,
                 model_name=model,
                 model_wrapper=model_wrapper,
                 task=task,
+                processor=processor,
             )
         else:
             print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -196,7 +196,7 @@ def download_model(
             'ignore_mismatched_sizes': True,
         }
         if processor:
-            default_values['pad_token_id'] = processor.tokenizer.pad_token_id,
+            default_values['pad_token_id'] = processor.tokenizer.pad_token_id
             default_values['vocab_size'] = len(processor.tokenizer)
         for k, v in default_values.items():
             if k not in kwargs:

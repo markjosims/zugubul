@@ -31,7 +31,7 @@ def vocab_from_list(
         tokens_dict['<unk>'] = len(tokens_dict)
 
     json_path = os.path.join(vocab_dir, 'vocab.json')
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(tokens_dict, f)
     return json_path
 
@@ -50,7 +50,7 @@ def vocab_from_csv(
     label_col = 'text'
     if lid:
         label_col = 'lang'
-    with open(csv_path) as f:
+    with open(csv_path, encoding='utf-8') as f:
         reader = csv.DictReader(f, delimiter=',')
         for row in reader:
             vocab.add(row[label_col])

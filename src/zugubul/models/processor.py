@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 import torch
 from dataclasses import dataclass
-from transformers import Wav2Vec2Processor
+from transformers import Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor
 from typing import Sequence, Union, Dict, List
 
 from zugubul.models.vocab import vocab_from_csv, vocab_from_list
