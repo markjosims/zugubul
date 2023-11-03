@@ -24,9 +24,9 @@ def tmp_dataset():
         os.mkdir(test_dir)
         os.mkdir(val_dir)
 
-        shutil.copy('/testswavs/train/train.wav', os.path.join(train_dir, 'train.wav'))
-        shutil.copy('/testswavs/test/test.wav', os.path.join(test_dir, 'test.wav'))
-        shutil.copy('/testswavs/val/val.wav', os.path.join(val_dir, 'val.wav'))
+        shutil.copy('tests/wavs/train/train.wav', os.path.join(train_dir, 'train.wav'))
+        shutil.copy('tests/wavs/test/test.wav', os.path.join(test_dir, 'test.wav'))
+        shutil.copy('tests/wavs/val/val.wav', os.path.join(val_dir, 'val.wav'))
         csv_path = os.path.join(dir_path, 'metadata.csv')
         with open(csv_path, 'w') as f:
             writer = csv.writer(f, delimiter=',')
