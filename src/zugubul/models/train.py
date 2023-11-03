@@ -152,7 +152,7 @@ def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool
         vocab = hf_hub_download(
             repo_id=dataset,
             repo_type='dataset',
-            filename='vocab.json'
+            filename=vocab or 'vocab.json'
         )
     elif not vocab:
         raise ValueError('Either processor object or path to vocab.json must be provided if not loading from HuggingFace.')

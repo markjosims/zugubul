@@ -414,6 +414,12 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         default='facebook/mms-1b-all',
         help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
     )
+    add_arg(
+        '-v',
+        '--vocab_path',
+        default='vocab.json',
+        help='Filepath for vocab object.'
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
@@ -998,6 +1004,7 @@ def handle_train(args: Dict[str, Any]) -> int:
     from zugubul.models.train import train
 
     data_dir = args['DATA_PATH']
+    vocab = args['vocab_path']
     out_dir = args['OUT_PATH']
     hf = args['hf']
 
@@ -1009,7 +1016,7 @@ def handle_train(args: Dict[str, Any]) -> int:
         dataset=data_dir,
         hf=hf,
         task=task,
-        vocab=os.path.join(data_dir,'vocab.json') if not hf else None
+        vocab=os.path.join(data_dir, vocab) if not hf else vocab
     )
     return 0
 
