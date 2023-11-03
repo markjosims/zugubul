@@ -96,7 +96,7 @@ def tmp_lid_data():
                 'LID': {
                     'targetlang': 'TIC',
                     'metalang': 'DDN',
-                    'target_labels': '*',
+                    'target_labels': False,
                     'meta_labels': ['DDN', 'DDN1'],
                     'empty': 'meta',
                     'balance': False,
@@ -163,7 +163,7 @@ def test_make_lid_labels(tmp_lid_data):
     
     targetlang = 'TIC'
     metalang = 'DDN'
-    target_labels = '*'
+    target_labels = None
     meta_labels = ['DDN', 'DDN1']
 
     df = make_lid_labels(
