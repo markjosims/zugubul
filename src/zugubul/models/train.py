@@ -85,11 +85,12 @@ def train(
     print('Preparing model for finetuning...')
     # taken from https://huggingface.co/blog/mms_adapters
     # freeze non adapter parameters
-    model.init_adapter_layers()
-    model.freeze_base_model()
-    adapter_weights = model._get_adapters()
-    for param in adapter_weights.values():
-        param.requires_grad = True
+    if hasattr(model, 'init_adapter_layers'):
+        model.init_adapter_layers()
+        model.freeze_base_model()
+        adapter_weights = model._get_adapters()
+        for param in adapter_weights.values():
+            param.requires_grad = True
 
     if not training_args:
         training_args = get_training_args(
