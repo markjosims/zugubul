@@ -1,6 +1,6 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    BertForMaskedLM
+    BertForMaskedLM, DataCollatorForLanguageModeling
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
@@ -115,11 +115,12 @@ def train(
     if not data_collator:
         print('Initializing data collator...')
         collator_obj = DataCollatorCTC if task=='ASR'\
+            else DataCollatorForLanguageModeling if task=='LM'\
             else DataCollatorSeqClassification
         data_collator = collator_obj(processor, padding=True)
 
     if not compute_metrics:
-        if task == 'ASR':
+        if task in ['ASR', 'LM']:
             compute_metrics = lambda pred : compute_wer(pred, processor)
         else:
             compute_metrics = compute_acc
