@@ -27,7 +27,9 @@ def init_processor(
         vocab_path = vocab_from_csv(vocab, vocab_dir, task=='LID')
     else:
         raise ValueError(
-            'vocab argument of unrecognized type. Must be list or set of vocab items, path to vocab.json file, or path to csv file.'
+            'vocab argument of unrecognized type. Must be list or set of vocab items, '\
+            + 'path to vocab.json file, or path to csv file.'\
+            + f'Got {vocab}'
         )
 
     if task == 'LM':
