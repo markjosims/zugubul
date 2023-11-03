@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Optional, Sequence, Union
 import torch
 from dataclasses import dataclass
-from transformers import Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor
-from typing import Sequence, Union, Dict, List
+from transformers import Wav2Vec2Processor, Wav2Vec2CTCTokenizer, Wav2Vec2FeatureExtractor, BertTokenizer
+from typing import Sequence, Union, Dict, List, Literal, Union
 
 from zugubul.models.vocab import vocab_from_csv, vocab_from_list
 
@@ -12,26 +12,30 @@ from zugubul.models.vocab import vocab_from_csv, vocab_from_list
 def init_processor(
         vocab: Union[str, os.PathLike, Sequence[str]],
         vocab_dir: Optional[Union[str, os.PathLike]] = None,
-        lid: bool = False,
-    ) -> Wav2Vec2Processor:
+        task: Literal['LID', 'ASR', 'LM'] = 'ASR',
+    ) -> Union[Wav2Vec2Processor, BertTokenizer]:
     """
     vocab may be path to a .csv file, vocab.json file or a list or set containing vocab items.
     lid is a bool indicating whether processor is being made for language identification or not.
     vocab_dir is the directory for the vocab.json to be stored (if not already saved).
     """
     if type(vocab) in (list, set):
-        vocab_path = vocab_from_list(vocab, vocab_dir, lid)
+        vocab_path = vocab_from_list(vocab, vocab_dir, task=='LID')
     elif os.path.isfile(vocab) and Path(vocab).suffix == '.json':
         vocab_path = vocab
     elif os.path.isfile(vocab) and Path(vocab).suffix == '.csv':
-        vocab_path = vocab_from_csv(vocab, vocab_dir, lid)
+        vocab_path = vocab_from_csv(vocab, vocab_dir, task=='LID')
     else:
         raise ValueError(
             'vocab argument of unrecognized type. Must be list or set of vocab items, path to vocab.json file, or path to csv file.'
         )
 
-    tokenizer = Wav2Vec2CTCTokenizer(vocab_path, unk_token='<unk>', pad_token='<pad>')
+    if task == 'LM':
+        # text based models just need tokenizer
+        tokenizer = BertTokenizer(vocab_path, unk_token='<unk>', pad_token='<pad>')
+        return tokenizer
 
+    tokenizer = Wav2Vec2CTCTokenizer(vocab_path, unk_token='<unk>', pad_token='<pad>')
     feature_extractor = Wav2Vec2FeatureExtractor(
         feature_size=1,
         sampling_rate=16000,

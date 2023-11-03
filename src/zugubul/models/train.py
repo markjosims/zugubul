@@ -37,11 +37,11 @@ def train(
             login()
             token = HfFolder.get_token()
 
-    if (not processor) and (task == 'ASR'):
+    if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
         processor = init_processor(vocab)
-    elif (not processor):
+    elif (not processor) and (task == 'LID'):
         print('Downloading feature extractor...')
         processor = Wav2Vec2Processor.from_pretrained(model)
 
@@ -55,6 +55,15 @@ def train(
                 model_wrapper=model_wrapper,
                 task=task,
                 processor=processor,
+            )
+        elif task == 'LM':
+            print('Instantiating model as BertForMaskedLM for LM.')
+            model_wrapper = BertForMaskedLM
+            model = download_model(
+                model_name=model,
+                model_wrapper=model_wrapper,
+                task=task,
+                processor=processor
             )
         else:
             print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -179,7 +188,7 @@ def get_training_args(**kwargs) -> TrainingArguments:
 def download_model(
         model_name: str = "facebook/mms-1b-all",
         model_wrapper: Wav2Vec2Model = Wav2Vec2Model,
-        task: Literal['LID', 'ASR'] = 'ASR',
+        task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         processor: Optional[Wav2Vec2Processor] = None,
         **kwargs
     ) -> Union[Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification]:
