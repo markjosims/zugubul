@@ -1,6 +1,6 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    BertForMaskedLM, DataCollatorForLanguageModeling
+    BertForMaskedLM, DataCollatorForLanguageModeling, BertTokenizer
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
@@ -106,7 +106,7 @@ def train(
     dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
     print('Reshaping data columns for training...')
-    label_col = 'text' if task=='ASR' else 'lang'
+    label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
         lambda x: prepare_dataset(x, processor, label_col, task, vocab),
         remove_columns=dataset['train'].column_names
@@ -220,15 +220,19 @@ def download_model(
 
 def prepare_dataset(
         batch: Dataset,
-        processor: Wav2Vec2Processor,
+        processor: Union[Wav2Vec2Processor, BertTokenizer],
         label_col: str,
-        task: Literal['ASR', 'LID'],
+        task: Literal['ASR', 'LID', 'LM'],
         label2id: Optional[dict] = None,
     ) -> Dataset:
     """
     Puts dataset in format needed for training.
     Taken from https://huggingface.co/blog/mms_adapters
     """
+    if task == 'LM':
+        batch["input_ids"] = processor(text=batch[label_col])
+        return batch
+
     audio = batch["audio"]
     batch["input_values"] = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_values[0]
     batch["input_length"] = len(batch["input_values"])
