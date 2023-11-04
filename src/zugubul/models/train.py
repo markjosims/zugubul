@@ -40,7 +40,7 @@ def train(
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
-        processor = init_processor(vocab)
+        processor = init_processor(vocab, task=task)
     elif (not processor) and (task == 'LID'):
         print('Downloading feature extractor...')
         processor = Wav2Vec2Processor.from_pretrained(model)
@@ -281,6 +281,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     data_dir = args['DATA_PATH']
     out_dir = args['OUT_PATH']
     hf = args['hf']
+    vocab = args['vocab_path']
 
     task = args['TASK']
     model_name = args['model_url']
@@ -290,7 +291,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         dataset=data_dir,
         task=task,
         hf=hf,
-        vocab=os.path.join(data_dir,'vocab.json') if not hf else None
+        vocab=vocab
     )
     return 0
 
