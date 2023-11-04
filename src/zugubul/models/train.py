@@ -20,6 +20,7 @@ def train(
         out_dir: Union[str, os.PathLike],
         model: Union[str, os.PathLike, Wav2Vec2Model],
         dataset: Union[str, os.PathLike, Dataset],
+        label_col: Optional[str] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         optimizers = (None, None),
@@ -106,7 +107,8 @@ def train(
     dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
     print('Reshaping data columns for training...')
-    label_col = 'lang' if task=='LID' else 'text'
+    if not label_col:
+        label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
         lambda x: prepare_dataset(x, processor, label_col, task, vocab),
         remove_columns=dataset['train'].column_names
@@ -286,6 +288,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     out_dir = args['OUT_PATH']
     hf = args['hf']
     vocab = args['vocab_path']
+    label_col = args['label_col']
 
     task = args['TASK']
     model_name = args['model_url']
@@ -293,6 +296,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         out_dir=out_dir,
         model=model_name,
         dataset=data_dir,
+        label_col=label_col,
         task=task,
         hf=hf,
         vocab=vocab

@@ -420,6 +420,11 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         default='vocab.json',
         help='Filepath for vocab object.'
     )
+    add_arg(
+        '-lc',
+        '--label_col',
+        help="Column in dataset to use for label (default is 'text' for ASR or LM and 'lang' for LID)."
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
@@ -1005,6 +1010,7 @@ def handle_train(args: Dict[str, Any]) -> int:
 
     data_dir = args['DATA_PATH']
     vocab = args['vocab_path']
+    label_col = args['label_col']
     out_dir = args['OUT_PATH']
     hf = args['hf']
 
@@ -1014,6 +1020,7 @@ def handle_train(args: Dict[str, Any]) -> int:
         out_dir=out_dir,
         model=model_name,
         dataset=data_dir,
+        label_col=label_col,
         hf=hf,
         task=task,
         vocab=vocab,
