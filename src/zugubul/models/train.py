@@ -42,7 +42,7 @@ def train(
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
-        processor = init_processor(vocab, task=task)
+        processor = init_processor(vocab, vocab_dir=dataset, task=task)
     elif (not processor) and (task == 'LID'):
         print('Downloading feature extractor...')
         processor = Wav2Vec2Processor.from_pretrained(model)
