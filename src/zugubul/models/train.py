@@ -23,6 +23,7 @@ def train(
         label_col: Optional[str] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
+        audio_cutoff: Optional[int] = None,
         optimizers = (None, None),
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         compute_metrics: Optional[Callable] = None,
@@ -103,10 +104,15 @@ def train(
     if type(dataset) is not Dataset:
         print('Loading dataset...')
         dataset = load_dataset(dataset)
-    print('Resampling audio to 16kHz...')
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
+    if task in ['LID', 'ASR']:
+        print('Resampling audio to 16kHz...')
+        dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
-    print('Reshaping data columns for training...')
+    if audio_cutoff is not None:
+        print(f'Removing audio records with greater than {audio_cutoff} frames...')
+        dataset = dataset.filter(lambda r: r['audio']['array'].shape[0]<audio_cutoff)
+
+    print(f'Reshaping data columns for training {task}...')
     if not label_col:
         label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
