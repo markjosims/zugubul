@@ -148,6 +148,8 @@ def train(
 
     if hf:
         trainer.push_to_hub()
+    else:
+        trainer.save_model(training_args.output_dir)
 
 def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool) -> dict:
     if hf:
@@ -232,7 +234,7 @@ def prepare_dataset(
     Taken from https://huggingface.co/blog/mms_adapters
     """
     if task == 'LM':
-        batch["input_ids"] = processor(text=batch[label_col])
+        batch["input_ids"] = processor(batch[label_col])
         return batch
 
     audio = batch["audio"]
