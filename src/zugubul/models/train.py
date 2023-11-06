@@ -13,7 +13,7 @@ import json
 import argparse
 from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models._metrics import compute_wer, compute_acc
-from zugubul.main import init_train_parser
+from zugubul.main import init_train_parser, handle_train
 
 
 def train(
@@ -290,23 +290,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     init_train_parser(parser)
     args = vars(parser.parse_args(argv))
 
-    data_dir = args['DATA_PATH']
-    out_dir = args['OUT_PATH']
-    hf = args['hf']
-    vocab = args['vocab_path']
-    label_col = args['label_col']
-
-    task = args['TASK']
-    model_name = args['model_url']
-    train(
-        out_dir=out_dir,
-        model=model_name,
-        dataset=data_dir,
-        label_col=label_col,
-        task=task,
-        hf=hf,
-        vocab=vocab
-    )
+    handle_train(args)
     return 0
 
     
