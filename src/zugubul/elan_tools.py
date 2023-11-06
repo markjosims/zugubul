@@ -163,7 +163,7 @@ def eaf_data(
         annotations = eaf_obj.get_annotation_data_for_tier(t)
         start_times = [a[0] for a in annotations]
         end_times = [a[1] for a in annotations]
-        values = [a[2] for a in annotations]
+        values = [a[2].strip() for a in annotations]
 
         t_df = pd.DataFrame(data={
             'start': start_times,

@@ -425,6 +425,12 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         '--label_col',
         help="Column in dataset to use for label (default is 'text' for ASR or LM and 'lang' for LID)."
     )
+    add_arg(
+        '--audio_cutoff',
+        '-ac',
+        help='Exclude any audio records with length greater than cutoff (in frames).',
+        type=int
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
@@ -1013,8 +1019,9 @@ def handle_train(args: Dict[str, Any]) -> int:
     label_col = args['label_col']
     out_dir = args['OUT_PATH']
     hf = args['hf']
+    audio_cutoff = args['audio_cutoff']
 
-    task = args['TASK'].lower()
+    task = args['TASK']
     model_name = args['model_url']
     train(
         out_dir=out_dir,

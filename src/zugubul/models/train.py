@@ -13,7 +13,7 @@ import json
 import argparse
 from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models._metrics import compute_wer, compute_acc
-from zugubul.main import init_train_parser
+from zugubul.main import init_train_parser, handle_train
 
 
 def train(
@@ -23,6 +23,7 @@ def train(
         label_col: Optional[str] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
+        audio_cutoff: Optional[int] = None,
         optimizers = (None, None),
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         compute_metrics: Optional[Callable] = None,
@@ -41,7 +42,7 @@ def train(
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
-        processor = init_processor(vocab, task=task)
+        processor = init_processor(vocab, vocab_dir=dataset, task=task)
     elif (not processor) and (task == 'LID'):
         print('Downloading feature extractor...')
         processor = Wav2Vec2Processor.from_pretrained(model)
@@ -103,10 +104,15 @@ def train(
     if type(dataset) is not Dataset:
         print('Loading dataset...')
         dataset = load_dataset(dataset)
-    print('Resampling audio to 16kHz...')
-    dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
+    if task in ['LID', 'ASR']:
+        print('Resampling audio to 16kHz...')
+        dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
-    print('Reshaping data columns for training...')
+    if audio_cutoff is not None:
+        print(f'Removing audio records with greater than {audio_cutoff} frames...')
+        dataset = dataset.filter(lambda r: r['audio']['array'].shape[0]<audio_cutoff)
+
+    print(f'Reshaping data columns for training {task}...')
     if not label_col:
         label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
@@ -286,23 +292,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     init_train_parser(parser)
     args = vars(parser.parse_args(argv))
 
-    data_dir = args['DATA_PATH']
-    out_dir = args['OUT_PATH']
-    hf = args['hf']
-    vocab = args['vocab_path']
-    label_col = args['label_col']
-
-    task = args['TASK']
-    model_name = args['model_url']
-    train(
-        out_dir=out_dir,
-        model=model_name,
-        dataset=data_dir,
-        label_col=label_col,
-        task=task,
-        hf=hf,
-        vocab=vocab
-    )
+    handle_train(args)
     return 0
 
     

@@ -19,6 +19,16 @@ def init_processor(
     lid is a bool indicating whether processor is being made for language identification or not.
     vocab_dir is the directory for the vocab.json to be stored (if not already saved).
     """
+
+    # by default, if vocab is a str but doesn't point to a file
+    # and vocab_dir is passed,
+    # join vocab to vocab_dir
+    if vocab_dir is not None\
+        and type(vocab) is str\
+        and not os.path.isfile(vocab):
+        vocab = os.path.join(vocab_dir, vocab)
+
+
     if type(vocab) in (list, set):
         vocab_path = vocab_from_list(vocab, vocab_dir, task=='LID')
     elif os.path.isfile(vocab) and Path(vocab).suffix == '.json':
