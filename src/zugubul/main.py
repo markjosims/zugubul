@@ -1031,6 +1031,7 @@ def handle_train(args: Dict[str, Any]) -> int:
         hf=hf,
         task=task,
         vocab=vocab,
+        audio_cutoff=audio_cutoff
     )
     return 0
 
