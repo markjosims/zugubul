@@ -157,8 +157,10 @@ def train(
 
     if hf:
         trainer.push_to_hub()
+        processor.push_to_hub()
     else:
         trainer.save_model(training_args.output_dir)
+        processor.save_pretrained(training_args.output_dir)
 
 def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool) -> dict:
     if hf:
