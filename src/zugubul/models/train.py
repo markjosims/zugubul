@@ -128,7 +128,7 @@ def train(
         collator_obj = DataCollatorCTC if task=='ASR'\
             else DataCollatorForLanguageModeling if task=='LM'\
             else DataCollatorSeqClassification
-        data_collator = collator_obj(processor, padding=True)
+        data_collator = collator_obj(processor)
 
     if not compute_metrics:
         if task in ['ASR', 'LM']:
