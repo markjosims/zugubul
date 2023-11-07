@@ -1,6 +1,6 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    BertForMaskedLM, DataCollatorForLanguageModeling, BertTokenizer
+    BertForMaskedLM, DataCollatorForLanguageModeling, BertTokenizer, CanineTokenizer
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
@@ -39,6 +39,9 @@ def train(
             login()
             token = HfFolder.get_token()
 
+    if (not processor) and ('canine' in model):
+        # CANINE tokenizer doesn't need a vocabulary
+        processor = CanineTokenizer.from_pretrained(model)
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
