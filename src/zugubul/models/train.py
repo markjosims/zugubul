@@ -167,9 +167,11 @@ def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool
             repo_type='dataset',
             filename=vocab or 'vocab.json'
         )
-    elif not vocab:
-        raise ValueError('Either processor object or path to vocab.json must be provided if not loading from HuggingFace.')
-    return vocab
+    elif os.path.isfile(vocab):
+        return vocab
+    elif os.path.isfile(os.path.join(dataset, vocab)):
+        return os.path.join(dataset, vocab)
+    raise ValueError('Either processor object or path to vocab.json must be provided if not loading from HuggingFace.')
 
 
 def get_training_args(**kwargs) -> TrainingArguments:
