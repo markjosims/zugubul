@@ -41,6 +41,7 @@ def train(
 
     if (not processor) and ('canine' in model):
         # CANINE tokenizer doesn't need a vocabulary
+        print('Initializing CanineTokenizer...')
         processor = CanineTokenizer.from_pretrained(model)
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
