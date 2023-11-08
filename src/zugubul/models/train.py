@@ -1,6 +1,7 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer
+    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer,\
+    CanineModel, CanineTokenizer
 # TODO: use Auto objects across the board
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
@@ -43,7 +44,7 @@ def train(
     if (not processor) and ('canine' in model):
         # CANINE tokenizer doesn't need a vocabulary
         print('Initializing CanineTokenizer...')
-        processor = AutoTokenizer.from_pretrained(model)
+        processor = CanineTokenizer.from_pretrained(model)
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
@@ -66,6 +67,8 @@ def train(
         elif task == 'LM':
             print('Instantiating model for masked LM.')
             model_wrapper = AutoModelForMaskedLM
+            if 'canine' in model:
+                model_wrapper = CanineModel
             model = download_model(
                 model_name=model,
                 model_wrapper=model_wrapper,
