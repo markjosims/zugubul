@@ -1,6 +1,7 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    BertForMaskedLM, DataCollatorForLanguageModeling, BertTokenizer, CanineTokenizer
+    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer
+# TODO: use Auto objects across the board
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
@@ -63,8 +64,8 @@ def train(
                 processor=processor,
             )
         elif task == 'LM':
-            print('Instantiating model as BertForMaskedLM for LM.')
-            model_wrapper = BertForMaskedLM
+            print('Instantiating model for masked LM.')
+            model_wrapper = AutoModelForMaskedLM
             model = download_model(
                 model_name=model,
                 model_wrapper=model_wrapper,
@@ -238,7 +239,7 @@ def download_model(
 
 def prepare_dataset(
         batch: Dataset,
-        processor: Union[Wav2Vec2Processor, BertTokenizer],
+        processor: Union[Wav2Vec2Processor, AutoTokenizer],
         label_col: str,
         task: Literal['ASR', 'LID', 'LM'],
         label2id: Optional[dict] = None,
