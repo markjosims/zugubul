@@ -157,8 +157,10 @@ def train(
 
     if hf:
         trainer.push_to_hub()
+        processor.push_to_hub()
     else:
         trainer.save_model(training_args.output_dir)
+        processor.save_pretrained(training_args.output_dir)
 
 def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool) -> dict:
     if hf:
@@ -187,8 +189,8 @@ def get_training_args(**kwargs) -> TrainingArguments:
         'num_train_epochs': 4,
         'gradient_checkpointing': True,
         'fp16': False,
-        'save_steps': 100,
-        'eval_steps': 100,
+        'save_steps': 1000,
+        'eval_steps': 500,
         'logging_steps': 100,
         'learning_rate': 1e-3,
         'warmup_steps': 100,
