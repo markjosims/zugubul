@@ -249,11 +249,10 @@ def prepare_dataset(
     ) -> Dataset:
     """
     Puts dataset in format needed for training.
-    Taken from https://huggingface.co/blog/mms_adapters
+    Code for asr taken from https://huggingface.co/blog/mms_adapters
     """
     if task == 'LM':
-        batch["input_ids"] = processor(batch[label_col])
-        return batch
+        return processor(batch[label_col])
 
     audio = batch["audio"]
     batch["input_values"] = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_values[0]
