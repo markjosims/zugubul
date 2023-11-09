@@ -1097,7 +1097,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
                 'tier': tier,
                 'etf': etf,
             },
-            out_path_f=get_eaf_outpath,
+            out_path_f=lambda data_file: get_eaf_outpath(data_file, wav_file),
             save_f=save_eaf_batch,
             recursive=recursive,
             overwrite=overwrite
