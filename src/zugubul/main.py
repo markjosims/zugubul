@@ -1087,7 +1087,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         batch_funct(
             f=annotate,
             dir=wav_file,
-            suffx='.wav',
+            suffix='.wav',
             file_arg='source',
             kwargs={
                 'lid_model': lid_model,
