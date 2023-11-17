@@ -14,6 +14,8 @@ class CanineForMaskedLM(CaninePreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
+        # setting manually for now, change later
+        config.vocab_size=865
 
         self.canine = CanineModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)

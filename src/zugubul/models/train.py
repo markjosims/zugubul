@@ -1,7 +1,7 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer,\
-    CanineModel, CanineTokenizer
+    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer, CanineTokenizer
+from zugubul.models.models import CanineForMaskedLM
 # TODO: use Auto objects across the board
 from datasets import Dataset, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
@@ -68,7 +68,7 @@ def train(
             print('Instantiating model for masked LM.')
             model_wrapper = AutoModelForMaskedLM
             if 'canine' in model:
-                model_wrapper = CanineModel
+                model_wrapper = CanineForMaskedLM
             model = download_model(
                 model_name=model,
                 model_wrapper=model_wrapper,
