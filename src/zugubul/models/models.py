@@ -57,7 +57,10 @@ class CanineForMaskedLM(CaninePreTrainedModel):
             return_dict=return_dict,
         )
 
-        pooled_output = outputs[1]
+        pooled_output = outputs[0]
+        # original Canine code uses outputs[1]
+        # this causes a mismatch between input and target batch sizes
+        # BertForMaskedLM uses outputs[0], so that's what we use here
 
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
