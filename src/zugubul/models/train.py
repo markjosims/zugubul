@@ -199,7 +199,6 @@ def get_training_args(**kwargs) -> TrainingArguments:
         'logging_steps': 100,
         'learning_rate': 1e-3,
         'warmup_steps': 100,
-        'save_total_limit': 2,
         'torch_compile': False,
         'push_to_hub': False,
     }
