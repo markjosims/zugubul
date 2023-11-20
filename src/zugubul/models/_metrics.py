@@ -8,7 +8,11 @@ def compute_wer(pred, processor):
     pred_logits = pred.predictions
     pred_ids = np.argmax(pred_logits, axis=-1)
 
-    pred.label_ids[pred.label_ids == -100] = processor.tokenizer.pad_token_id
+    if hasattr(processor, 'pad_token_id'):
+        pad_token_id = processor.pad_token_id
+    else:
+        pad_token_id = processor.tokenizer.pad_token_id
+    pred.label_ids[pred.label_ids == -100] = pad_token_id
 
     pred_str = processor.batch_decode(pred_ids)
     # we do not want to group tokens when computing the metrics
