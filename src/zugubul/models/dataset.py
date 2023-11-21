@@ -10,6 +10,7 @@ from pympi import Elan
 import shutil
 import tomli
 import numpy as np
+import string
 
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],
@@ -86,6 +87,24 @@ def split_data(
     metadata.to_csv(out_path, index=False)
 
     return out_path
+
+def make_lm_dataset(
+        annotations: Union[str, pd.DataFrame],
+) -> str:
+    """
+    Concatenates all text from a dataframe or .csv file containing ASR labels
+    and creates a textfile to be used for LM training.
+    Assumes that all language labels have been trimmed,
+    meaning you should run make_asr_labels on your .eaf files before this.
+    """
+    if type(annotations) is not pd.DataFrame:
+        if not Path(annotations).suffix == '.csv':
+            raise ValueError('Annotations must be pandas Dataframe or path to .csv file.')
+        annotations = pd.read_csv(annotations)
+    add_period = lambda s: s+'.' if s.strip()[-1] not in string.punctuation else s.strip()
+
+    out = ' '.join(annotations['text'].apply(add_period))
+    return out
 
 def make_asr_labels(
         annotations: Union[str, pd.DataFrame],

@@ -1,4 +1,4 @@
-from zugubul.models.dataset import split_data, make_lid_labels, balance_lid_data, process_annotation_length
+from zugubul.models.dataset import split_data, make_lid_labels, balance_lid_data, process_annotation_length, make_lm_dataset
 from datasets import load_dataset
 import pytest
 import csv
@@ -209,6 +209,11 @@ def test_make_lid_labels1(tmp_lid_data):
 
     assert len(df[df['lang']=='TIC']) == 3
     assert len(df[df['lang']=='DDN']) == 3
+
+def test_make_lm_data(tmp_unsplit_data):
+    _, csv_path = tmp_unsplit_data
+    text ='apri. jicelo. ngamhare. n na suba. a ci deesu. n na gbei.'
+    assert make_lm_dataset(csv_path) == text
 
 def test_balance_lid_data(lid_df):
     out = balance_lid_data(lid_df)
