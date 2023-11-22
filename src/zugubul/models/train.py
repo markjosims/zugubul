@@ -219,7 +219,7 @@ def train_lm(
     dataset = prepare_lm_dataset(dataset, tokenizer, label_col, context_length)
 
     print('Defining training arguments...')
-    training_arguments = get_training_args(**kwargs)
+    training_arguments = get_training_args(output_dir=out_dir, **kwargs)
 
     print('Initializing data collator')
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
