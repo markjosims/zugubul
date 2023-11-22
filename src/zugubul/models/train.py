@@ -235,7 +235,9 @@ def train_lm(
         compute_metrics=lambda pred : compute_wer(pred, tokenizer),
     )
     trainer.train()
-    
+    trainer.save_model(training_arguments.output_dir)
+    tokenizer.save_pretrained(training_arguments.output_dir)
+
 
 def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool) -> dict:
     if hf:
