@@ -39,6 +39,14 @@ def train(
         **kwargs
     ) -> str:
 
+    if task == 'LM':
+        return train_lm(
+            dataset=dataset,
+            checkpoint=model,
+            vocab=vocab,
+            label_col=label_col,
+        )
+
     if hf:
         token = HfFolder.get_token()
         while not token:
