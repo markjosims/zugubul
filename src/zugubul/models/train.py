@@ -194,10 +194,10 @@ def train_lm(
 
     config = AutoConfig.from_pretrained(
         checkpoint,
-        vocab_size=len(tokenizer),
+        vocab_size=len(vocab),
         n_ctx=context_length,
-        bos_token_id=tokenizer.bos_token_id,
-        eos_token_id=tokenizer.eos_token_id,
+        # bos_token_id=tokenizer.bos_token_id,
+        # eos_token_id=tokenizer.eos_token_id,
     )
     model = GPT2LMHeadModel(config)
 
