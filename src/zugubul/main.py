@@ -411,8 +411,9 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     add_arg(
         '-m',
         '--model_url',
-        default='facebook/mms-1b-all',
-        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
+        help='url or filepath to pretrained model to finetune. '\
+        +'By default uses Massive Multilingual Speech (facebook/mms-1b-all) for ASR and LID '\
+        +'and gpt2 for LM.'
     )
     add_arg(
         '-v',
@@ -1023,6 +1024,9 @@ def handle_train(args: Dict[str, Any]) -> int:
 
     task = args['TASK']
     model_name = args['model_url']
+    if not model_name:
+        model_name = 'gpt2' if task=='LM' else 'facebook/mms-1b-all'
+
     train(
         out_dir=out_dir,
         model=model_name,
