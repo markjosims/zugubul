@@ -90,6 +90,7 @@ def split_data(
 
 def make_lm_dataset(
         annotations: Union[str, pd.DataFrame],
+        text_col: str = 'text',
         splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1)
 ) -> pd.DataFrame:
     """
@@ -102,9 +103,10 @@ def make_lm_dataset(
         if not Path(annotations).suffix == '.csv':
             raise ValueError('Annotations must be pandas Dataframe or path to .csv file.')
         annotations = pd.read_csv(annotations)
+    annotations=annotations.dropna(subset=text_col)
     add_period = lambda s: s+'.' if s.strip()[-1] not in string.punctuation else s.strip()
 
-    text = ' '.join(annotations['text'].apply(add_period))
+    text = ' '.join(annotations[text_col].apply(add_period))
     train_size, val_size, _ = splitsize
     train_chars = int(len(text)*train_size)
     val_chars = train_chars+int(len(text)*val_size)
