@@ -212,8 +212,9 @@ def test_make_lid_labels1(tmp_lid_data):
 
 def test_make_lm_data(tmp_unsplit_data):
     _, csv_path = tmp_unsplit_data
-    text ='apri. jicelo. ngamhare. n na suba. a ci deesu. n na gbei.'
-    assert make_lm_dataset(csv_path) == text
+    text =['apri. jicelo. ngamhare. n na suba. a ci deesu. n na gbei.']
+    dataset = make_lm_dataset(csv_path, make_splits=False)
+    assert list(dataset['text']) == text
 
 def test_balance_lid_data(lid_df):
     out = balance_lid_data(lid_df)

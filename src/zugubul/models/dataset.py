@@ -91,7 +91,8 @@ def split_data(
 def make_lm_dataset(
         annotations: Union[str, pd.DataFrame],
         text_col: str = 'text',
-        splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1)
+        splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+        make_splits: bool = True,
 ) -> pd.DataFrame:
     """
     Concatenates all text from a dataframe or .csv file containing ASR labels
@@ -107,12 +108,14 @@ def make_lm_dataset(
     add_period = lambda s: s+'.' if s.strip()[-1] not in string.punctuation else s.strip()
 
     text = ' '.join(annotations[text_col].apply(add_period))
+    if not make_splits:
+        return Dataset.from_dict({'text': [text]})
     train_size, val_size, _ = splitsize
     train_chars = int(len(text)*train_size)
     val_chars = train_chars+int(len(text)*val_size)
-    train = Dataset.from_dict({'text': text[:train_chars]})
-    val = Dataset.from_dict({'text': text[train_chars:val_chars]})
-    test = Dataset.from_dict({'text': text[val_chars:]})
+    train = Dataset.from_dict({'text': [text[:train_chars]]})
+    val = Dataset.from_dict({'text': [text[train_chars:val_chars]]})
+    test = Dataset.from_dict({'text': [text[val_chars:]]})
     
     return DatasetDict({
         'train': train,
