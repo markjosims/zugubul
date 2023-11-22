@@ -1,4 +1,5 @@
-from typing import Sequence, Union
+from typing import Sequence, Union, Optional, Dict
+from datasets import Dataset
 import os
 import csv
 import json
@@ -55,3 +56,25 @@ def vocab_from_csv(
         for row in reader:
             vocab.add(row[label_col])
     return vocab_from_list(vocab=vocab, vocab_dir=vocab_dir, lid=lid)
+
+def make_lm_vocab(
+        text: Union[str, Dataset],
+        initial_vocab: Optional[Dict[str, str]] = None,
+        text_col: Optional[str] = 'text',
+    ) -> dict:
+    """
+    Returns a dictionary containing the vocab for a given LM dataset.
+    If passed initial_vocab, only adds what chars are not already present.
+    """
+    if type(text) is str:
+        unique_chars = set(text)
+    else:
+        unique_chars = set()
+        text.map(lambda r: set.update(r[text_col]))
+    vocab = {}
+    if initial_vocab:
+        vocab = initial_vocab
+    for c in unique_chars:
+        if c not in vocab:
+            vocab[c] = len(vocab)
+    return vocab

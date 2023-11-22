@@ -1,7 +1,7 @@
 from typing import Union, Sequence, Tuple, Optional, Literal
 import os
 import pandas as pd
-from datasets import Dataset, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset
 from huggingface_hub import login
 from zugubul.elan_tools import snip_audio, eaf_data
 from math import ceil
@@ -10,6 +10,7 @@ from pympi import Elan
 import shutil
 import tomli
 import numpy as np
+import string
 
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],
@@ -86,6 +87,39 @@ def split_data(
     metadata.to_csv(out_path, index=False)
 
     return out_path
+
+def make_lm_dataset(
+        annotations: Union[str, pd.DataFrame],
+        text_col: str = 'text',
+        splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1)
+) -> pd.DataFrame:
+    """
+    Concatenates all text from a dataframe or .csv file containing ASR labels
+    and returns a dataframe to be used for LM training.
+    Assumes that all language labels have been trimmed,
+    meaning you should run make_asr_labels on your .eaf files before this.
+    """
+    if type(annotations) is not pd.DataFrame:
+        if not Path(annotations).suffix == '.csv':
+            raise ValueError('Annotations must be pandas Dataframe or path to .csv file.')
+        annotations = pd.read_csv(annotations)
+    annotations=annotations.dropna(subset=text_col)
+    add_period = lambda s: s+'.' if s.strip()[-1] not in string.punctuation else s.strip()
+
+    text = ' '.join(annotations[text_col].apply(add_period))
+    train_size, val_size, _ = splitsize
+    train_chars = int(len(text)*train_size)
+    val_chars = train_chars+int(len(text)*val_size)
+    train = Dataset.from_dict({'text': text[:train_chars]})
+    val = Dataset.from_dict({'text': text[train_chars:val_chars]})
+    test = Dataset.from_dict({'text': text[val_chars:]})
+    
+    return DatasetDict({
+        'train': train,
+        'val': val,
+        'test': test
+    })
+
 
 def make_asr_labels(
         annotations: Union[str, pd.DataFrame],
