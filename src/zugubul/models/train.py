@@ -6,7 +6,7 @@ from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from zugubul.models.models import CanineForMaskedLM
 # TODO: use Auto objects across the board
-from datasets import Dataset, Audio, load_dataset
+from datasets import Dataset, DatasetDict, Audio, load_dataset
 from huggingface_hub import login, hf_hub_download, HfFolder
 from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
@@ -204,7 +204,7 @@ def train_lm(
         args=training_arguments,
         data_collator=data_collator,
         train_dataset=dataset["train"],
-        eval_dataset=dataset["valid"],
+        eval_dataset=dataset["val"],
     )
     trainer.train()
     
@@ -318,7 +318,7 @@ def prepare_lm_dataset(
     Code based off tutorial in https://huggingface.co/learn/nlp-course/chapter7/6?fw=pt
     """
     if type(data) is str:
-        data = Dataset.from_dict({label_col: [data,]})
+        data = DatasetDict.load_from_disk(data)
     def map_tokenizer(batch):
         outputs = tokenizer(
             batch,
