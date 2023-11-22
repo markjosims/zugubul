@@ -232,6 +232,7 @@ def train_lm(
         data_collator=data_collator,
         train_dataset=dataset["train"],
         eval_dataset=dataset["val"],
+        compute_metrics=compute_wer,
     )
     trainer.train()
     
