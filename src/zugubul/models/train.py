@@ -359,7 +359,7 @@ def prepare_lm_dataset(
             if length == context_length:
                 input_batch.append(input_ids)
         return {"input_ids": input_batch}
-    data.map(map_tokenizer, batched=True, remove_columns=data['train'].column_names)
+    return data.map(map_tokenizer, batched=True, remove_columns=data['train'].column_names)
     
 
 # TODO: reimplement this
