@@ -42,6 +42,7 @@ def train(
     if task == 'LM':
         return train_lm(
             dataset=dataset,
+            out_dir=out_dir,
             checkpoint=model,
             label_col=label_col,
         )
@@ -180,6 +181,7 @@ def train(
 
 def train_lm(
        dataset: Union[str, Dataset],
+       out_dir: str,
        checkpoint: str = 'gpt2',
        label_col: str = 'text',
        context_length: int = 128,
