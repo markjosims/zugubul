@@ -1,6 +1,9 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
-    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer, CanineTokenizer
+    AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer, CanineTokenizer,\
+    AutoConfig, GPT2LMHeadModel
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
 from zugubul.models.models import CanineForMaskedLM
 # TODO: use Auto objects across the board
 from datasets import Dataset, Audio, load_dataset
@@ -14,6 +17,7 @@ import os
 import json
 import argparse
 from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
+from zugubul.models.vocab import make_lm_vocab
 from zugubul.models._metrics import compute_wer, compute_acc
 from zugubul.main import init_train_parser, handle_train
 
@@ -167,6 +171,44 @@ def train(
         trainer.save_model(training_args.output_dir)
         processor.save_pretrained(training_args.output_dir)
 
+def train_lm(
+       dataset: Union[str, Dataset],
+       checkpoint: str = 'gpt2',
+       vocab: Optional[str] = None,
+       label_col: str = 'text',
+       context_length: int = 128,
+       **kwargs
+) -> None:
+    if not vocab:
+        vocab = make_lm_vocab(dataset)
+    tokenizer = Tokenizer(BPE(vocab, None))
+    tokenizer.pad_token = tokenizer.eos_token
+
+    config = AutoConfig.from_pretrained(
+        checkpoint,
+        vocab_size=len(tokenizer),
+        n_ctx=context_length,
+        bos_token_id=tokenizer.bos_token_id,
+        eos_token_id=tokenizer.eos_token_id,
+    )
+    model = GPT2LMHeadModel(config)
+
+    dataset = prepare_lm_dataset(dataset, tokenizer, label_col, context_length)
+    training_arguments = get_training_args(**kwargs)
+
+    data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
+
+    trainer = Trainer(
+        model=model,
+        tokenizer=tokenizer,
+        args=training_arguments,
+        data_collator=data_collator,
+        train_dataset=dataset["train"],
+        eval_dataset=dataset["valid"],
+    )
+    trainer.train()
+    
+
 def _get_vocab_path(vocab: Union[str, os.PathLike, None], dataset: str, hf: bool) -> dict:
     if hf:
         vocab = hf_hub_download(
@@ -250,6 +292,7 @@ def prepare_dataset(
     """
     Puts dataset in format needed for training.
     Code for asr taken from https://huggingface.co/blog/mms_adapters
+    TODO: make separate methods for ASR, LID and LM
     """
     if task == 'LM':
         return processor(batch[label_col])
@@ -265,6 +308,33 @@ def prepare_dataset(
             raise ValueError("label2id must be passed for LID task.")
         batch["labels"] = label2id.get(batch[label_col], -1)
     return batch
+
+def prepare_lm_dataset(
+        data: Union[Dataset, dict, str],
+        tokenizer: AutoTokenizer,
+        label_col: str = 'text',
+        context_length: int = 128,
+) -> dict:
+    """
+    Code based off tutorial in https://huggingface.co/learn/nlp-course/chapter7/6?fw=pt
+    """
+    if type(data) is str:
+        data = Dataset.from_dict({label_col: [data,]})
+    def map_tokenizer(batch):
+        outputs = tokenizer(
+            batch,
+            truncation=True,
+            max_length=context_length,
+            return_overflowing_tokens=True,
+            return_length=True,
+        )
+        input_batch = []
+        for length, input_ids in zip(outputs["length"], outputs["input_ids"]):
+            if length == context_length:
+                input_batch.append(input_ids)
+        return {"input_ids": input_batch}
+    data.map(map_tokenizer, batched=True, remove_columns=data.column_names)
+    
 
 # TODO: reimplement this
 # def get_adam8bit_optimizer(training_args: TrainingArguments, model: Wav2Vec2ForCTC) -> bnb.optim.Adam8bit:
