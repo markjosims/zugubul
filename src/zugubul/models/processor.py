@@ -13,6 +13,9 @@ def init_processor(
         vocab: Union[str, os.PathLike, Sequence[str]],
         vocab_dir: Optional[Union[str, os.PathLike]] = None,
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
+        word_delimiter: str = ' ',
+        unk_token: str = '[UNK]',
+        pad_token: str = '[PAD]',
     ) -> Union[Wav2Vec2Processor, BertTokenizer]:
     """
     vocab may be path to a .csv file, vocab.json file or a list or set containing vocab items.
@@ -44,10 +47,20 @@ def init_processor(
 
     if task == 'LM':
         # text based models just need tokenizer
-        tokenizer = BertTokenizer(vocab_path, unk_token='<unk>', pad_token='<pad>')
+        tokenizer = BertTokenizer(
+            vocab_path,
+            unk_token=unk_token,
+            pad_token=pad_token,
+            word_delimiter=word_delimiter
+        )
         return tokenizer
 
-    tokenizer = Wav2Vec2CTCTokenizer(vocab_path, unk_token='<unk>', pad_token='<pad>')
+    tokenizer = Wav2Vec2CTCTokenizer(
+        vocab_path,
+        unk_token=unk_token,
+        pad_token=pad_token,
+        word_delimiter=word_delimiter
+    )
     feature_extractor = Wav2Vec2FeatureExtractor(
         feature_size=1,
         sampling_rate=16000,
