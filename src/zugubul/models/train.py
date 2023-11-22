@@ -43,7 +43,6 @@ def train(
         return train_lm(
             dataset=dataset,
             checkpoint=model,
-            vocab=vocab,
             label_col=label_col,
         )
 
@@ -182,25 +181,34 @@ def train(
 def train_lm(
        dataset: Union[str, Dataset],
        checkpoint: str = 'gpt2',
-       vocab: Optional[str] = None,
        label_col: str = 'text',
        context_length: int = 128,
        **kwargs
 ) -> None:
-    if not vocab:
-        print('Defining vocab...')
-        vocab = make_lm_vocab(dataset)
+    """
+    Uses character-based tokenization.
+    """
+    print('Loading dataset...')
+    dataset = DatasetDict.load_from_disk(dataset)
+
+    print('Identifying unique characters...')
+    unique_chars = set()
+    dataset.map(lambda r: unique_chars.update(r[label_col]))
+
     print('Creating tokenizer...')
-    tokenizer = Tokenizer(BPE(vocab, ()))
-    #tokenizer.pad_token = tokenizer.eos_token
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+    tokenizer.pad_token = tokenizer.eos_token
+    num_special_tokens = len(tokenizer.all_special_tokens)
+    len_vocab = len(unique_chars) + num_special_tokens
+    tokenizer = tokenizer.train_new_from_iterator(unique_chars, vocab_size=len_vocab)
 
     print('Generating config for model...')
     config = AutoConfig.from_pretrained(
         checkpoint,
-        vocab_size=len(vocab),
+        vocab_size=len(tokenizer),
         n_ctx=context_length,
-        # bos_token_id=tokenizer.bos_token_id,
-        # eos_token_id=tokenizer.eos_token_id,
+        bos_token_id=tokenizer.bos_token_id,
+        eos_token_id=tokenizer.eos_token_id,
     )
     print(f'Initializing GPT2LMHeadModel from checkpoint {checkpoint}...')
     model = GPT2LMHeadModel(config)
@@ -338,7 +346,7 @@ def prepare_lm_dataset(
         data = DatasetDict.load_from_disk(data)
     def map_tokenizer(batch):
         outputs = tokenizer(
-            batch,
+            batch[label_col],
             truncation=True,
             max_length=context_length,
             return_overflowing_tokens=True,
