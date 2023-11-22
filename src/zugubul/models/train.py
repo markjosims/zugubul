@@ -188,10 +188,13 @@ def train_lm(
        **kwargs
 ) -> None:
     if not vocab:
+        print('Defining vocab...')
         vocab = make_lm_vocab(dataset)
+    print('Creating tokenizer...')
     tokenizer = Tokenizer(BPE(vocab, ()))
     #tokenizer.pad_token = tokenizer.eos_token
 
+    print('Generating config for model...')
     config = AutoConfig.from_pretrained(
         checkpoint,
         vocab_size=len(vocab),
@@ -199,13 +202,19 @@ def train_lm(
         # bos_token_id=tokenizer.bos_token_id,
         # eos_token_id=tokenizer.eos_token_id,
     )
+    print(f'Initializing GPT2LMHeadModel from checkpoint {checkpoint}...')
     model = GPT2LMHeadModel(config)
 
+    print('Tokenizing dataset...')
     dataset = prepare_lm_dataset(dataset, tokenizer, label_col, context_length)
+
+    print('Defining training arguments...')
     training_arguments = get_training_args(**kwargs)
 
+    print('Initializing data collator')
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
+    print('Beginning training...')
     trainer = Trainer(
         model=model,
         tokenizer=tokenizer,
