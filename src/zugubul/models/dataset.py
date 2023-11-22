@@ -93,7 +93,7 @@ def make_lm_dataset(
         text_col: str = 'text',
         splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1),
         make_splits: bool = True,
-) -> pd.DataFrame:
+) -> Union[Dataset, DatasetDict]:
     """
     Concatenates all text from a dataframe or .csv file containing ASR labels
     and returns a dataframe to be used for LM training.
