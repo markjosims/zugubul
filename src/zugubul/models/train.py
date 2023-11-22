@@ -189,7 +189,7 @@ def train_lm(
 ) -> None:
     if not vocab:
         vocab = make_lm_vocab(dataset)
-    tokenizer = Tokenizer(BPE(vocab, None))
+    tokenizer = Tokenizer(BPE(vocab, ()))
     tokenizer.pad_token = tokenizer.eos_token
 
     config = AutoConfig.from_pretrained(
