@@ -63,7 +63,6 @@ DEFAULT_HYPERPARAMS = {
     'warmup_steps': 100,
     'save_total_limit': 2,
     'torch_compile': False,
-    'push_to_hub': False,
 }
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
