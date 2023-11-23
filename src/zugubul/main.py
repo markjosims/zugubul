@@ -49,6 +49,23 @@ else:
     from gooey_tools import HybridGooey, HybridGooeyParser, add_hybrid_arg
 
 
+DEFAULT_HYPERPARAMS = {
+    'group_by_length': True,
+    'per_device_train_batch_size': 1,
+    'evaluation_strategy': "steps",
+    'num_train_epochs': 4,
+    'gradient_checkpointing': True,
+    'fp16': False,
+    'save_steps': 100,
+    'eval_steps': 100,
+    'logging_steps': 100,
+    'learning_rate': 1e-3,
+    'warmup_steps': 100,
+    'save_total_limit': 2,
+    'torch_compile': False,
+    'push_to_hub': False,
+}
+
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = lambda *args, **kwargs: add_hybrid_arg(merge_parser, *args, **kwargs)
     add_arg(
@@ -565,23 +582,7 @@ def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
     )
     add_arg = lambda *args, **kwargs: add_hybrid_arg(hyper_args, *args, **kwargs)
 
-    default_hyper = {
-        'group_by_length': True,
-        'per_device_train_batch_size': 1,
-        'evaluation_strategy': "steps",
-        'num_train_epochs': 4,
-        'gradient_checkpointing': True,
-        'fp16': False,
-        'save_steps': 100,
-        'eval_steps': 100,
-        'logging_steps': 100,
-        'learning_rate': 1e-3,
-        'warmup_steps': 100,
-        'save_total_limit': 2,
-        'torch_compile': False,
-        'push_to_hub': False,
-    }
-    for k, v in default_hyper.items():
+    for k, v in DEFAULT_HYPERPARAMS.items():
         if type(v) is bool:
             add_arg('--'+k, default=v, action='store_true')
         else:
@@ -1026,6 +1027,7 @@ def handle_train(args: Dict[str, Any]) -> int:
     model_name = args['model_url']
     if not model_name:
         model_name = 'gpt2' if task=='LM' else 'facebook/mms-1b-all'
+    hyperparams = {k: args[k] for k in DEFAULT_HYPERPARAMS.keys()}
 
     train(
         out_dir=out_dir,
@@ -1035,7 +1037,8 @@ def handle_train(args: Dict[str, Any]) -> int:
         hf=hf,
         task=task,
         vocab=vocab,
-        audio_cutoff=audio_cutoff
+        audio_cutoff=audio_cutoff,
+        **hyperparams,
     )
     return 0
 
