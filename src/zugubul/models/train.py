@@ -19,7 +19,7 @@ import argparse
 from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models.vocab import make_lm_vocab
 from zugubul.models._metrics import compute_wer, compute_acc
-from zugubul.main import init_train_parser, handle_train
+from zugubul.main import init_train_parser, handle_train, DEFAULT_HYPERPARAMS
 
 
 def train(
@@ -259,22 +259,7 @@ def get_training_args(**kwargs) -> TrainingArguments:
     kwarg 'out_dir' must be provided, all others are optional.
     Default values taken from https://huggingface.co/blog/mms_adapters
     """
-    default_values = {
-        'group_by_length': True,
-        'per_device_train_batch_size': 1,
-        'evaluation_strategy': "steps",
-        'num_train_epochs': 4,
-        'gradient_checkpointing': True,
-        'fp16': False,
-        'save_steps': 1000,
-        'eval_steps': 500,
-        'logging_steps': 100,
-        'learning_rate': 1e-3,
-        'warmup_steps': 100,
-        'torch_compile': False,
-        'push_to_hub': False,
-    }
-    for k, v in default_values.items():
+    for k, v in DEFAULT_HYPERPARAMS.items():
         if k not in kwargs:
             kwargs[k] = v
 
