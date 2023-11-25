@@ -57,12 +57,11 @@ DEFAULT_HYPERPARAMS = {
     'num_train_epochs': 4,
     'gradient_checkpointing': True,
     'fp16': False,
-    'save_steps': 100,
-    'eval_steps': 100,
+    'save_steps': 1000,
+    'eval_steps': 1000,
     'logging_steps': 100,
     'learning_rate': 1e-3,
     'warmup_steps': 100,
-    'save_total_limit': 2,
     'torch_compile': False,
 }
 
