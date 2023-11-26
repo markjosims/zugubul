@@ -1030,7 +1030,7 @@ def handle_train(args: Dict[str, Any]) -> int:
 
     train(
         out_dir=out_dir,
-        model=model_name,
+        model_str=model_name,
         dataset=data_dir,
         label_col=label_col,
         hf=hf,

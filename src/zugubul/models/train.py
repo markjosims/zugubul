@@ -24,7 +24,7 @@ from zugubul.main import init_train_parser, handle_train, DEFAULT_HYPERPARAMS
 
 def train(
         out_dir: Union[str, os.PathLike],
-        model: Union[str, os.PathLike, Wav2Vec2Model],
+        model_str: Union[str, os.PathLike],
         dataset: Union[str, os.PathLike, Dataset],
         label_col: Optional[str] = None,
         data_collator: Optional[DataCollator] = None,
@@ -65,54 +65,58 @@ def train(
         print('Downloading feature extractor...')
         processor = Wav2Vec2Processor.from_pretrained(model)
 
-    if not isinstance(model, Wav2Vec2Model):
-        print('Downloading model...')
-        if task == 'ASR':
-            print('Instantiating model as Wav2Vec2ForCTC for ASR.')
-            model_wrapper = Wav2Vec2ForCTC
-            model = download_model(
-                model_name=model,
-                model_wrapper=model_wrapper,
-                task=task,
-                processor=processor,
-            )
-        elif task == 'LM':
-            print('Instantiating model for masked LM.')
-            model_wrapper = AutoModelForMaskedLM
-            if 'canine' in model:
-                model_wrapper = CanineForMaskedLM
-            model = download_model(
-                model_name=model,
-                model_wrapper=model_wrapper,
-                task=task,
-                processor=processor
-            )
-        else:
-            print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
-            model_wrapper = Wav2Vec2ForSequenceClassification
-            vocab = _get_vocab_path(vocab, dataset, hf)
-            with open(vocab, 'r') as f:
-                vocab = json.load(f)
-            label2id = vocab
-            id2label = {id: label for label, id in vocab.items()}
-            model = download_model(
-                model_name=model,
-                model_wrapper=model_wrapper,
-                task=task,
-                num_labels=len(vocab),
-                label2id=label2id,
-                id2label=id2label,
-            )
+    print('Downloading model...')
+    if task == 'ASR':
+        print('Instantiating model as Wav2Vec2ForCTC for ASR.')
+        model_wrapper = Wav2Vec2ForCTC
+        model = download_model(
+            model_name=model_str,
+            model_wrapper=model_wrapper,
+            task=task,
+            processor=processor,
+        )
+    elif task == 'LM':
+        print('Instantiating model for masked LM.')
+        model_wrapper = AutoModelForMaskedLM
+        if 'canine' in model_str:
+            model_wrapper = CanineForMaskedLM
+        model = download_model(
+            model_name=model_str,
+            model_wrapper=model_wrapper,
+            task=task,
+            processor=processor
+        )
+    else:
+        print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
+        model_wrapper = Wav2Vec2ForSequenceClassification
+        vocab = _get_vocab_path(vocab, dataset, hf)
+        with open(vocab, 'r') as f:
+            vocab = json.load(f)
+        label2id = vocab
+        id2label = {id: label for label, id in vocab.items()}
+        model = download_model(
+            model_name=model_str,
+            model_wrapper=model_wrapper,
+            task=task,
+            num_labels=len(vocab),
+            label2id=label2id,
+            id2label=id2label,
+        )
 
     print('Preparing model for finetuning...')
+    if 'mms' in model_str:
     # taken from https://huggingface.co/blog/mms_adapters
     # freeze non adapter parameters
-    if hasattr(model, 'init_adapter_layers'):
-        model.init_adapter_layers()
-        model.freeze_base_model()
-        adapter_weights = model._get_adapters()
-        for param in adapter_weights.values():
-            param.requires_grad = True
+        if hasattr(model, 'init_adapter_layers'):
+            model.init_adapter_layers()
+            model.freeze_base_model()
+            adapter_weights = model._get_adapters()
+            for param in adapter_weights.values():
+                param.requires_grad = True
+    else:
+        # other wav2vec2 models like XLSR do not have adapter layers
+        # instead, we freeze the feature encoder
+        model.freeze_feature_encoder()
 
     if not training_args:
         training_args = get_training_args(
