@@ -26,7 +26,7 @@ def eval(
     trainer = Trainer(
         model=model,
         args=training_args,
-        eval_dataset=dataset,
+        eval_dataset=dataset['test'],
         compute_metrics=compute_metrics,
     )
     trainer.evaluate()
