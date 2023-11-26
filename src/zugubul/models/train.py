@@ -43,7 +43,7 @@ def train(
         return train_lm(
             dataset=dataset,
             out_dir=out_dir,
-            checkpoint=model,
+            checkpoint=model_str,
             label_col=label_col,
         )
 
@@ -53,17 +53,17 @@ def train(
             login()
             token = HfFolder.get_token()
 
-    if (not processor) and ('canine' in model):
+    if (not processor) and ('canine' in model_str):
         # CANINE tokenizer doesn't need a vocabulary
         print('Initializing CanineTokenizer...')
-        processor = CanineTokenizer.from_pretrained(model)
+        processor = CanineTokenizer.from_pretrained(model_str)
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
         processor = init_processor(vocab, vocab_dir=dataset, task=task)
     elif (not processor) and (task == 'LID'):
         print('Downloading feature extractor...')
-        processor = Wav2Vec2Processor.from_pretrained(model)
+        processor = Wav2Vec2Processor.from_pretrained(model_str)
 
     print('Downloading model...')
     if task == 'ASR':
