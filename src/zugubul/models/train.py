@@ -166,6 +166,7 @@ def train(
     )
     trainer.train()
     print('Done training')
+    trainer.evaluate(dataset['test'])
 
     adapter_file = WAV2VEC2_ADAPTER_SAFE_FILE#.format(target_lang)
     adapter_file = os.path.join(training_args.output_dir, adapter_file)
@@ -235,6 +236,7 @@ def train_lm(
         compute_metrics=lambda pred : compute_wer(pred, tokenizer),
     )
     trainer.train()
+    trainer.evaluate(dataset['test'])
     trainer.save_model(training_arguments.output_dir)
     tokenizer.save_pretrained(training_arguments.output_dir)
 
