@@ -1,7 +1,7 @@
 from typing import Union, Sequence, Tuple, Optional, Literal
 import os
 import pandas as pd
-from datasets import Dataset, DatasetDict, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 from huggingface_hub import login
 from zugubul.elan_tools import snip_audio, eaf_data
 from math import ceil
@@ -11,6 +11,11 @@ import shutil
 import tomli
 import numpy as np
 import string
+
+def load_dataset_safe(dataset: str) -> Union[Dataset, DatasetDict]:
+    if os.path.exists(dataset):
+        return load_from_disk(dataset)
+    return load_dataset(dataset)
 
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],
