@@ -126,8 +126,12 @@ def train(
         )
 
     if type(dataset) is not Dataset:
-        print('Loading dataset...')
-        dataset = load_dataset(dataset)
+        if os.path.exists(dataset):
+            print('Loading dataset from local file...')
+            dataset = DatasetDict.load_from_disk(dataset)
+        else:
+            print('Loading dataset from Huggingface hub (or cache)...')
+            dataset = load_dataset(dataset)
     if task in ['LID', 'ASR']:
         print('Resampling audio to 16kHz...')
         dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
