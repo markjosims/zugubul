@@ -292,6 +292,7 @@ def download_model(
             'hidden_dropout': 0.0,
             'feat_proj_dropout': 0.0,
             'layerdrop': 0.0,
+            'mask_time_prob': 0.05,
             'ctc_loss_reduction': "mean",
             'ignore_mismatched_sizes': True,
         }
