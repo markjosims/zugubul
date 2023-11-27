@@ -18,7 +18,7 @@ import json
 import argparse
 from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models.vocab import make_lm_vocab
-from zugubul.models._metrics import compute_wer, compute_acc
+from zugubul.models._metrics import compute_cer_and_wer, compute_acc
 from zugubul.main import init_train_parser, handle_train, DEFAULT_HYPERPARAMS
 
 
@@ -157,7 +157,7 @@ def train(
 
     if not compute_metrics:
         if task in ['ASR', 'LM']:
-            compute_metrics = lambda pred : compute_wer(pred, processor)
+            compute_metrics = lambda pred : compute_cer_and_wer(pred, processor)
         else:
             compute_metrics = compute_acc
 
@@ -241,7 +241,7 @@ def train_lm(
         data_collator=data_collator,
         train_dataset=dataset["train"],
         eval_dataset=dataset["val"],
-        compute_metrics=lambda pred : compute_wer(pred, tokenizer),
+        compute_metrics=lambda pred : compute_cer_and_wer(pred, tokenizer),
     )
     trainer.train()
     trainer.evaluate(dataset['test'])
