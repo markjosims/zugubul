@@ -19,7 +19,7 @@ def compute_str_acc(
         pred_logits: Optional[torch.tensor] = None,
         label_str: Optional[str] = None,
         metrics: Dict[str, EvaluationModule] = 'wer',
-        return_pred_str: bool = False,
+        return_labels: bool = False,
     ):
     if type(pred) is not str:
         if not pred_logits:
@@ -41,7 +41,8 @@ def compute_str_acc(
             predictions=pred_str,
             references=label_str
         )
-    if return_pred_str:
+    if return_labels:
+        metric_outs['label'] = label_str
         metric_outs['pred'] = pred_str
 
     return metric_outs
@@ -56,8 +57,12 @@ def compute_cer_and_wer(*args, **kwargs):
     return compute_str_acc(*args, **kwargs, metrics={'wer': wer_metric, 'cer': cer_metric})
 
 # taken from https://huggingface.co/docs/transformers/tasks/audio_classification on Sep 12 2023
-def compute_acc(pred):
+def compute_acc(pred, return_labels: bool = False):
     pred_logits = pred.predictions
     pred_ids = np.argmax(pred_logits, axis=-1)
 
-    return accuracy.compute(predictions=pred_ids, references=pred.label_ids)
+    out = accuracy.compute(predictions=pred_ids, references=pred.label_ids)
+    if return_labels:
+        out['label'] = pred.label_ids
+        out['pred'] = pred_ids
+    return out

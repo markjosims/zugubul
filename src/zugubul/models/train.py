@@ -35,6 +35,7 @@ def train(
         compute_metrics: Optional[Callable] = None,
         vocab: Union[str, os.PathLike, None] = None,
         processor: Union[Wav2Vec2Processor, Wav2Vec2FeatureExtractor, None] = None,
+        save_eval_preds: bool = False,
         hf: bool = True,
         **kwargs
     ) -> str:
@@ -156,10 +157,18 @@ def train(
         data_collator = collator_obj(processor)
 
     if not compute_metrics:
-        if task in ['ASR', 'LM']:
-            compute_metrics = lambda pred : compute_cer_and_wer(pred, processor)
-        else:
-            compute_metrics = compute_acc
+        def compute_metrics(pred):
+            if task in ['ASR', 'LM']:
+                out = compute_cer_and_wer(pred, processor, return_labels=save_eval_preds)
+            else:
+                out = compute_acc(pred, return_labels=save_eval_preds)
+            if save_eval_preds:
+                label, pred = out.pop('label'), out.pop('pred')
+                eval_step = 0 # how to get current step???
+                eval_fpath = os.path.join(out_dir, f"eval_{eval_step}.txt")
+                with open(eval_fpath, 'a') as f:
+                    f.write(label, pred)
+            return out
 
     print('Starting training...')
     trainer = Trainer(
