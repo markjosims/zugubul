@@ -56,7 +56,11 @@ def eval(
             if model:
                 with torch.no_grad():
                     pred = model(**input_dict)
-                model_outs = calc_m(pred_logits=pred.logits, label_str=label)
+                model_outs = calc_m(
+                    pred_logits=pred.logits,
+                    processor=processor,
+                    label_str=label,
+                )
                 outputs\
                     .get('model', dict())\
                     .get(m, list()).append(model_outs)        
