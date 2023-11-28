@@ -21,17 +21,19 @@ METRICS = {
 def eval(
         dataset: Union[str, Dataset],
         model_str: Optional[str],
-        funct: Optional[Callable],
+        funct: Optional[Callable] = None,
         metric: Union[str, List[str]] = 'accuracy',
         label_col: str = 'text',
         input_col: str = 'audio',
 ) -> None:
     if model_str:
+        print('Loading model and processor...')
         model = AutoModel.from_pretrained(model_str)
         processor = AutoProcessor.from_pretrained(model_str)
         model.eval()
 
     if type(dataset) is str:
+        print('Loading dataset...')
         dataset = load_dataset_safe(dataset)
 
     if type(metric) is str:
@@ -56,7 +58,7 @@ def eval(
                 outputs\
                     .get('model', dict())\
                     .get(m, list()).append(model_outs)        
-                
+    print('Evaluating...')
     dataset.map(eval_row)
     return outputs
     
