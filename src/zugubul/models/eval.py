@@ -48,13 +48,13 @@ def eval(
             calc_m = METRICS[m]
             if funct:
                 funct_label = funct(input_dict)
-                funct_outs = calc_m(pred=funct_label, label=label)
+                funct_outs = calc_m(pred=funct_label, label_str=label)
                 outputs\
                     .get('funct', dict())\
                     .get(m, list()).append(funct_outs)
             if model:
                 pred = model(**input_dict)
-                model_outs = calc_m(pred=pred, label=label)
+                model_outs = calc_m(pred=pred, label_str=label)
                 outputs\
                     .get('model', dict())\
                     .get(m, list()).append(model_outs)        
