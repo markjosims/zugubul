@@ -22,7 +22,7 @@ def compute_str_acc(
         return_labels: bool = False,
     ):
     if type(pred) is not str:
-        if not pred_logits:
+        if pred_logits is None:
             pred_logits = pred.predictions
         pred_str = get_pred_str(pred_logits, processor)
 
