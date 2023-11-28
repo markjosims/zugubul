@@ -49,7 +49,7 @@ def eval(
             calc_m = METRICS[m]
             if funct:
                 funct_label = funct(input_dict)
-                funct_outs = calc_m(pred=funct_label, label_str=label)
+                funct_outs = calc_m(pred=funct_label, label_str=[label,])
                 outputs\
                     .get('funct', dict())\
                     .get(m, list()).append(funct_outs)
@@ -59,7 +59,7 @@ def eval(
                 model_outs = calc_m(
                     pred_logits=pred.logits,
                     processor=processor,
-                    label_str=label,
+                    label_str=[label,],
                 )
                 outputs\
                     .get('model', dict())\

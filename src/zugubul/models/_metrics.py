@@ -14,14 +14,14 @@ def get_pred_str(pred_logits, processor) -> str:
     return pred_str    
 
 def compute_str_acc(
-        pred: Union[Mapping, str, None] = None,
+        pred: Union[Mapping, list, None] = None,
         processor: Optional[PreTrainedTokenizer] = None,
         pred_logits: Optional[torch.tensor] = None,
         label_str: Optional[str] = None,
         metrics: Dict[str, EvaluationModule] = 'wer',
         return_labels: bool = False,
     ):
-    if type(pred) is not str:
+    if type(pred) is not list:
         if pred_logits is None:
             pred_logits = pred.predictions
         pred_str = get_pred_str(pred_logits, processor)
