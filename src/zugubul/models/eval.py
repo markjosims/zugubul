@@ -54,7 +54,7 @@ def eval(
                     .get(m, list()).append(funct_outs)
             if model:
                 pred = model(**input_dict)
-                model_outs = calc_m(pred=pred, label_str=label)
+                model_outs = calc_m(pred_logits=pred.logits, label_str=label)
                 outputs\
                     .get('model', dict())\
                     .get(m, list()).append(model_outs)        
