@@ -54,7 +54,7 @@ def eval(
                     .get('funct', dict())\
                     .get(m, list()).append(funct_outs)
             if model:
-                with torch.nograd():
+                with torch.no_grad():
                     pred = model(**input_dict)
                 model_outs = calc_m(pred_logits=pred.logits, label_str=label)
                 outputs\
