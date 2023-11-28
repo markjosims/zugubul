@@ -1,33 +1,62 @@
-from transformers import AutoModel, TrainingArguments, Trainer
-from datasets import Dataset, load_from_disk, load_metric
+from transformers import AutoModel, AutoProcessor
+from datasets import Dataset
+from evaluate import load
+from zugubul.models.dataset import load_dataset_safe
+from zugubul.models._metrics import (
+    compute_acc,
+    compute_cer,
+    compute_wer,
+    compute_cer_and_wer
+)
 
-import numpy as np
-from typing import Callable, Union
+from typing import Callable, Union, List, Optional
+
+METRICS = {
+    'accuracy': compute_acc,
+    'cer': compute_cer,
+    'wer': compute_wer,
+    'cer_and_wer': compute_cer_and_wer,
+}
 
 def eval(
-        model: Union[str, Callable],
         dataset: Union[str, Dataset],
-        metric: str = 'accuracy'
+        model_str: Optional[str],
+        funct: Optional[Callable],
+        metric: Union[str, List[str]] = 'accuracy',
+        label_col: str = 'text',
+        input_col: str = 'audio',
 ) -> None:
-    training_args = TrainingArguments("test_trainer")
-    
-    if type(model) is str:
-        model = AutoModel.from_pretrained(model)
+    if model_str:
+        model = AutoModel.from_pretrained(model_str)
+        processor = AutoProcessor.from_pretrained(model_str)
+        model.eval()
+
     if type(dataset) is str:
-        dataset = load_from_disk(dataset)
+        dataset = load_dataset_safe(dataset)
 
-    metric = load_metric(metric)
-
-    def compute_metrics(eval_pred):
-        logits, labels = eval_pred
-        predictions = np.argmax(logits, axis=-1)
-        return metric.compute(predictions=predictions, references=labels)
+    if type(metric) is str:
+        metric = [metric,]
     
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        eval_dataset=dataset['test'],
-        compute_metrics=compute_metrics,
-    )
-    trainer.evaluate()
+    outputs = {}
+    def eval_row(row) -> None:
+        label = row[label_col]
+        input_cell = row[input_col]
+        input_dict = processor(input_cell['array'], return_tensors="pt", padding=True, sampling_rate=16000)
+        for m in metric:
+            calc_m = METRICS[m]
+            if funct:
+                funct_label = funct(input_dict)
+                funct_outs = calc_m(pred=funct_label, label=label)
+                outputs\
+                    .get('funct', dict())\
+                    .get(m, list()).append(funct_outs)
+            if model:
+                pred = model(**input_dict)
+                model_outs = calc_m(pred=pred, label=label)
+                outputs\
+                    .get('model', dict())\
+                    .get(m, list()).append(model_outs)        
+                
+    dataset.map(eval_row)
+    return outputs
     
