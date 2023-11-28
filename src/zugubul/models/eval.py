@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoProcessor
+from transformers import Wav2Vec2ForCTC, AutoProcessor
 from datasets import Dataset
 from evaluate import load
 from zugubul.models.dataset import load_dataset_safe
@@ -28,7 +28,7 @@ def eval(
 ) -> None:
     if model_str:
         print('Loading model and processor...')
-        model = AutoModelForCausalLM.from_pretrained(model_str)
+        model = Wav2Vec2ForCTC.from_pretrained(model_str)
         processor = AutoProcessor.from_pretrained(model_str)
         model.eval()
 
