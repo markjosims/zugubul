@@ -8,6 +8,7 @@ from zugubul.models._metrics import (
     compute_wer,
     compute_cer_and_wer
 )
+import torch
 
 from typing import Callable, Union, List, Optional
 
@@ -53,7 +54,8 @@ def eval(
                     .get('funct', dict())\
                     .get(m, list()).append(funct_outs)
             if model:
-                pred = model(**input_dict)
+                with torch.nograd():
+                    pred = model(**input_dict)
                 model_outs = calc_m(pred_logits=pred.logits, label_str=label)
                 outputs\
                     .get('model', dict())\
