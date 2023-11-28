@@ -448,6 +448,12 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='Exclude any audio records with length greater than cutoff (in frames).',
         type=int
     )
+    add_arg(
+        '--save_eval_preds',
+        type=bool,
+        action='store_true',
+        help='Save eval predictions to output file for each eval loop.',
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
@@ -1015,29 +1021,21 @@ def handle_train(args: Dict[str, Any]) -> int:
         return 1
     from zugubul.models.train import train
 
-    data_dir = args['DATA_PATH']
-    vocab = args['vocab_path']
-    label_col = args['label_col']
-    out_dir = args['OUT_PATH']
-    hf = args['hf']
-    audio_cutoff = args['audio_cutoff']
-
-    task = args['TASK']
-    model_name = args['model_url']
+    data_dir = args.pop('DATA_PATH')
+    vocab = args.pop('vocab_path')
+    out_dir = args.pop('OUT_PATH')
+    task = args.pop('TASK')
+    model_name = args.pop('model_url')
     if not model_name:
         model_name = 'gpt2' if task=='LM' else 'facebook/mms-1b-all'
-    hyperparams = {k: args[k] for k in DEFAULT_HYPERPARAMS.keys()}
 
     train(
         out_dir=out_dir,
         model_str=model_name,
         dataset=data_dir,
-        label_col=label_col,
-        hf=hf,
         task=task,
         vocab=vocab,
-        audio_cutoff=audio_cutoff,
-        **hyperparams,
+        **args,
     )
     return 0
 
