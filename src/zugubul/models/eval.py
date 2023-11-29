@@ -1,6 +1,5 @@
 from transformers import Wav2Vec2ForCTC, AutoProcessor
 from datasets import Dataset
-from evaluate import load
 from zugubul.models.dataset import load_dataset_safe
 from zugubul.models._metrics import (
     compute_acc,
@@ -8,10 +7,12 @@ from zugubul.models._metrics import (
     compute_wer,
     compute_cer_and_wer
 )
+from zugubul.main import init_eval_parser, handle_eval
 import torch
 
-from typing import Callable, Union, List, Optional
+from typing import Callable, Union, List, Optional, Sequence
 from collections import defaultdict
+import argparse
 
 METRICS = {
     'accuracy': compute_acc,
@@ -24,7 +25,7 @@ def eval(
         dataset: Union[str, Dataset],
         model_str: Optional[str],
         funct: Optional[Callable] = None,
-        metric: Union[str, List[str]] = 'accuracy',
+        metric: Union[str, List[str]] = 'cer_and_wer',
         label_col: str = 'text',
         input_col: str = 'audio',
         split: str = 'test'
@@ -66,4 +67,14 @@ def eval(
     print('Evaluating...')
     dataset.map(eval_row, batched=True)
     return outputs
-    
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description='Evaluate a HF model on test data.')
+    init_eval_parser(parser)
+    args = vars(parser.parse_args(argv))
+
+    handle_eval(args)
+    return 0
+
+if __name__ == '__main__':
+    main()

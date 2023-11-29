@@ -529,6 +529,48 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_batch_args(annotate_parser)
     add_remote_args(annotate_parser)
 
+def init_eval_parser(eval_parser: argparse.ArgumentParser) -> None:
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(eval_parser, *args, **kwargs)
+    add_arg(
+        'DATASET',
+        help='Path to dataset to use for evaluation.'
+    )
+    add_arg(
+        'MODEL',
+        help='Path to model to evalute on.'
+    )
+    # funct: Optional[Callable] = None, #TODO: implement passing the path to python file
+    add_arg(
+        '--out',
+        '-o',
+        help='Path to save output to (default is $MODEL_eval.json)'
+    )
+    add_arg(
+        '--metric',
+        '-m',
+        nargs='+',
+        help='Metrics to evaluate on.',
+        default='cer_and_wer'
+    )
+    add_arg(
+        '--label_col',
+        '-lc',
+        help='Name of column in dataset containing label. Default `text`.',
+        default='text',
+    )
+    add_arg(
+        '--input_col',
+        '-ic',
+        help='Name of column in dataset containing input data. Default `audio`.',
+        default='audio',
+    )
+    add_arg(
+        '--split',
+        '-s',
+        help='Name of split to evaluate on. Default `test`.',
+        default='test',
+    )
+
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     batch_args = parser.add_argument_group(
         'batch',
@@ -1126,6 +1168,25 @@ def handle_annotate(args: Dict[str, Any]) -> int:
 
     return 0
 
+def handle_eval(args: Dict[str, Any]) -> int:
+    from zugubul.models.eval import eval
+    import json
+    dataset = args.pop("DATASET")
+    model = args.pop("MODEL")
+    out = args.pop("out")
+    args.pop("COMMAND", None)
+    if not out:
+        out = model+'_eval.json'
+    out = eval(
+        dataset=dataset,
+        model_str=model,
+        **args
+    )
+    with open(out, 'f') as f:
+        json.dump(out, f)
+    return 0
+
+
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
     Returns path to .eaf file with same name as data_file
@@ -1203,6 +1264,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     annotate_parser = subparsers.add_parser('annotate', help='Automatically annotate a fieldwork recording in the target language.')
     init_annotate_parser(annotate_parser)
 
+    eval_parser = subparsers.add_parser('eval', help='Evaluate a HF model on test data.')
+    init_eval_parser(eval_parser)
+
     args = vars(parser.parse_args(argv))
 
     command = args['COMMAND']
@@ -1228,6 +1292,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_infer(args)
     elif command == 'annotate':
         return handle_annotate(args)
+    elif command == 'eval':
+        return handle_eval(args)
     return 1
 
 if __name__ == '__main__':
