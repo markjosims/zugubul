@@ -51,7 +51,7 @@ def eval(
             calc_m = METRICS[m]
             if funct:
                 funct_label = funct(input_dict)
-                funct_outs = calc_m(pred=funct_label, label_str=[label,])
+                funct_outs = calc_m(pred=funct_label, label_str=[label,], return_labels=True)
                 outputs['funct'][m].append(funct_outs)
             if model:
                 with torch.no_grad():
@@ -60,6 +60,7 @@ def eval(
                     pred_logits=pred.logits,
                     processor=processor,
                     label_str=[label,],
+                    return_labels=True,
                 )
                 outputs['model'][m].append(model_outs)        
     print('Evaluating...')
