@@ -51,19 +51,19 @@ def eval(
             calc_m = METRICS[m]
             if funct:
                 funct_label = funct(input_dict)
-                funct_outs = calc_m(pred=funct_label, label_str=[label,], return_labels=True)
-                outputs['funct'][m].append(funct_outs)
+                funct_outs = calc_m(pred=funct_label, label_str=label, return_labels=True)
+                outputs['funct'][m].extend(funct_outs)
             if model:
                 with torch.no_grad():
                     pred = model(**input_dict)
                 model_outs = calc_m(
                     pred_logits=pred.logits,
                     processor=processor,
-                    label_str=[label,],
+                    label_str=label,
                     return_labels=True,
                 )
-                outputs['model'][m].append(model_outs)        
+                outputs['model'][m].extend(model_outs)        
     print('Evaluating...')
-    dataset.map(eval_row)
+    dataset.map(eval_row, batched=True)
     return outputs
     
