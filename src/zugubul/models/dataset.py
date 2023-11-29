@@ -12,10 +12,12 @@ import tomli
 import numpy as np
 import string
 
-def load_dataset_safe(dataset: str) -> Union[Dataset, DatasetDict]:
+def load_dataset_safe(dataset: str, split: Optional[str] = None) -> Union[Dataset, DatasetDict]:
     if os.path.exists(dataset):
+        if split and os.path.exists(os.path.join(dataset, split)):
+            return load_from_disk(os.path.join(dataset, split))
         return load_from_disk(dataset)
-    return load_dataset(dataset)
+    return load_dataset(dataset, split=split)
 
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],

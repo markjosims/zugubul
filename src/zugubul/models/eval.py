@@ -27,6 +27,7 @@ def eval(
         metric: Union[str, List[str]] = 'accuracy',
         label_col: str = 'text',
         input_col: str = 'audio',
+        split: str = 'test'
 ) -> None:
     if model_str:
         print('Loading model and processor...')
@@ -36,7 +37,7 @@ def eval(
 
     if type(dataset) is str:
         print('Loading dataset...')
-        dataset = load_dataset_safe(dataset)
+        dataset = load_dataset_safe(dataset, split=split)
 
     if type(metric) is str:
         metric = [metric,]
