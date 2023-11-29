@@ -21,17 +21,8 @@ async-timeout==4.0.3
     # via aiohttp
 attrs==23.1.0
     # via aiohttp
-audioread==3.0.1
-    # via librosa
-bcrypt==4.0.1
-    # via paramiko
 certifi==2023.7.22
     # via requests
-cffi==1.16.0
-    # via
-    #   cryptography
-    #   pynacl
-    #   soundfile
 charset-normalizer==3.3.0
     # via
     #   aiohttp
@@ -44,20 +35,8 @@ colorama==0.4.6
     # via
     #   click
     #   tqdm
-colored==2.2.3
-    # via gooey
-cryptography==41.0.4
-    # via paramiko
-datasets[audio]==2.14.5
-    # via
-    #   -r requirements.in
-    #   evaluate
-decorator==5.1.1
-    # via
-    #   fabric
-    #   librosa
-deprecated==1.2.14
-    # via fabric
+datasets==2.14.5
+    # via evaluate
 dill==0.3.7
     # via
     #   datasets
@@ -67,8 +46,6 @@ etils[epath,epy]==1.5.0
     # via orbax-checkpoint
 evaluate==0.4.0
     # via -r torch-requirements.in
-fabric==3.2.2
-    # via -r requirements.in
 filelock==3.12.4
     # via
     #   huggingface-hub
@@ -87,15 +64,8 @@ fsspec[http]==2023.6.0
     #   evaluate
     #   huggingface-hub
     #   torch
-gooey==1.0.8.1
-    # via
-    #   -r requirements.in
-    #   gooey-tools
-gooey-tools @ git+https://github.com/markjosims/gooey_tools.git
-    # via -r requirements.in
 huggingface-hub==0.17.3
     # via
-    #   -r requirements.in
     #   accelerate
     #   datasets
     #   evaluate
@@ -109,8 +79,6 @@ importlib-metadata==6.8.0
     # via jax
 importlib-resources==6.1.0
     # via etils
-invoke==2.2.0
-    # via fabric
 jax==0.4.17
     # via
     #   chex
@@ -126,16 +94,6 @@ jinja2==3.1.2
     # via torch
 jiwer==3.0.3
     # via -r torch-requirements.in
-joblib==1.3.2
-    # via
-    #   librosa
-    #   scikit-learn
-lazy-loader==0.3
-    # via librosa
-librosa==0.10.1
-    # via datasets
-llvmlite==0.41.0
-    # via numba
 markdown-it-py==3.0.0
     # via rich
 markupsafe==2.1.3
@@ -153,7 +111,6 @@ mpmath==1.3.0
 msgpack==1.0.7
     # via
     #   flax
-    #   librosa
     #   orbax-checkpoint
 multidict==6.0.4
     # via
@@ -167,8 +124,6 @@ nest-asyncio==1.5.8
     # via orbax-checkpoint
 networkx==3.1
     # via torch
-numba==0.58.0
-    # via librosa
 numpy==1.25.2
     # via
     #   accelerate
@@ -178,20 +133,15 @@ numpy==1.25.2
     #   flax
     #   jax
     #   jaxlib
-    #   librosa
     #   ml-dtypes
-    #   numba
     #   opt-einsum
     #   optax
     #   orbax-checkpoint
     #   pandas
     #   pyarrow
-    #   scikit-learn
     #   scipy
-    #   soxr
     #   tensorstore
     #   transformers
-    #   wxpython
 opt-einsum==3.3.0
     # via jax
 optax==0.1.7
@@ -204,42 +154,19 @@ packaging==23.2
     #   datasets
     #   evaluate
     #   huggingface-hub
-    #   pooch
     #   transformers
 pandas==2.1.1
     # via
     #   datasets
     #   evaluate
-paramiko==3.3.1
-    # via fabric
-pillow==10.0.1
-    # via
-    #   gooey
-    #   wxpython
-platformdirs==3.11.0
-    # via pooch
-pooch==1.7.0
-    # via librosa
 protobuf==4.24.4
     # via orbax-checkpoint
 psutil==5.9.5
-    # via
-    #   accelerate
-    #   gooey
+    # via accelerate
 pyarrow==13.0.0
     # via datasets
-pycparser==2.21
-    # via cffi
-pydub==0.25.1
-    # via -r requirements.in
 pygments==2.16.1
     # via rich
-pygtrie==2.5.0
-    # via gooey
-pympi-ling==1.70.2
-    # via -r requirements.in
-pynacl==1.5.0
-    # via paramiko
 python-dateutil==2.8.2
     # via pandas
 pytz==2023.3.post1
@@ -262,7 +189,6 @@ requests==2.31.0
     #   evaluate
     #   fsspec
     #   huggingface-hub
-    #   pooch
     #   responses
     #   transformers
 responses==0.18.0
@@ -273,38 +199,20 @@ safetensors==0.4.0
     # via
     #   -r torch-requirements.in
     #   transformers
-scikit-learn==1.3.1
-    # via librosa
 scipy==1.11.3
     # via
     #   jax
     #   jaxlib
-    #   librosa
-    #   scikit-learn
 six==1.16.0
-    # via
-    #   python-dateutil
-    #   wxpython
-soundfile==0.12.1
-    # via
-    #   datasets
-    #   librosa
-soxr==0.3.7
-    # via librosa
+    # via python-dateutil
 sympy==1.12
     # via torch
 tensorstore==0.1.45
     # via
     #   flax
     #   orbax-checkpoint
-threadpoolctl==3.2.0
-    # via scikit-learn
 tokenizers==0.14.1
     # via transformers
-tomli==2.0.1
-    # via -r requirements.in
-tomli-w==1.0.0
-    # via -r requirements.in
 toolz==0.12.0
     # via chex
 torch==2.1.0
@@ -316,10 +224,8 @@ torchaudio==2.1.0
     # via -r torch-requirements.in
 tqdm==4.66.1
     # via
-    #   -r requirements.in
     #   datasets
     #   evaluate
-    #   gooey-tools
     #   huggingface-hub
     #   transformers
 transformers==4.34.0
@@ -330,7 +236,6 @@ typing-extensions==4.8.0
     #   etils
     #   flax
     #   huggingface-hub
-    #   librosa
     #   orbax-checkpoint
     #   torch
 tzdata==2023.3
@@ -339,10 +244,6 @@ urllib3==2.0.6
     # via
     #   requests
     #   responses
-wrapt==1.15.0
-    # via deprecated
-wxpython==4.2.1
-    # via gooey
 xxhash==3.4.1
     # via
     #   datasets

@@ -29,8 +29,8 @@ charset-normalizer==3.3.0
     # via
     #   aiohttp
     #   requests
-colored==2.2.3
-    # via gooey
+colorama==0.4.6
+    # via tqdm
 cryptography==41.0.4
     # via paramiko
 datasets[audio]==2.14.5
@@ -57,12 +57,6 @@ fsspec[http]==2023.6.0
     # via
     #   datasets
     #   huggingface-hub
-gooey==1.0.8.1
-    # via
-    #   -r requirements.in
-    #   gooey-tools
-gooey-tools @ git+https://github.com/markjosims/gooey_tools.git
-    # via -r requirements.in
 huggingface-hub==0.17.3
     # via
     #   -r requirements.in
@@ -105,7 +99,6 @@ numpy==1.25.2
     #   scikit-learn
     #   scipy
     #   soxr
-    #   wxpython
 packaging==23.2
     # via
     #   datasets
@@ -115,24 +108,16 @@ pandas==2.1.1
     # via datasets
 paramiko==3.3.1
     # via fabric
-pillow==10.0.1
-    # via
-    #   gooey
-    #   wxpython
 platformdirs==3.11.0
     # via pooch
 pooch==1.7.0
     # via librosa
-psutil==5.9.5
-    # via gooey
 pyarrow==13.0.0
     # via datasets
 pycparser==2.21
     # via cffi
 pydub==0.25.1
     # via -r requirements.in
-pygtrie==2.5.0
-    # via gooey
 pympi-ling==1.70.2
     # via -r requirements.in
 pynacl==1.5.0
@@ -158,9 +143,7 @@ scipy==1.11.3
     #   librosa
     #   scikit-learn
 six==1.16.0
-    # via
-    #   python-dateutil
-    #   wxpython
+    # via python-dateutil
 soundfile==0.12.1
     # via
     #   datasets
@@ -177,7 +160,6 @@ tqdm==4.66.1
     # via
     #   -r requirements.in
     #   datasets
-    #   gooey-tools
     #   huggingface-hub
 typing-extensions==4.8.0
     # via
@@ -189,8 +171,6 @@ urllib3==2.0.6
     # via requests
 wrapt==1.15.0
     # via deprecated
-wxpython==4.2.1
-    # via gooey
 xxhash==3.4.1
     # via datasets
 yarl==1.9.2
