@@ -55,11 +55,11 @@ def init_processor(
         )
         return tokenizer
 
-    tokenizer = Wav2Vec2CTCTokenizer(
+    tokenizer = Wav2Vec2CTCTokenizer.from_pretrained(
         vocab_path,
         unk_token=unk_token,
         pad_token=pad_token,
-        word_delimiter=word_delimiter
+        word_delimiter_token=word_delimiter,
     )
     feature_extractor = Wav2Vec2FeatureExtractor(
         feature_size=1,
