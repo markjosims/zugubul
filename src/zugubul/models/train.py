@@ -125,7 +125,6 @@ def train(
             push_to_hub=hf,
             **kwargs
         )
-    breakpoint()
 
     if type(dataset) is not Dataset:
         if os.path.exists(dataset):
