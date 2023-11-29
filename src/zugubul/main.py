@@ -1029,6 +1029,10 @@ def handle_train(args: Dict[str, Any]) -> int:
     if not model_name:
         model_name = 'gpt2' if task=='LM' else 'facebook/mms-1b-all'
 
+    remote_args = ['remote', 'server', 'password', 'server_python']
+    for argname in remote_args:
+        args.pop(argname)
+
     train(
         out_dir=out_dir,
         model_str=model_name,
