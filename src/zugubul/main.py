@@ -1257,6 +1257,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     annotate_parser = subparsers.add_parser('annotate', help='Automatically annotate a fieldwork recording in the target language.')
     init_annotate_parser(annotate_parser)
 
+    eval_parser = subparsers.add_parser('eval', help='Evaluate a HF model on test data.')
+    init_eval_parser(eval_parser)
+
     args = vars(parser.parse_args(argv))
 
     command = args['COMMAND']
