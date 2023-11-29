@@ -55,7 +55,7 @@ def init_processor(
         )
         return tokenizer
 
-    tokenizer = Wav2Vec2CTCTokenizer.from_pretrained(
+    tokenizer = Wav2Vec2CTCTokenizer(
         vocab_path,
         unk_token=unk_token,
         pad_token=pad_token,
