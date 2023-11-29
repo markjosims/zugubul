@@ -1028,6 +1028,9 @@ def handle_train(args: Dict[str, Any]) -> int:
     if not model_name:
         model_name = 'gpt2' if task=='LM' else 'facebook/mms-1b-all'
 
+    # remove COMMAND arg if present
+    args.pop('COMMAND', None)
+    # remove remote args if running locally
     remote_args = ['remote', 'server', 'password', 'server_python']
     for argname in remote_args:
         args.pop(argname)
