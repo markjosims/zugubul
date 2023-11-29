@@ -450,7 +450,6 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     )
     add_arg(
         '--save_eval_preds',
-        type=bool,
         action='store_true',
         help='Save eval predictions to output file for each eval loop.',
     )
