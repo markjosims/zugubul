@@ -157,17 +157,19 @@ def train(
         data_collator = collator_obj(processor)
 
     if not compute_metrics:
+        eval_step = 0
         def compute_metrics(pred):
-            if task in ['ASR', 'LM']:
+            if task == 'ASR':
                 out = compute_cer_and_wer(pred, processor, return_labels=save_eval_preds)
             else:
                 out = compute_acc(pred, return_labels=save_eval_preds)
             if save_eval_preds:
                 label, pred = out.pop('label'), out.pop('pred')
-                eval_step = 0 # how to get current step???
+                nonlocal eval_step
+                eval_step+=training_args.eval_steps
                 eval_fpath = os.path.join(out_dir, f"eval_{eval_step}.txt")
                 with open(eval_fpath, 'a') as f:
-                    f.write(label, pred)
+                    json.dump({'label': label, 'pred': pred}, f)
             return out
 
     print('Starting training...')
