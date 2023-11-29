@@ -179,7 +179,7 @@ def train(
         compute_metrics=compute_metrics,
         train_dataset=dataset['train'],
         eval_dataset=dataset['validation'],
-        tokenizer=processor,#.feature_extractor, TODO: find out if specifying attr is necessary for ASR/LID
+        tokenizer=processor.feature_extractor
     )
     trainer.train()
     print('Done training')
