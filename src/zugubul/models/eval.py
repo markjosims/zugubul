@@ -11,6 +11,7 @@ from zugubul.models._metrics import (
 import torch
 
 from typing import Callable, Union, List, Optional
+from collections import defaultdict
 
 METRICS = {
     'accuracy': compute_acc,
@@ -40,7 +41,7 @@ def eval(
     if type(metric) is str:
         metric = [metric,]
     
-    outputs = {}
+    outputs = defaultdict(lambda: defaultdict(list))
     def eval_row(row) -> None:
         label = row[label_col]
         input_cell = row[input_col]
@@ -50,9 +51,7 @@ def eval(
             if funct:
                 funct_label = funct(input_dict)
                 funct_outs = calc_m(pred=funct_label, label_str=[label,])
-                outputs\
-                    .get('funct', dict())\
-                    .get(m, list()).append(funct_outs)
+                outputs['funct'][m].append(funct_outs)
             if model:
                 with torch.no_grad():
                     pred = model(**input_dict)
@@ -61,9 +60,7 @@ def eval(
                     processor=processor,
                     label_str=[label,],
                 )
-                outputs\
-                    .get('model', dict())\
-                    .get(m, list()).append(model_outs)        
+                outputs['model'][m].append(model_outs)        
     print('Evaluating...')
     dataset.map(eval_row)
     return outputs
