@@ -8,7 +8,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
-optional-dependencies = {torch = {file = ["torch-requirements.txt"]}}
+optional-dependencies = {torch = {file = ["torch-requirements.txt"]}, gui= {file = ["gui-requirements.txt"]}, pyannote= {file = ["pyannote-requirements.txt"]}}
 
 [project]
 name = "zugubul"

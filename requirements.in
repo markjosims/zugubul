@@ -6,6 +6,4 @@ tqdm>=4.8
 pympi-ling
 pydub
 fabric
-gooey
-gooey_tools @ git+https://github.com/markjosims/gooey_tools.git
 importlib_resources
