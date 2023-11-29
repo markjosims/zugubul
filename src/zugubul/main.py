@@ -531,17 +531,20 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
 
 def init_eval_parser(eval_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(eval_parser, *args, **kwargs)
-    # dataset: Union[str, Dataset],
     add_arg(
         'DATASET',
         help='Path to dataset to use for evaluation.'
     )
-    # model_str: Optional[str],
     add_arg(
         'MODEL',
         help='Path to model to evalute on.'
     )
     # funct: Optional[Callable] = None, #TODO: implement passing the path to python file
+    add_arg(
+        '--out',
+        '-o',
+        help='Path to save output to (default is $MODEL_eval.json)'
+    )
     add_arg(
         '--metric',
         '-m',
@@ -549,21 +552,18 @@ def init_eval_parser(eval_parser: argparse.ArgumentParser) -> None:
         help='Metrics to evaluate on.',
         default='cer_and_wer'
     )
-    # label_col: str = 'text',
     add_arg(
         '--label_col',
         '-lc',
         help='Name of column in dataset containing label. Default `text`.',
         default='text',
     )
-    # input_col: str = 'audio',
     add_arg(
         '--input_col',
         '-ic',
         help='Name of column in dataset containing input data. Default `audio`.',
         default='audio',
     )
-    # split: str = 'test'
     add_arg(
         '--split',
         '-s',
@@ -1170,13 +1170,19 @@ def handle_annotate(args: Dict[str, Any]) -> int:
 
 def handle_eval(args: Dict[str, Any]) -> int:
     from zugubul.models.eval import eval
+    import json
     dataset = args.pop("DATASET")
     model = args.pop("MODEL")
-    eval(
+    out = args.pop("out")
+    if not out:
+        out = model+'_eval.json'
+    out = eval(
         dataset=dataset,
-        model=model,
+        model_str=model,
         **args
     )
+    with open(out, 'f') as f:
+        json.dump(out, f)
     return 0
 
 
