@@ -125,6 +125,7 @@ def train(
             push_to_hub=hf,
             **kwargs
         )
+    breakpoint()
 
     if type(dataset) is not Dataset:
         if os.path.exists(dataset):
@@ -167,7 +168,7 @@ def train(
                 label, pred = out.pop('label'), out.pop('pred')
                 nonlocal eval_step
                 eval_step+=training_args.eval_steps
-                eval_fpath = os.path.join(out_dir, f"eval_{eval_step}.txt")
+                eval_fpath = os.path.join(training_args.logging_dir, f"eval_{eval_step}.txt")
                 with open(eval_fpath, 'a') as f:
                     json.dump({'label': label, 'pred': pred}, f)
             return out
