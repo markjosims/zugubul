@@ -47,7 +47,8 @@ def eval(
     def eval_row(row) -> None:
         label = row[label_col]
         input_cell = row[input_col]
-        input_dict = processor(input_cell['array'], return_tensors="pt", padding=True, sampling_rate=16000)
+        input_arrays = [x['array'] for x in input_cell]
+        input_dict = processor(input_arrays, return_tensors="pt", padding=True, sampling_rate=16000)
         for m in metric:
             calc_m = METRICS[m]
             if funct:
@@ -65,7 +66,7 @@ def eval(
                 )
                 outputs['model'][m].extend(model_outs)        
     print('Evaluating...')
-    dataset.map(eval_row, batched=True)
+    dataset.map(eval_row, batched=True, batch_size=10)
     return outputs
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
