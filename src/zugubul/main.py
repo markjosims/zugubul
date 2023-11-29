@@ -1174,6 +1174,7 @@ def handle_eval(args: Dict[str, Any]) -> int:
     dataset = args.pop("DATASET")
     model = args.pop("MODEL")
     out = args.pop("out")
+    args.pop("COMMAND", None)
     if not out:
         out = model+'_eval.json'
     out = eval(
