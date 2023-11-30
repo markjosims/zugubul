@@ -46,7 +46,7 @@ def train(
             dataset=dataset,
             out_dir=out_dir,
             checkpoint=model_str,
-            label_col=label_col,
+            label_col=label_col or 'text',
             device_map=device_map,
         )
 
