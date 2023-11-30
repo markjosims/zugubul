@@ -54,10 +54,6 @@ def train(
             login()
             token = HfFolder.get_token()
 
-    if (not processor) and ('canine' in model_str):
-        # CANINE tokenizer doesn't need a vocabulary
-        print('Initializing CanineTokenizer...')
-        processor = CanineTokenizer.from_pretrained(model_str)
     if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
@@ -75,17 +71,6 @@ def train(
             model_wrapper=model_wrapper,
             task=task,
             processor=processor,
-        )
-    elif task == 'LM':
-        print('Instantiating model for masked LM.')
-        model_wrapper = AutoModelForMaskedLM
-        if 'canine' in model_str:
-            model_wrapper = CanineForMaskedLM
-        model = download_model(
-            model_name=model_str,
-            model_wrapper=model_wrapper,
-            task=task,
-            processor=processor
         )
     else:
         print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -133,9 +118,9 @@ def train(
         else:
             print('Loading dataset from Huggingface hub (or cache)...')
             dataset = load_dataset(dataset)
-    if task in ['LID', 'ASR']:
-        print('Resampling audio to 16kHz...')
-        dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
+
+    print('Resampling audio to 16kHz...')
+    dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
     if audio_cutoff is not None:
         print(f'Removing audio records with greater than {audio_cutoff} frames...')
@@ -146,6 +131,8 @@ def train(
         label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
         lambda x: prepare_dataset(x, processor, label_col, task, vocab),
+        batched=True,
+        batch_size=500,
         remove_columns=dataset['train'].column_names
     )
 
@@ -342,7 +329,7 @@ def prepare_dataset(
     else:
         if not label2id:
             raise ValueError("label2id must be passed for LID task.")
-        batch["labels"] = label2id.get(batch[label_col], -1)
+        batch["labels"] = [label2id.get(row[label_col], -1) for row in batch]
     return batch
 
 def prepare_lm_dataset(
