@@ -1,5 +1,5 @@
 from transformers import Wav2Vec2ForCTC, AutoProcessor
-from datasets import Dataset
+from datasets import Dataset, Audio
 from zugubul.models.dataset import load_dataset_safe
 from zugubul.models._metrics import (
     compute_acc,
@@ -39,7 +39,7 @@ def eval(
     if type(dataset) is str:
         print('Loading dataset...')
         dataset = load_dataset_safe(dataset, split=split)
-
+        dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
     if type(metric) is str:
         metric = [metric,]
     
@@ -54,7 +54,7 @@ def eval(
             if funct:
                 funct_label = funct(input_dict)
                 funct_outs = calc_m(pred=funct_label, label_str=label, return_labels=True)
-                outputs['funct'][m].extend(funct_outs)
+                outputs['funct'][m].append(funct_outs)
             if model:
                 with torch.no_grad():
                     pred = model(**input_dict)
@@ -64,7 +64,7 @@ def eval(
                     label_str=label,
                     return_labels=True,
                 )
-                outputs['model'][m].extend(model_outs)        
+                outputs['model'][m].append(model_outs)        
     print('Evaluating...')
     dataset.map(eval_row, batched=True, batch_size=10)
     return outputs
