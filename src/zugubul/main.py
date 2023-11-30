@@ -453,6 +453,11 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         action='store_true',
         help='Save eval predictions to output file for each eval loop.',
     )
+    add_arg(
+        '--device_map',
+        help='Device map for model (default is `auto`).',
+        default='auto',
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
