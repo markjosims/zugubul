@@ -1173,7 +1173,7 @@ def handle_eval(args: Dict[str, Any]) -> int:
     import json
     dataset = args.pop("DATASET")
     model = args.pop("MODEL")
-    out = args.pop("out")
+    out_path = args.pop("out")
     args.pop("COMMAND", None)
     if not out:
         out = model+'_eval.json'
@@ -1182,7 +1182,7 @@ def handle_eval(args: Dict[str, Any]) -> int:
         model_str=model,
         **args
     )
-    with open(out, 'f') as f:
+    with open(out_path, 'f') as f:
         json.dump(out, f)
     return 0
 
