@@ -26,6 +26,7 @@ def train(
         out_dir: Union[str, os.PathLike],
         model_str: Union[str, os.PathLike],
         dataset: Union[str, os.PathLike, Dataset],
+        device_map: str = "auto",
         label_col: Optional[str] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
@@ -46,6 +47,7 @@ def train(
             out_dir=out_dir,
             checkpoint=model_str,
             label_col=label_col,
+            device_map=device_map,
         )
 
     if hf:
@@ -71,6 +73,7 @@ def train(
             model_wrapper=model_wrapper,
             task=task,
             processor=processor,
+            device_map=device_map,
         )
     else:
         print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -87,6 +90,7 @@ def train(
             num_labels=len(vocab),
             label2id=label2id,
             id2label=id2label,
+            device_map=device_map,
         )
 
     print('Preparing model for finetuning...')
@@ -192,6 +196,7 @@ def train_lm(
        checkpoint: str = 'gpt2',
        label_col: str = 'text',
        context_length: int = 128,
+       device_map: str = 'auto',
        **kwargs
 ) -> None:
     """
@@ -218,6 +223,7 @@ def train_lm(
         n_ctx=context_length,
         bos_token_id=tokenizer.bos_token_id,
         eos_token_id=tokenizer.eos_token_id,
+        device_map=device_map,
     )
     print(f'Initializing GPT2LMHeadModel from checkpoint {checkpoint}...')
     model = GPT2LMHeadModel(config)
