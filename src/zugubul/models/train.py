@@ -48,6 +48,7 @@ def train(
             checkpoint=model_str,
             label_col=label_col or 'text',
             device_map=device_map,
+            **kwargs,
         )
 
     if hf:
