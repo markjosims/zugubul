@@ -1175,14 +1175,15 @@ def handle_eval(args: Dict[str, Any]) -> int:
     model = args.pop("MODEL")
     out_path = args.pop("out")
     args.pop("COMMAND", None)
-    if not out:
-        out = model+'_eval.json'
+    if not out_path:
+        out_path = model+'_eval.json'
     out = eval(
         dataset=dataset,
         model_str=model,
         **args
     )
-    with open(out_path, 'f') as f:
+    with open(out_path, 'w') as f:
+        breakpoint()
         json.dump(out, f)
     return 0
 
