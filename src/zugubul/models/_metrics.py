@@ -8,6 +8,9 @@ wer_metric = load("wer")
 cer_metric = load("cer")
 accuracy = load("accuracy")
 
+def compute_perplexity(pred):
+    return {'perplexity': torch.exp(pred.loss)}
+
 def get_pred_str(pred_logits, processor) -> str:
     pred_ids = np.argmax(pred_logits, axis=-1)
     pred_str = processor.batch_decode(pred_ids)
