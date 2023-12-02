@@ -74,7 +74,6 @@ def train(
             model_wrapper=model_wrapper,
             task=task,
             processor=processor,
-            device_map=device_map,
         )
     else:
         print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -91,7 +90,6 @@ def train(
             num_labels=len(vocab),
             label2id=label2id,
             id2label=id2label,
-            device_map=device_map,
         )
 
     print('Preparing model for finetuning...')
