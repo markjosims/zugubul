@@ -134,8 +134,6 @@ def train(
         label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
         lambda x: prepare_dataset(x, processor, label_col, task, vocab),
-        batched=True,
-        batch_size=500,
         remove_columns=dataset['train'].column_names
     )
 
@@ -326,9 +324,8 @@ def prepare_dataset(
         return processor(batch[label_col])
 
     audio=batch["audio"]
-    audio_arrays = [row["array"] for row in audio]
-    batch["input_values"] = processor(audio_arrays, sampling_rate=audio[0]["sampling_rate"]).input_values[0]
-    batch["input_length"] = [len(vals) for vals in batch["input_values"]]
+    batch["input_values"] = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_values[0]
+    batch["input_length"] = len(batch["input_values"])
 
     if task == 'ASR':
         batch["labels"] = processor(text=batch[label_col]).input_ids
