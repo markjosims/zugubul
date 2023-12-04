@@ -115,7 +115,9 @@ def train(
         )
 
     if type(dataset) is not Dataset:
-        if os.path.exists(dataset):
+        if os.path.exists(dataset) and os.path.exists(
+            os.path.join(dataset, 'dataset_dict.json')
+        ):
             print('Loading dataset from local file...')
             dataset = DatasetDict.load_from_disk(dataset)
         else:
