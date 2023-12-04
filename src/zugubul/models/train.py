@@ -330,7 +330,7 @@ def prepare_dataset(
     batch["input_length"] = len(batch["input_values"])
 
     if task == 'ASR':
-        batch["labels"] = processor(text=batch[label_col]).input_ids
+        batch["labels"] = processor(text=batch[label_col].strip()).input_ids
     else:
         if not label2id:
             raise ValueError("label2id must be passed for LID task.")
