@@ -14,8 +14,8 @@ def init_processor(
         vocab_dir: Optional[Union[str, os.PathLike]] = None,
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         word_delimiter: str = ' ',
-        unk_token: str = '[UNK]',
-        pad_token: str = '[PAD]',
+        unk_token: str = '<unk>',
+        pad_token: str = '<pad>',
     ) -> Union[Wav2Vec2Processor, BertTokenizer]:
     """
     vocab may be path to a .csv file, vocab.json file or a list or set containing vocab items.
@@ -51,7 +51,7 @@ def init_processor(
             vocab_path,
             unk_token=unk_token,
             pad_token=pad_token,
-            word_delimiter=word_delimiter
+            word_delimiter_token=word_delimiter
         )
         return tokenizer
 
