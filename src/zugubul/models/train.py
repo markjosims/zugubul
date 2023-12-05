@@ -31,6 +31,7 @@ def train(
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
         audio_cutoff: Optional[int] = None,
+        sort_by_len: bool = False,
         optimizers = (None, None),
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         compute_metrics: Optional[Callable] = None,
@@ -143,6 +144,10 @@ def train(
         lambda x: prepare_dataset(x, processor, label_col, task, vocab),
         remove_columns=dataset['train'].column_names
     )
+
+    if sort_by_len:
+        print("Sorting dataset by length of audio frames...")
+        dataset = dataset.sort("input_length")
 
     if not data_collator:
         print('Initializing data collator...')
