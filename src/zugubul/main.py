@@ -59,7 +59,7 @@ DEFAULT_HYPERPARAMS = {
     'fp16': False,
     'save_steps': 1000,
     'eval_steps': 1000,
-    'logging_steps': 100,
+    'logging_steps': 10,
     'learning_rate': 1e-3,
     'warmup_steps': 100,
     'torch_compile': False,

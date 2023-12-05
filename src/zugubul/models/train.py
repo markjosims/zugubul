@@ -74,7 +74,6 @@ def train(
             model_wrapper=model_wrapper,
             task=task,
             processor=processor,
-            device_map=device_map,
         )
     else:
         print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
@@ -91,7 +90,6 @@ def train(
             num_labels=len(vocab),
             label2id=label2id,
             id2label=id2label,
-            device_map=device_map,
         )
 
     print('Preparing model for finetuning...')
@@ -117,7 +115,9 @@ def train(
         )
 
     if type(dataset) is not Dataset:
-        if os.path.exists(dataset):
+        if os.path.exists(dataset) and os.path.exists(
+            os.path.join(dataset, 'dataset_dict.json')
+        ):
             print('Loading dataset from local file...')
             dataset = DatasetDict.load_from_disk(dataset)
         else:
@@ -136,8 +136,6 @@ def train(
         label_col = 'lang' if task=='LID' else 'text'
     dataset = dataset.map(
         lambda x: prepare_dataset(x, processor, label_col, task, vocab),
-        batched=True,
-        batch_size=500,
         remove_columns=dataset['train'].column_names
     )
 
@@ -159,9 +157,11 @@ def train(
                 label, pred = out.pop('label'), out.pop('pred')
                 nonlocal eval_step
                 eval_step+=training_args.eval_steps
+                if not os.path.exists(training_args.logging_dir):
+                    os.makedirs(training_args.logging_dir)
                 eval_fpath = os.path.join(training_args.logging_dir, f"eval_{eval_step}.txt")
                 with open(eval_fpath, 'a') as f:
-                    json.dump({'label': label, 'pred': pred}, f)
+                    json.dump({'label': label, 'pred': pred}, f, ensure_ascii=False, indent=2)
             return out
 
     print('Starting training...')
@@ -327,12 +327,12 @@ def prepare_dataset(
     if task == 'LM':
         return processor(batch[label_col])
 
-    audio = batch["audio"]
+    audio=batch["audio"]
     batch["input_values"] = processor(audio["array"], sampling_rate=audio["sampling_rate"]).input_values[0]
     batch["input_length"] = len(batch["input_values"])
 
     if task == 'ASR':
-        batch["labels"] = processor(text=batch[label_col]).input_ids
+        batch["labels"] = processor(text=batch[label_col].strip()).input_ids
     else:
         if not label2id:
             raise ValueError("label2id must be passed for LID task.")
