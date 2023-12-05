@@ -344,7 +344,7 @@ def prepare_dataset(
     else:
         if not label2id:
             raise ValueError("label2id must be passed for LID task.")
-        batch["labels"] = [label2id.get(row[label_col], -1) for row in batch]
+        batch["labels"] = label2id.get(batch[label_col], -1)
     return batch
 
 def prepare_lm_dataset(
