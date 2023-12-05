@@ -93,7 +93,10 @@ def train(
         )
 
     print('Preparing model for finetuning...')
-    if 'mms' in model_str:
+    # only tune classification layer for LID
+    if task=='LID':
+        model.freeze_base_model()
+    elif 'mms' in model_str:
     # taken from https://huggingface.co/blog/mms_adapters
     # freeze non adapter parameters
         if hasattr(model, 'init_adapter_layers'):
