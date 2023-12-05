@@ -450,6 +450,12 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         type=int
     )
     add_arg(
+        '--sort_by_len',
+        '-sbl',
+        help='Sort dataset so that shorter inputs come first.',
+        action='store_true',
+    )
+    add_arg(
         '--save_eval_preds',
         action='store_true',
         help='Save eval predictions to output file for each eval loop.',
