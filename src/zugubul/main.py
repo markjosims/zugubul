@@ -63,6 +63,7 @@ DEFAULT_HYPERPARAMS = {
     'learning_rate': 1e-3,
     'warmup_steps': 100,
     'torch_compile': False,
+    'report_to': 'tensorboard',
 }
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
