@@ -132,7 +132,9 @@ def train(
 
     if audio_cutoff is not None:
         print(f'Removing audio records with greater than {audio_cutoff} frames...')
+        print('Length of dataset before filtering:', len(dataset))
         dataset = dataset.filter(lambda r: r['audio']['array'].shape[0]<audio_cutoff)
+        print('Length of dataset after filtering:', len(dataset))
 
     print(f'Reshaping data columns for training {task}...')
     if not label_col:
