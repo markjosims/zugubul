@@ -161,7 +161,12 @@ def train(
                     os.makedirs(training_args.logging_dir)
                 eval_fpath = os.path.join(training_args.logging_dir, f"eval_{eval_step}.txt")
                 with open(eval_fpath, 'a') as f:
-                    json.dump({'label': label, 'pred': pred}, f, ensure_ascii=False, indent=2)
+                    json.dump(
+                        [{'label': l, 'pred': p} for l, p in zip(label, pred)],
+                        f,
+                        ensure_ascii=False,
+                        indent=2
+                    )
             return out
 
     print('Starting training...')
