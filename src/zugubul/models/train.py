@@ -93,7 +93,10 @@ def train(
         )
 
     print('Preparing model for finetuning...')
-    if 'mms' in model_str:
+    # only tune classification layer for LID
+    if task=='LID':
+        model.freeze_base_model()
+    elif 'mms' in model_str:
     # taken from https://huggingface.co/blog/mms_adapters
     # freeze non adapter parameters
         if hasattr(model, 'init_adapter_layers'):
@@ -343,7 +346,7 @@ def prepare_dataset(
     else:
         if not label2id:
             raise ValueError("label2id must be passed for LID task.")
-        batch["labels"] = [label2id.get(row[label_col], -1) for row in batch]
+        batch["labels"] = label2id.get(batch[label_col], -1)
     return batch
 
 def prepare_lm_dataset(
