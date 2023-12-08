@@ -1,10 +1,7 @@
 from __future__ import division
 import numpy as np
-import pickle
 import os
 import sys
-import math
-import code
 from scipy.signal import lfilter
 from rVAD import speechproc
 from copy import deepcopy
