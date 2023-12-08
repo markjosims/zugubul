@@ -4,5 +4,6 @@ from silero_vad.__main__ import (
     save_audio,
     read_audio,
     VADIterator,
-    collect_chunks
+    collect_chunks,
+    run_vad
 )
