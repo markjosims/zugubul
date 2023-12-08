@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 from pympi import Elan
-from typing import Literal, List, Optional, Union
-from rVAD.rVAD_fast import rVAD_fast, frames_to_segs
+from typing import Literal, List, Optional, Union, Dict
+from rVAD.rVAD_fast import run_rVAD_fast
+from silero_vad import run_silero_vad
 from pathlib import Path
 import os
-import numpy as np
+import json
 
 docstr = """
 Creates a .eaf file with empty annotations for each speech segment
@@ -26,57 +27,21 @@ class RvadError(Exception):
         self.message = message
         super().__init__(self.message)
 
+def run_rVAD_safe(wav_fp):
+    try:
+        data = run_rVAD_fast(wav_fp)
+    except Exception as error:
+        raise RvadError(wav_fp, error=error)
 
-def read_rvad_segs(vad_fp: Optional[str] = None, wav_fp: Optional[str] = None, dialect: Literal['seg', 'frame', 'auto']='auto') -> List[tuple]:
-    """
-    Read .vad file from vad_fp and return list of tuples
-    containing start and end of speech segments.
-    By default assumes .vad file is of 'seg' dialect,
-    containing start and end frames for segments.
-    Use 'frame' dialect for .vad files containing 1s and 0s for each frame.
-    If dialect set to 'auto', detect from file.
-    If vad_fp is None, run rVAD_fast on wav_fp
-    """
-    if vad_fp:
-        data = np.loadtxt(vad_fp)
-    elif wav_fp:
-        try:
-            data = rVAD_fast(wav_fp)
-        except Exception as error:
-            raise RvadError(wav_fp, error=error)
-    else:
-        raise ValueError('Either vad_fp or wav_fp must be provided.')
-    if dialect == 'auto':
-        if (data[0] in [0, 1]) and (data[1] in [0, 1]):
-            dialect = 'frame'
-        else:
-            # dialect = 'seg'
-            # nothing else needs to be done
-            pass
-    if dialect == 'frame':
-        data = frames_to_segs(data)
-    midpoint = len(data)//2
-    startpoints = data[:midpoint]
-    endpoints = data[midpoint:]
-
-    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints) if start!=end]
-
-
-def rvad_segs_to_ms(segs: List) -> List:
-    """
-    Convert list of tuples with frame indices
-    to list of same shape with time values in ms.
-    """
-    frame_width = 10
-    return [(start*frame_width, end*frame_width) for start, end in segs]
+    return data
 
 
 # TODO: add option to run process_length before returning
 def label_speech_segments(
         wav_fp: str,
-        rvad_fp: Optional[str] = None,
+        vad_fp: Optional[str] = None,
         tier: Union[str, List[str]] = 'default-lt',
-        dialect: str = 'seg',
+        method: Literal['silero', 'rVAD'] = 'silero',
         etf: Optional[Union[str, Elan.Eaf]] = None
     ) -> Elan.Eaf:
     """
@@ -92,15 +57,19 @@ def label_speech_segments(
     if type(tier) is str:
         tier = [tier,]
 
-    if rvad_fp:
-        if os.path.isdir(rvad_fp):
-            # if rvad_fp is dir, assume .vad file has same name as wav file
+    vad_method = run_silero_vad if method == 'silero'\
+    else run_rVAD_safe
+
+    if vad_fp:
+        if os.path.isdir(vad_fp):
+            # if vad_fp is dir, assume .vad file has same name as wav file
+            # used in batch processing
             wav_stem = Path(wav_fp).stem
-            rvad_fp = os.path.join(rvad_fp, wav_stem+'.vad')
-        segs = read_rvad_segs(vad_fp=rvad_fp, dialect=dialect)
+            with open(vad_fp/wav_stem+'.json') as f:
+                segs = json.load(f)
+        segs = vad_method(vad_fp=vad_fp)
     else:
-        segs = read_rvad_segs(wav_fp=wav_fp)
-    times = rvad_segs_to_ms(segs)
+        segs = vad_method(wav_fp=wav_fp)
 
     if etf:
         if (type(etf) is not Elan.Eaf):
@@ -117,7 +86,8 @@ def label_speech_segments(
             eaf.add_tier(t)
     eaf.add_linked_file(wav_fp)
     
-    for start, end in times:
+    for seg in segs:
+        start, end = seg['start'], seg['end']
         for t in tier:
             eaf.add_annotation(t, start, end)
     return eaf
