@@ -1,5 +1,5 @@
 from pympi import Elan
-from zugubul.rvad_to_elan import read_rvad_segs, label_speech_segments
+from zugubul.vad_to_elan import read_rvad_segs, label_speech_segments
 from zugubul.utils import eaf_to_file_safe
 import os
 
