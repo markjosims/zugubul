@@ -12,6 +12,6 @@ silero_vad, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
  VADIterator,
  collect_chunks) = utils
 
-def run_vad(wav: str) -> List[Dict[str, int]]:
+def run_silero_vad(wav: str) -> List[Dict[str, int]]:
     audio = read_audio(wav)
     return get_speech_timestamps(audio, silero_vad)
