@@ -2,11 +2,12 @@ from __future__ import division
 import numpy as np
 import os
 import sys
+import json
 from scipy.signal import lfilter
 from rVAD import speechproc
 from copy import deepcopy
 from zugubul.utils import batch_funct
-from typing import Optional, Literal, Callable
+from typing import Optional, Literal, Callable, List, Dict
 
 # Refs:
 #  [1] Z.-H. Tan, A.k. Sarkara and N. Dehak, "rVAD: an unsupervised segment-based robust voice activity detection method," Computer Speech and Language, vol. 59, pp. 1-21, 2020. 
@@ -32,7 +33,9 @@ def save_vad_file(vad_fp: str, wav_fp: Optional[str] = None, vad_array: Optional
         vad_array = rVAD_fast(wav_fp, dialect='seg')
     elif vad_array is None:
         raise ValueError('Either wav_fp or vad_array must be non-null.')
-    np.savetxt(vad_fp, vad_array.astype(int),  fmt='%i')
+    vad_json = rVAD_to_json(segs=vad_array)
+    with open(vad_fp, 'w') as f:
+        json.dump(vad_json, f)
     print("%s --> %s " %(wav_fp, vad_fp))
     return vad_fp
 # END MODIFICATION
@@ -53,6 +56,18 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     startpoints+=2
     endpoints+=1
     return np.concatenate([startpoints, endpoints]).astype('int')
+
+def rVAD_to_json(frames: Optional[np.ndarray], segs: Optional[np.ndarray]) -> List[Dict[str, int]]:
+    if not segs:
+        if not frames:
+            raise ValueError('Either frames or segs must be passed')
+        segs = frames_to_segs(frames)
+    
+    midpoint = len(segs)//2
+    startpoints = segs[:midpoint]
+    endpoints = segs[midpoint:]
+
+    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints)]
 
 def rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
     """
