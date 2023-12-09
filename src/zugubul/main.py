@@ -704,7 +704,7 @@ def handle_merge(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_vad(args: Dict[str, Any]) -> int:
-    from zugubul.rvad_to_elan import label_speech_segments
+    from zugubul.vad_to_elan import label_speech_segments
 
     wav_fp = args['WAV_FILEPATH']
     eaf_fp = args['EAF_FILEPATH']
@@ -757,7 +757,7 @@ def handle_vad_batch(
     """
     Helper for batch processing of handle_vad
     """
-    from zugubul.rvad_to_elan import label_speech_segments, RvadError
+    from zugubul.vad_to_elan import label_speech_segments, RvadError
 
 
     assert os.path.isdir(wav_fp) and os.path.isdir(eaf_fp),\

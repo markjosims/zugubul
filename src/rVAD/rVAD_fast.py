@@ -1,15 +1,13 @@
 from __future__ import division
 import numpy as np
-import pickle
 import os
 import sys
-import math
-import code
+import json
 from scipy.signal import lfilter
 from rVAD import speechproc
 from copy import deepcopy
 from zugubul.utils import batch_funct
-from typing import Optional, Literal, Callable
+from typing import Optional, Literal, Callable, List, Dict
 
 # Refs:
 #  [1] Z.-H. Tan, A.k. Sarkara and N. Dehak, "rVAD: an unsupervised segment-based robust voice activity detection method," Computer Speech and Language, vol. 59, pp. 1-21, 2020. 
@@ -32,10 +30,12 @@ def save_vad_file(vad_fp: str, wav_fp: Optional[str] = None, vad_array: Optional
     Returns vad_fp.
     """
     if wav_fp:
-        vad_array = rVAD_fast(wav_fp, dialect='seg')
+        vad_array = run_rVAD_fast(wav_fp, dialect='seg')
     elif vad_array is None:
-        raise ValueError('Either vad_fp or vad_array must be non-null.')
-    np.savetxt(vad_fp, vad_array.astype(int),  fmt='%i')
+        raise ValueError('Either wav_fp or vad_array must be non-null.')
+    vad_json = rVAD_to_json(segs=vad_array)
+    with open(vad_fp, 'w') as f:
+        json.dump(vad_json, f)
     print("%s --> %s " %(wav_fp, vad_fp))
     return vad_fp
 # END MODIFICATION
@@ -57,7 +57,27 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     endpoints+=1
     return np.concatenate([startpoints, endpoints]).astype('int')
 
-def rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
+def rVAD_to_json(
+        frames: Optional[np.ndarray],
+        segs: Optional[np.ndarray],
+        convert_to_ms: bool = True,
+    ) -> List[Dict[str, int]]:
+    if not segs:
+        if not frames:
+            raise ValueError('Either frames or segs must be passed')
+        segs = frames_to_segs(frames)
+    
+    midpoint = len(segs)//2
+    startpoints = segs[:midpoint]
+    endpoints = segs[midpoint:]
+
+    if convert_to_ms:
+        frame_width = 10
+        return [(int(start*frame_width), int(end*frame_width)) for start, end in zip(startpoints, endpoints)]
+
+    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints)]
+
+def run_rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
     """
     Run rVAD_fast on the wav file indicated by finwav,
     return array indicating segments of speech.
@@ -77,7 +97,7 @@ def rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: O
                 vad_array=array,
                 vad_fp=str(data_file).replace('.wav', '.vad')
             )
-        return batch_funct(rVAD_fast, finwav, '.wav', 'finwav', save_f=save_funct)
+        return batch_funct(run_rVAD_fast, finwav, '.wav', 'finwav', save_f=save_funct)
     # END MODIFICATION
     winlen, frame_shift, pre_coef, nfilter, nftt = 0.025, 0.01, 0.97, 20, 512
     ftThres=0.5; vadThres=0.4
@@ -132,8 +152,8 @@ if __name__ == '__main__':
                 .replace('.wav', '.vad')
                 .replace(finwav, fvad)
         )
-        rVAD_fast(finwav, save_funct=save_funct)
+        run_rVAD_fast(finwav, save_funct=save_funct)
     else:
-        vad_out = rVAD_fast(finwav)
+        vad_out = run_rVAD_fast(finwav)
         save_vad_file(vad_array=vad_out, wav_fp=finwav)
     # END MODIFICATION

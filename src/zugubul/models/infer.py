@@ -10,7 +10,7 @@ from transformers import pipeline
 from huggingface_hub import HfFolder, login
 from pydub import AudioSegment
 
-from zugubul.rvad_to_elan import label_speech_segments
+from zugubul.vad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
 from zugubul.elan_tools import snip_audio, trim
 

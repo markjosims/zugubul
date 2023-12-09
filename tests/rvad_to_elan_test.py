@@ -1,5 +1,5 @@
 from pympi import Elan
-from zugubul.rvad_to_elan import read_rvad_segs, label_speech_segments
+from zugubul.vad_to_elan import read_rvad_segs, label_speech_segments
 from zugubul.utils import eaf_to_file_safe
 import os
 
@@ -38,7 +38,7 @@ def test_wav_to_elan_template():
 
     wav_fp = 'tests/wavs/test_tira1.wav'
     rvad_fp = 'tests/vads/test_tira1_gold.vad'
-    eaf = label_speech_segments(wav_fp, rvad_fp=rvad_fp, tier='IPA Transcription', etf=etf)
+    eaf = label_speech_segments(wav_fp, vad_fp=rvad_fp, tier='IPA Transcription', etf=etf)
     eaf_tiers = list(sorted(eaf.get_tier_names()))
 
     out_fp = 'tests/eafs/test_tira_template_out.eaf'
