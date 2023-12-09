@@ -32,6 +32,7 @@ def train(
         training_args: Optional[TrainingArguments] = None,
         audio_cutoff: Optional[int] = None,
         sort_by_len: bool = False,
+        train_data_percent: Optional[float] = None,
         optimizers = (None, None),
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         compute_metrics: Optional[Callable] = None,

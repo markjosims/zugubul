@@ -465,6 +465,11 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='Device map for model (default is `auto`).',
         default='auto',
     )
+    add_arg(
+        '--train_data_percent',
+        help='Percent of train data to load (if None, load all)',
+        type=float,
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
