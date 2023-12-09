@@ -129,6 +129,12 @@ def train(
             print('Loading dataset from Huggingface hub (or cache)...')
             dataset = load_dataset(dataset)
 
+    if train_data_percent:
+        print(f'Resampling train data to {train_data_percent} of original size...')
+        len_train = len(dataset['train'])
+        len_to_keep = int(len_train * train_data_percent)
+        dataset['train'] = dataset['train'].shuffle().select(range(len_to_keep))
+
     print('Resampling audio to 16kHz...')
     dataset = dataset.cast_column("audio", Audio(sampling_rate=16_000))
 
