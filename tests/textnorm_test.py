@@ -1,4 +1,9 @@
-from zugubul.textnorm import diac_to_combining, make_replacements, COMBINING
+from zugubul.textnorm import (
+    diac_to_combining,
+    make_replacements,
+    remove_punct,
+    COMBINING
+)
 
 ACUTE = COMBINING['acute']
 GRAVE = COMBINING['grave']
@@ -28,4 +33,10 @@ def test_diacs_to_combining():
     text = "áîèõǔō"
     gold = f"a{ACUTE}i{CIRCM}e{GRAVE}o{TILDE}u{CARON}o{MACRN}"
     pred = diac_to_combining(text)
-    assert gold == pred
+    assert pred == gold
+
+def test_remove_punct():
+    text = 'hi?!?@#$^? ho;<>?[\{\}]w a%*()re you?\'"'
+    gold = 'hi how are you'
+    pred = remove_punct(text)
+    assert pred == gold

@@ -1,4 +1,5 @@
-from typing import Dict
+from typing import Dict, Sequence, Any
+from string import punctuation
 
 DIACS = ['grave', 'macrn', 'acute', 'circm', 'caron', 'tilde',]
 
@@ -43,3 +44,13 @@ def make_replacements(text: str, reps: Dict[str, str]) -> str:
         text = text.replace(sentinel, outtab)
 
     return text
+
+def remove_punct(text: str) -> str:
+    for p in punctuation:
+        text = text.replace(p, '')
+    return text
+
+def report_unique_chars(texts: Sequence[str]) -> Dict[str, Any]:
+    unique = set()
+    (unique.update(text) for text in texts)
+    # find some way to get Unicode metadata for each character
