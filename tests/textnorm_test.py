@@ -1,5 +1,5 @@
 from zugubul.textnorm import (
-    diac_to_combining,
+    unicode_normalize,
     make_replacements,
     remove_punct,
     COMBINING
@@ -29,10 +29,10 @@ def test_make_replacements():
 
     assert pred == gold
 
-def test_diacs_to_combining():
+def test_unicode_normalize():
     text = "áîèõǔō"
     gold = f"a{ACUTE}i{CIRCM}e{GRAVE}o{TILDE}u{CARON}o{MACRN}"
-    pred = diac_to_combining(text)
+    pred = unicode_normalize(text)
     assert pred == gold
 
 def test_remove_punct():

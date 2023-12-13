@@ -1,5 +1,6 @@
-from typing import Dict, Sequence, Any
+from typing import Dict, Sequence, Any, Literal
 from string import punctuation
+import unicodedata
 
 DIACS = ['grave', 'macrn', 'acute', 'circm', 'caron', 'tilde',]
 
@@ -19,12 +20,14 @@ COMPOSITE = {
     "u": {"acute": "ú", "macrn": "ū", "grave": "ù", "caron": "ǔ", "circm": "û", "tilde": "ũ",},
 }
 
-def diac_to_combining(text: str) -> str:
-    for basechar, composite_dict in COMPOSITE.items():
-        for diac, composite_char in composite_dict.items():
-            text = text.replace(composite_char, basechar+COMBINING[diac])
-    
-    return text
+def unicode_normalize(
+        text: str,
+        unicode_format: Literal['NFC', 'NFKC', 'NFD', 'NFKD'] = 'NFKD',
+    ) -> str:
+    """
+    wraps unicodedata.normalize with default format set to NFKD
+    """
+    return unicodedata.normalize(unicode_format, text)
 
 def max_ord_in_str(text: str) -> int:
     return max(ord(c) for c in text)
