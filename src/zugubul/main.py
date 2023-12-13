@@ -330,6 +330,22 @@ def init_asr_labels_parser(asr_labels_parser: argparse.ArgumentParser) -> None:
         nargs='+'
     )
 
+def init_textnorm_parser(textnorm_parser: argparse.ArgumentParser) -> None:
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(textnorm_parser, *args, **kwargs)
+    add_arg(
+        'METADATA',
+        type=lambda x: is_valid_file(textnorm_parser, x),
+        help="Path to metadata.csv, eaf_data.csv, or other .csv file containing a 'text' column to normalize.",
+    )
+    add_arg(
+        'skip_normalize_unicode',
+        action='store_true',
+        help='Pass this arg to skip unicode normalization '+\
+            '(replacing composite diacritics with combining '+\
+            'and replacing non-canonical character variants with their canonical equivalent). '+\
+            'Default behavior is to perform normalization.',
+    )
+
 def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_parser, *args, **kwargs)
     add_arg(
@@ -1049,6 +1065,19 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
     return 0
 
+def handle_textnorm(args: Dict[str, Any]) -> int:
+    from zugubul.textnorm import unicode_normalize, get_char_metadata
+
+    metadata = args['METADATA']
+    df = pd.read_csv(metadata)
+    text = df['text']
+    if not args['skip_normalize_unicode']:
+        text = text.apply(unicode_normalize)
+    
+    
+
+    return 0
+
 def handle_vocab(args: Dict[str, Any]) -> int:
     from zugubul.models.vocab import vocab_from_csv
     
@@ -1270,6 +1299,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     dataset_parser = subparsers.add_parser('dataset', help='Initialize Language IDentification (LID) and Automatic Speech Recognition (ASR) datasets from directory of .eaf files.')
     init_dataset_parser(dataset_parser)
 
+    textnorm_parser = subparsers.add_parser('textnorm', help='Normalize text column in a csv file.')
+    init_textnorm_parser(textnorm_parser)
+
     vocab_parser = subparsers.add_parser('vocab', help='Create vocab.json for initializing a tokenizer from a datafile (eaf_data.csv or metadata.csv).')
     init_vocab_parser(vocab_parser)
 
@@ -1302,6 +1334,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_lid_labels(args)
     elif command == 'dataset':
         return handle_dataset(args)
+    elif command == 'textnorm':
+        return handle_textnorm(args)
     elif command == 'vocab':
         return handle_vocab(args)
     elif command == 'train':
