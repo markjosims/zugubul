@@ -29,6 +29,14 @@ def unicode_normalize(
     """
     return unicodedata.normalize(unicode_format, text)
 
+def unicode_description(char: str):
+    unicode_name = unicodedata.name(char)
+    unicode_point = str(hex(ord(char)))
+    return {
+        'unicode_name': unicode_name,
+        'unicode_point': unicode_point,
+    }
+
 def max_ord_in_str(text: str) -> int:
     return max(ord(c) for c in text)
 
