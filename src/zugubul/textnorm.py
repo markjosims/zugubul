@@ -37,6 +37,17 @@ def unicode_description(char: str):
         'unicode_point': unicode_point,
     }
 
+def char_metadata(texts: Sequence[str]) -> Dict[str, Dict[str, str]]:
+    unique_chars = set()
+    (unique_chars.update(t) for t in texts)
+    char_objs = {}
+    for c in unique_chars:
+        char_obj = unicode_description(c)
+        char_obj['replace'] = False
+        char_objs[c] = char_obj
+    return char_objs
+    
+
 def max_ord_in_str(text: str) -> int:
     return max(ord(c) for c in text)
 
