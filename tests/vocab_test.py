@@ -92,7 +92,7 @@ def test_init_processor(tmp_path):
     ]
     vocab_dir = tmp_path / 'vocab5'
     vocab_dir.mkdir()
-    processor = init_processor(vocab=vocab, vocab_dir=vocab_dir, lid=True)
+    processor = init_processor(vocab=vocab, vocab_dir=vocab_dir, task='LID')
     assert len(processor(text='[ENG][TIC][DDN]').input_ids) == 3
     assert processor(text='[DDN]').input_ids != processor(text='[TIC]').input_ids
     assert processor(text='[DDN]').input_ids != processor(text='[ENG]').input_ids
