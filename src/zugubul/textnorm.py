@@ -26,21 +26,30 @@ def diac_to_combining(text: str) -> str:
     
     return text
 
+def max_ord_in_str(text: str) -> int:
+    return max(ord(c) for c in text)
+
 def make_replacements(text: str, reps: Dict[str, str]) -> str:
-    intab2sentinel = {
-        k: object() for k in reps.keys()
+    """
+    Makes all replacements specified by `reps`, a dict whose keys are intabs
+    and values are outtabs to replace them.
+    Avoids transitivity by first replacing intabs to a unique char not found in the original string.
+    """
+    max_ord = max_ord_in_str(text)
+    intab2unique = {
+        k: chr(max_ord+i+1) for i, k in enumerate(reps.keys())
     }
-    sentinel2outtab = {
-        intab2sentinel[k]: v for k, v in reps.items()
+    unique2outtab = {
+        intab2unique[k]: v for k, v in reps.items()
     }
 
     # sort intabs so that longest sequences come first
     intabs = sorted(reps.keys(), key=len, reverse=True)
 
     for intab in intabs:
-        sentinel = intab2sentinel[intab]
+        sentinel = intab2unique[intab]
         text = text.replace(intab, sentinel)
-    for sentinel, outtab in sentinel2outtab.items():
+    for sentinel, outtab in unique2outtab.items():
         text = text.replace(sentinel, outtab)
 
     return text
