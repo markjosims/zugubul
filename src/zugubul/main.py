@@ -1158,15 +1158,15 @@ def handle_vocab(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_train(args: Dict[str, Any]) -> int:
-    if not args['disable_accelerate']:
+    if not args.pop('disable_accelerate'):
         from zugubul.remote import make_arg_str
         import subprocess
         arglist = sys.argv[2:]
         arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train', '--disable_accelerate'] + arglist
         argstr = make_arg_str(arglist)
         os.environ.pop('GUI', None)
-        print('Running subprocess with command:', argstr)
-        return subprocess.run(argstr)
+        print('Running accelerate as subprocess with command:', argstr)
+        return subprocess.run(argstr, shell=True)
 
     if args['remote']:
         from zugubul.remote import run_script_on_server
