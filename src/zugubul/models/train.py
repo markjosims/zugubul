@@ -115,7 +115,17 @@ def train(
         model.freeze_feature_encoder()
 
     if train_checkpoint:
-        training_args = torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
+        torch_args = torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
+        params = {}
+        for param in DEFAULT_HYPERPARAMS.keys():
+            if param in ('output_dir', 'push_to_hub'):
+                continue
+            params[param] = getattr(torch_args, param)
+        training_args = get_training_args(
+            output_dir=out_dir,
+            push_to_hub=hf,
+            **params,
+        )
     elif not training_args:
         training_args = get_training_args(
             output_dir=out_dir,
