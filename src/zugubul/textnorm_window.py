@@ -1,4 +1,4 @@
-import PySimpleGUIWx as sg
+import PySimpleGUI as sg
 from typing import Dict
 from zugubul.textnorm import get_char_metadata
 
@@ -14,7 +14,7 @@ def multichar_row(row_num: int):
     ]
 
 def char_metadata_window(char_metadata: Dict[str, Dict[str, Dict[str, str]]]):
-    window_rows = [
+    rows = [
         [sg.Text(
             "For each character, leave the text field blank to leave the character as is, "+\
             "or enter a character to replace it with."
@@ -24,8 +24,8 @@ def char_metadata_window(char_metadata: Dict[str, Dict[str, Dict[str, str]]]):
         )],
     ]
     for i, char_obj in enumerate(char_metadata):
-        window_rows.extend(char_metadata_row(i+1, char_obj))
-    window_rows.extend([
+        rows.extend(char_metadata_row(i+1, char_obj))
+    rows.extend([
         [sg.Text('Define rules replacing multiple characters.'),],
         [sg.Text('Write rules as in:out,in:out,in:out...'),],
         [sg.Text('For example tʃ:tʂ,kj:c will change all instances of `tʃ` to `tʂ` and `kj` to `c`.'),],
@@ -34,7 +34,13 @@ def char_metadata_window(char_metadata: Dict[str, Dict[str, Dict[str, str]]]):
         [sg.Submit()],
     ])
 
-    window=sg.Window('Character normalization', window_rows)
+    # wrap rows in scrollable column
+    layout = [
+    [
+        sg.Column(rows, scrollable=True,  vertical_scroll_only=True),
+    ]
+]
+    window=sg.Window('Character normalization', layout)
     event, values = window.Read()
 
     if event == sg.WINDOW_CLOSED or event == 'Quit':
