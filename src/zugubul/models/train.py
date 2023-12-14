@@ -60,9 +60,7 @@ def train(
             login()
             token = HfFolder.get_token()
 
-    if train_checkpoint:
-        processor = Wav2Vec2Processor.from_pretrained(train_checkpoint)
-    elif (not processor) and (task in ['ASR', 'LM']):
+    if (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
         processor = init_processor(vocab, vocab_dir=dataset, task=task)
