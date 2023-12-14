@@ -17,6 +17,7 @@ def run_script_on_server(
         server_python: str,
         passphrase: str,
         files_on_server: bool = False,
+        use_accelerate: bool = True,
     ) -> int:
     server_args = [
         '--remote',
@@ -54,7 +55,19 @@ def run_script_on_server(
                 argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         print('Executing command on server...')
-        argv = [server_python, '-m', 'zugubul.main'] + argv[1:]
+        print(argv)
+        if use_accelerate:
+            argv = [
+                server_python,
+                'launch',
+                '-m',
+                'zugubul.main',
+                argv[1],
+                '--disable_accelerate',
+                *argv[2:],
+            ]
+        else:
+            argv = [server_python, '-m', 'zugubul.main'] + argv[1:]
         arg_str = make_arg_str(argv)
         c.run(arg_str)
 
