@@ -16,7 +16,9 @@ def multichar_row(row_num: int):
 def char_metadata_window(char_metadata: Dict[str, Dict[str, Dict[str, str]]]):
     rows = [
         [sg.Text(
-            "For each character, leave the text field blank to leave the character as is, "+\
+            "For each character, leave the text field blank to leave the character as is,"
+        )],
+        [sg.Text(
             "or enter a character to replace it with."
         )],
         [sg.Text(
