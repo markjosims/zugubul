@@ -510,6 +510,12 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='Path to checkpoint folder if resuming from checkpoint.',
         widget='DirChooser',
     )
+    add_arg(
+        '--disable_accelerate',
+        help='Default behavior is to run accelerate as a subprocess. '+\
+        'Pass this argument to disable that behavior.',
+        action='store_true',
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
@@ -1152,6 +1158,16 @@ def handle_vocab(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_train(args: Dict[str, Any]) -> int:
+    if not args['disable_accelerate']:
+        from zugubul.remote import make_arg_str
+        import subprocess
+        arglist = sys.argv[2:]
+        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train', '--disable_accelerate'] + arglist
+        argstr = make_arg_str(arglist)
+        os.environ.pop('GUI', None)
+        print('Running subprocess with command:', argstr)
+        return subprocess.run(argstr)
+
     if args['remote']:
         from zugubul.remote import run_script_on_server
         return run_script_on_server(
