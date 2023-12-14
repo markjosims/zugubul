@@ -30,7 +30,7 @@ def unicode_normalize(
     return unicodedata.normalize(unicode_format, text)
 
 def unicode_description(char: str):
-    unicode_name = unicodedata.name(char)
+    unicode_name = unicodedata.name(char, 'No unicode name found')
     unicode_point = str(hex(ord(char)))
     return {
         'unicode_name': unicode_name,
