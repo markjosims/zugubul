@@ -115,7 +115,7 @@ def train(
         model.freeze_feature_encoder()
 
     if train_checkpoint:
-        training_args = torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
+        training_args = None#torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
     elif not training_args:
         training_args = get_training_args(
             output_dir=out_dir,
@@ -201,7 +201,8 @@ def train(
         eval_dataset=dataset['validation'],
         tokenizer=processor.feature_extractor
     )
-    trainer.train()
+    
+    trainer.train(resume_from_checkpoint=train_checkpoint)
     print('Done training')
     trainer.evaluate(dataset['test'])
 
