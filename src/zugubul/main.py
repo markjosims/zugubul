@@ -343,12 +343,16 @@ def init_textnorm_parser(textnorm_parser: argparse.ArgumentParser) -> None:
     )
     add_arg(
         '--skip_normalize_unicode',
-        '-s',
         action='store_true',
         help='Pass this arg to skip unicode normalization '+\
             '(replacing composite diacritics with combining '+\
             'and replacing non-canonical character variants with their canonical equivalent). '+\
             'Default behavior is to perform normalization.',
+    )
+    add_arg(
+        '--dont_lower',
+        action='store_true',
+        help='Pass this arg to skip casting all letters to lowercase.'
     )
     add_arg(
         '--outpath',
@@ -1102,7 +1106,14 @@ def handle_textnorm(args: Dict[str, Any]) -> int:
     if args['keep_unnormalized']:
         df['unnormalized'] = df['text'].copy()
     if not args['skip_normalize_unicode']:
+        print('Normalizing unicode symbols and diacritics...')
         text = text.apply(unicode_normalize)
+    if not args['dont_lower']:
+        print('Normalizing all letters to lowercase...')
+        text = text.apply(str.lower)
+    print('Stripping newlines and trailing whitespace...')
+    text = text.apply(str.strip)
+
     char_metadata = get_char_metadata(text)
     if GUI and PYSIMPLEGUI:
         from zugubul.textnorm_window import char_metadata_window
