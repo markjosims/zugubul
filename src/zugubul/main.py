@@ -457,9 +457,8 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='Task to be trained, either Language IDentification (LID), Automatic Speech Recognition (ASR) or Language Modeling (LM).'
     )
     add_arg(
-        '--hf',
-        action='store_true',
-        help='Download dataset from and save model to HuggingFace Hub.'
+        '--hf_user',
+        help='User name for Huggingface Hub. Only pass if wanting to save model to Huggingface Hub, otherwise saves locally only.'
     )
     add_arg(
         '-m',

@@ -41,7 +41,7 @@ def train(
         vocab: Union[str, os.PathLike, None] = None,
         processor: Union[Wav2Vec2Processor, Wav2Vec2FeatureExtractor, None] = None,
         save_eval_preds: bool = False,
-        hf: bool = True,
+        hf_user: Optional[str] = None,
         **kwargs
     ) -> str:
 
@@ -55,14 +55,14 @@ def train(
             **kwargs,
         )
 
-    if hf:
+    if hf_user:
         token = HfFolder.get_token()
         while not token:
             login()
             token = HfFolder.get_token()
 
     if (not processor) and (task in ['ASR', 'LM']):
-        vocab = _get_vocab_path(vocab, dataset, hf)
+        vocab = _get_vocab_path(vocab, dataset, bool(hf_user))
         print('Initializing processor...')
         processor = init_processor(vocab, vocab_dir=dataset, task=task)
     elif (not processor) and (task == 'LID'):
@@ -82,7 +82,7 @@ def train(
     else:
         print('Instantiating model as Wav2Vec2ForSequenceClassification for LID.')
         model_wrapper = Wav2Vec2ForSequenceClassification
-        vocab = _get_vocab_path(vocab, dataset, hf)
+        vocab = _get_vocab_path(vocab, dataset, bool(hf_user))
         with open(vocab, 'r') as f:
             vocab = json.load(f)
         label2id = vocab
@@ -123,13 +123,13 @@ def train(
             params[param] = getattr(torch_args, param)
         training_args = get_training_args(
             output_dir=out_dir,
-            push_to_hub=hf,
+            push_to_hub=bool(hf_user),
             **params,
         )
     elif not training_args:
         training_args = get_training_args(
             output_dir=out_dir,
-            push_to_hub=hf,
+            push_to_hub=bool(hf_user),
             **kwargs
         )
 
@@ -221,7 +221,7 @@ def train(
 
     safe_save_file(model._get_adapters(), adapter_file, metadata={"format": "pt"})
 
-    if hf:
+    if hf_user:
         trainer.push_to_hub()
         processor.push_to_hub()
     else:
