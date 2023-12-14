@@ -503,7 +503,8 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     )
     add_arg(
         '--train_checkpoint',
-        help='Pass to resume training from a given checkpoint.'
+        help='Path to checkpoint folder if resuming from checkpoint.',
+        widget='DirChooser',
     )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
