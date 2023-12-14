@@ -1,4 +1,4 @@
-import PySimpleGUI as sg
+import PySimpleGUIWx as sg
 from typing import Dict
 from zugubul.textnorm import get_char_metadata
 
