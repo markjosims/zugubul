@@ -115,7 +115,7 @@ def train(
         model.freeze_feature_encoder()
 
     if train_checkpoint:
-        training_args = None#torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
+        training_args = torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
     elif not training_args:
         training_args = get_training_args(
             output_dir=out_dir,
