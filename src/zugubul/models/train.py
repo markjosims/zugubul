@@ -30,6 +30,7 @@ def train(
         label_col: Optional[str] = None,
         data_collator: Optional[DataCollator] = None,
         training_args: Optional[TrainingArguments] = None,
+        train_checkpoint: Optional[str] = None,
         audio_cutoff: Optional[int] = None,
         sort_by_len: bool = False,
         train_data_percent: Optional[float] = None,
@@ -59,7 +60,9 @@ def train(
             login()
             token = HfFolder.get_token()
 
-    if (not processor) and (task in ['ASR', 'LM']):
+    if train_checkpoint:
+        processor = Wav2Vec2Processor.from_pretrained(train_checkpoint)
+    elif (not processor) and (task in ['ASR', 'LM']):
         vocab = _get_vocab_path(vocab, dataset, hf)
         print('Initializing processor...')
         processor = init_processor(vocab, vocab_dir=dataset, task=task)
@@ -112,7 +115,9 @@ def train(
         # instead, we freeze the feature encoder
         model.freeze_feature_encoder()
 
-    if not training_args:
+    if train_checkpoint:
+        training_args = None
+    elif not training_args:
         training_args = get_training_args(
             output_dir=out_dir,
             push_to_hub=hf,
@@ -307,12 +312,16 @@ def download_model(
         model_wrapper: Wav2Vec2Model = Wav2Vec2Model,
         task: Literal['LID', 'ASR', 'LM'] = 'ASR',
         processor: Optional[Wav2Vec2Processor] = None,
+        train_checkpoint: Optional[str] = None,
         **kwargs
     ) -> Union[Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification]:
     """
     Opens Wav2Vec2 model at given url or path.
     Default parameter values for ASR taken from https://huggingface.co/blog/mms_adapters
     """
+    if train_checkpoint:
+        return model_wrapper.from_pretrained(train_checkpoint)
+
     if task == 'ASR':
         default_values = {
             'attention_dropout': 0.0,
