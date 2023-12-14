@@ -16,49 +16,53 @@ def run_script_on_server(
         server: str,
         server_python: str,
         passphrase: str,
+        files_on_server: bool = False,
     ) -> int:
     server_args = [
         '--remote',
         '--password', passphrase,
         '--server', server,
         '--server_python', server_python,
+        '--files_on_server',
     ]
     argv = [x for x in argv if x not in server_args]
 
     with connect(server, passphrase) as c:
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
-        print(f'Uploading input files to server {server}...')
-        server_dir = PurePosixPath('/tmp/zugubul/')
-        c.run(f'mkdir -p {server_dir}')
-        for local_fp in in_files:
-            filename = Path(local_fp).name
-            server_fp = PurePosixPath(server_dir/filename)
-            
-            print(f'Putting {local_fp} to {server_fp}')
-            if os.path.isdir(local_fp):
-                put_dir(local_fp, server_fp, c)
-            else:
-                c.put(str(local_fp), str(server_fp))
-            argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
+        if not files_on_server:
+            print(f'Uploading input files to server {server}...')
+            server_dir = PurePosixPath('/tmp/zugubul/')
+            c.run(f'mkdir -p {server_dir}')
+            for local_fp in in_files:
+                filename = Path(local_fp).name
+                server_fp = PurePosixPath(server_dir/filename)
+                
+                print(f'Putting {local_fp} to {server_fp}')
+                if os.path.isdir(local_fp):
+                    put_dir(local_fp, server_fp, c)
+                else:
+                    c.put(str(local_fp), str(server_fp))
+                argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
-        # replace local fps with server fp but don't put to server
-        server_out_files = []
-        for local_fp in out_files:
-            filename = Path(local_fp).name
-            server_fp = PurePosixPath(server_dir/filename)
-            server_out_files.append(server_fp)
-            argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
+            # replace local fps with server fp but don't put to server
+            server_out_files = []
+            for local_fp in out_files:
+                filename = Path(local_fp).name
+                server_fp = PurePosixPath(server_dir/filename)
+                server_out_files.append(server_fp)
+                argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         print('Executing command on server...')
         argv = [server_python, '-m', 'zugubul.main'] + argv[1:]
         arg_str = make_arg_str(argv)
         c.run(arg_str)
 
-        print('Downloading output files from server...')
-        for local_fp, server_fp in zip(out_files, server_out_files):
-            c.get(str(server_fp), str(local_fp))
-            print('Output filed saved to', local_fp)
+        if not files_on_server:
+            print('Downloading output files from server...')
+            for local_fp, server_fp in zip(out_files, server_out_files):
+                c.get(str(server_fp), str(local_fp))
+                print('Output filed saved to', local_fp)
 
 def make_arg_str(argv: Sequence[str]) -> str:
     """

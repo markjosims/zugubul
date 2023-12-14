@@ -683,6 +683,11 @@ def add_remote_args(parser: argparse.ArgumentParser) -> None:
         "--server_python",
         help="Path to python interpreter to use on server."
     )
+    add_arg(
+        "--files_on_server",
+        help="Indicates that datafiles for command are already located on server and do not need to be uploaded.",
+        action='store_true',
+    )
 
 def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
     hyper_args = parser.add_argument_group(
@@ -1177,6 +1182,7 @@ def handle_train(args: Dict[str, Any]) -> int:
             server=args['server'],
             passphrase=args['password'],
             server_python=args['server_python'],
+            files_on_server=args['files_on_server'],
         )
     if not TORCH:
         print("Cannot run train locally if using Zugubul without PyTorch.")
@@ -1240,6 +1246,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
             server=args['server'],
             server_python=args['server_python'],
             passphrase=args['password'],
+            files_on_server=args['files_on_server'],
         )
     from zugubul.models.infer import annotate
 
