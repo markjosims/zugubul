@@ -338,6 +338,7 @@ def init_textnorm_parser(textnorm_parser: argparse.ArgumentParser) -> None:
     add_arg(
         'METADATA',
         type=lambda x: is_valid_file(textnorm_parser, x),
+        widget='FileChooser',
         help="Path to metadata.csv, eaf_data.csv, or other .csv file containing a 'text' column to normalize.",
     )
     add_arg(
@@ -370,10 +371,10 @@ def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
         help='Folder containing .eafs for processing into training datasets.'
     )
     add_arg(
-        '--lid',
+        '--ac',
         type=lambda x: is_valid_dir(lid_parser, x),
         widget='DirChooser',
-        help='Folder to initalize Language IDentification (LID) dataset in.'
+        help='Folder to initalize Audio Classification (AC) dataset in.'
     )
     add_arg(
         '--asr',
@@ -997,13 +998,13 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
 
     eaf_dir = Path(args['EAF_DIR'])
-    lid_dir = Path(args['lid'])
+    ac_dir = Path(args['ac'])
     asr_dir = Path(args['asr'])
     hf_user = args['hf_user']
 
 
-    if (not lid_dir) and (not asr_dir):
-        print("Pass `lid`, `asr` or both in order to create a dataset for finetuning.")
+    if (not ac_dir) and (not asr_dir):
+        print("Pass `ac`, `asr` or both in order to create a dataset for finetuning.")
 
     # eaf_data
     print('Generating eaf_data.csv...')
@@ -1014,32 +1015,32 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     args['media'] = None
     handle_eaf_data(args)
 
-    if lid_dir:
+    if ac_dir:
         # lid_labels
         print('Normalizing LID labels...')
         args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
-        args['out_path'] = lid_dir/'metadata.csv'
+        args['out_path'] = ac_dir/'metadata.csv'
         handle_lid_labels(args)
 
         # split_data
         print('Making train/validation/test splits for LID...')
-        args['EAF_DATA'] = lid_dir/'metadata.csv'
-        args['OUT_DIR'] = lid_dir
+        args['EAF_DATA'] = ac_dir/'metadata.csv'
+        args['OUT_DIR'] = ac_dir
         args['lid'] = True
         handle_split_data(args)
 
         # make LID tokenizer
         print('Making vocab file for LID...')
         lid_vocab = vocab_from_csv(
-            csv_path=lid_dir/'metadata.csv',
-            vocab_dir=lid_dir,
+            csv_path=ac_dir/'metadata.csv',
+            vocab_dir=ac_dir,
             lid=True
         )
         # push to hf, if indicated by user
         if hf_user:
             login()
-            lid_name = hf_user/lid_dir.stem
-            dataset = load_dataset(lid_dir)
+            lid_name = hf_user/ac_dir.stem
+            dataset = load_dataset(ac_dir)
             dataset.push_to_hub(lid_name, private=True)
             api = HfApi()
             api.upload_file(
@@ -1343,7 +1344,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     init_lid_labels_parser(lid_labels_parser)
 
-    dataset_parser = subparsers.add_parser('dataset', help='Initialize Language IDentification (LID) and Automatic Speech Recognition (ASR) datasets from directory of .eaf files.')
+    dataset_parser = subparsers.add_parser('dataset', help='Initialize Audio Classification (AC) and Automatic Speech Recognition (ASR) datasets from directory of .eaf files.')
     init_dataset_parser(dataset_parser)
 
     textnorm_parser = subparsers.add_parser('textnorm', help='Normalize text column in a csv file.')
