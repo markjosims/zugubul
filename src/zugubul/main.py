@@ -501,6 +501,10 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='Percent of train data to load (if None, load all)',
         type=float,
     )
+    add_arg(
+        '--train_checkpoint',
+        help='Pass to resume training from a given checkpoint.'
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
