@@ -15,6 +15,7 @@ from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE
 from typing import Callable, Optional, Union, Literal, Sequence
 import os
 import json
+import torch
 import argparse
 from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollatorSeqClassification
 from zugubul.models.vocab import make_lm_vocab
@@ -114,7 +115,7 @@ def train(
         model.freeze_feature_encoder()
 
     if train_checkpoint:
-        training_args = None
+        training_args = torch.load(os.path.join(train_checkpoint, 'training_args.bin'))
     elif not training_args:
         training_args = get_training_args(
             output_dir=out_dir,
