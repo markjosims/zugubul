@@ -1163,16 +1163,6 @@ def handle_vocab(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_train(args: Dict[str, Any]) -> int:
-    if not args.pop('disable_accelerate'):
-        from zugubul.remote import make_arg_str
-        import subprocess
-        arglist = sys.argv[2:]
-        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train', '--disable_accelerate'] + arglist
-        argstr = make_arg_str(arglist)
-        os.environ.pop('GUI', None)
-        print('Running accelerate as subprocess with command:', argstr)
-        return subprocess.run(argstr, shell=True)
-
     if args['remote']:
         from zugubul.remote import run_script_on_server
         return run_script_on_server(
@@ -1183,7 +1173,19 @@ def handle_train(args: Dict[str, Any]) -> int:
             passphrase=args['password'],
             server_python=args['server_python'],
             files_on_server=args['files_on_server'],
+            use_accelerate=not args['disable_accelerate'],
         )
+
+    if not args.pop('disable_accelerate'):
+        from zugubul.remote import make_arg_str
+        import subprocess
+        arglist = sys.argv[2:]
+        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train', '--disable_accelerate'] + arglist
+        argstr = make_arg_str(arglist)
+        os.environ.pop('GUI', None)
+        print('Running accelerate as subprocess with command:', argstr)
+        return subprocess.run(argstr, shell=True)
+
     if not TORCH:
         print("Cannot run train locally if using Zugubul without PyTorch.")
         return 1
