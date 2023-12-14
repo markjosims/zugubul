@@ -370,13 +370,13 @@ def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
         help='Folder containing .eafs for processing into training datasets.'
     )
     add_arg(
-        'LID_DIR',
+        '--lid',
         type=lambda x: is_valid_dir(lid_parser, x),
         widget='DirChooser',
         help='Folder to initalize Language IDentification (LID) dataset in.'
     )
     add_arg(
-        'ASR_DIR',
+        '--asr',
         type=lambda x: is_valid_dir(lid_parser, x),
         widget='DirChooser',
         help='Folder to initalize Automatic Speech Recognition (ASR) dataset in.'
@@ -405,11 +405,11 @@ def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
         '--hf_user',
         help='User name for Huggingface Hub. Only pass if wanting to save dataset to Huggingface Hub, otherwise saves locally only.'
     )
-    lid_args = lid_parser.add_argument_group('LID', 'Arguments for LID dataset')
-    init_lid_labels_parser(lid_args)
-
     asr_args = lid_parser.add_argument_group('ASR', 'Arguments for ASR dataset')
     init_asr_labels_parser(asr_args)
+    
+    lid_args = lid_parser.add_argument_group('LID', 'Arguments for LID dataset')
+    init_lid_labels_parser(lid_args)
 
 def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(vocab_parser, *args, **kwargs)
@@ -992,8 +992,13 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
 
     eaf_dir = Path(args['EAF_DIR'])
-    lid_dir = Path(args['LID_DIR'])
-    asr_dir = Path(args['ASR_DIR'])
+    lid_dir = Path(args['lid'])
+    asr_dir = Path(args['asr'])
+    hf_user = args['hf_user']
+
+
+    if (not lid_dir) and (not asr_dir):
+        print("Pass `lid`, `asr` or both in order to create a dataset for finetuning.")
 
     # eaf_data
     print('Generating eaf_data.csv...')
@@ -1004,79 +1009,81 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     args['media'] = None
     handle_eaf_data(args)
 
-    # lid_labels
-    print('Normalizing LID labels...')
-    args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
-    args['out_path'] = lid_dir/'metadata.csv'
-    handle_lid_labels(args)
+    if lid_dir:
+        # lid_labels
+        print('Normalizing LID labels...')
+        args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
+        args['out_path'] = lid_dir/'metadata.csv'
+        handle_lid_labels(args)
 
-    # split_data
-    print('Making train/validation/test splits for LID...')
-    args['EAF_DATA'] = lid_dir/'metadata.csv'
-    args['OUT_DIR'] = lid_dir
-    args['lid'] = True
-    handle_split_data(args)
+        # split_data
+        print('Making train/validation/test splits for LID...')
+        args['EAF_DATA'] = lid_dir/'metadata.csv'
+        args['OUT_DIR'] = lid_dir
+        args['lid'] = True
+        handle_split_data(args)
 
-    # make LID tokenizer
-    print('Making vocab file for LID...')
-    lid_vocab = vocab_from_csv(
-        csv_path=lid_dir/'metadata.csv',
-        vocab_dir=lid_dir,
-        lid=True
-    )
+        # make LID tokenizer
+        print('Making vocab file for LID...')
+        lid_vocab = vocab_from_csv(
+            csv_path=lid_dir/'metadata.csv',
+            vocab_dir=lid_dir,
+            lid=True
+        )
+        # push to hf, if indicated by user
+        if hf_user:
+            login()
+            lid_name = hf_user/lid_dir.stem
+            dataset = load_dataset(lid_dir)
+            dataset.push_to_hub(lid_name, private=True)
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj=lid_vocab,
+                path_in_repo='vocab.json',
+                repo_id=lid_name,
+                repo_type='dataset'
+            )
 
+    if asr_dir:
     # asr_labels
-    print('Normalizing ASR labels')
-    make_asr_labels(
-        annotations=eaf_dir/'eaf_data.csv',
-        lid_labels=args['lang_labels'],
-        process_length = not args['no_length_processing'],
-        min_gap=int(args['min_gap']),
-        min_length=int(args['min_length']),
-    ).to_csv(asr_dir/'metadata.csv')
+        print('Normalizing ASR labels')
+        make_asr_labels(
+            annotations=eaf_dir/'eaf_data.csv',
+            lid_labels=args['lang_labels'],
+            process_length = not args['no_length_processing'],
+            min_gap=int(args['min_gap']),
+            min_length=int(args['min_length']),
+        ).to_csv(asr_dir/'metadata.csv')
 
-    # split_data
-    print('Making train/validation/test splits for ASR...')
-    args['EAF_DATA'] = asr_dir/'metadata.csv'
-    args['OUT_DIR'] = asr_dir
-    args['lid'] = False
-    handle_split_data(args)
+        # split_data
+        print('Making train/validation/test splits for ASR...')
+        args['EAF_DATA'] = asr_dir/'metadata.csv'
+        args['OUT_DIR'] = asr_dir
+        args['lid'] = False
+        handle_split_data(args)
 
-    # make ASR tokenizer
-    print('Making vocab file for ASR...')
-    asr_vocab = vocab_from_csv(
-        csv_path=asr_dir/'metadata.csv',
-        vocab_dir=asr_dir,
-        lid=False
-    )
-
-    # push to hf, if indicated by user
-    hf_user = args['hf_user']
-
-    if hf_user:
-        
-        login()
-        lid_name = hf_user/lid_dir.stem
-        dataset = load_dataset(lid_dir)
-        dataset.push_to_hub(lid_name, private=True)
-        api = HfApi()
-        api.upload_file(
-            path_or_fileobj=lid_vocab,
-            path_in_repo='vocab.json',
-            repo_id=lid_name,
-            repo_type='dataset'
+        # make ASR tokenizer
+        print('Making vocab file for ASR...')
+        asr_vocab = vocab_from_csv(
+            csv_path=asr_dir/'metadata.csv',
+            vocab_dir=asr_dir,
+            lid=False
         )
+        # push to hf, if indicated by user
+        if hf_user:
+            login()
+            asr_name = hf_user/asr_dir.stem
+            dataset = load_dataset(asr_dir)
+            dataset.push_to_hub(asr_name, private=True)
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj=asr_vocab,
+                path_in_repo='vocab.json',
+                repo_id=asr_name,
+                repo_type='dataset'
+            )
 
-        asr_name = hf_user/asr_dir.stem
-        dataset = load_dataset(asr_dir)
-        dataset.push_to_hub(asr_name, private=True)
-        api = HfApi()
-        api.upload_file(
-            path_or_fileobj=asr_vocab,
-            path_in_repo='vocab.json',
-            repo_id=asr_name,
-            repo_type='dataset'
-        )
+
 
     return 0
 
