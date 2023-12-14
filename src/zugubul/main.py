@@ -1113,6 +1113,7 @@ def handle_textnorm(args: Dict[str, Any]) -> int:
         text = text.apply(str.lower)
     print('Stripping newlines and trailing whitespace...')
     text = text.apply(str.strip)
+    text = text.apply(lambda s: s.replace('\n', '').replace('\r', ''))
 
     char_metadata = get_char_metadata(text)
     if GUI and PYSIMPLEGUI:
