@@ -1,4 +1,4 @@
-from typing import Dict, Sequence, Any, Literal
+from typing import Dict, Sequence, Any, Literal, List
 from string import punctuation
 import unicodedata
 
@@ -37,16 +37,30 @@ def unicode_description(char: str):
         'unicode_point': unicode_point,
     }
 
-def char_metadata(texts: Sequence[str]) -> Dict[str, Dict[str, str]]:
+def get_char_metadata(texts: Sequence[str]) -> List[Dict[str, str]]:
     unique_chars = set()
-    (unique_chars.update(t) for t in texts)
-    char_objs = {}
+    for t in texts:
+        unique_chars.update(t)
+    char_objs = []
     for c in unique_chars:
-        char_obj = unicode_description(c)
+        char_obj = dict()
+        char_obj['character'] = c
+        char_obj.update(unicode_description(c))
         char_obj['replace'] = False
-        char_objs[c] = char_obj
+        char_objs.append(char_obj)
     return char_objs
-    
+
+def get_reps_from_chardata(chardata: List[Dict[str, str]]) -> Dict[str, str]:
+    reps = {}
+    for char_obj in chardata:
+        intab = char_obj['character']
+        outtab = char_obj['replace']
+        if outtab is False:
+            continue
+        if not outtab:
+            outtab = ''
+        reps[intab] = outtab
+    return reps
 
 def max_ord_in_str(text: str) -> int:
     return max(ord(c) for c in text)

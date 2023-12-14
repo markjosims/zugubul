@@ -26,9 +26,12 @@ from tqdm import tqdm
 from pympi import Elan
 import importlib_resources
 import importlib
+import json
 
 TORCH = importlib.util.find_spec('torch') is not None
 GOOEY = importlib.util.find_spec('gooey_tools') is not None
+PYSIMPLEGUI = importlib.util.find_spec('PySimpleGUIWx') is not None
+GUI = os.environ.get('GUI', 0)
 
 if not GOOEY:
     # hacky way of avoiding calling gooey_tools
@@ -338,12 +341,24 @@ def init_textnorm_parser(textnorm_parser: argparse.ArgumentParser) -> None:
         help="Path to metadata.csv, eaf_data.csv, or other .csv file containing a 'text' column to normalize.",
     )
     add_arg(
-        'skip_normalize_unicode',
+        '--skip_normalize_unicode',
+        '-s',
         action='store_true',
         help='Pass this arg to skip unicode normalization '+\
             '(replacing composite diacritics with combining '+\
             'and replacing non-canonical character variants with their canonical equivalent). '+\
             'Default behavior is to perform normalization.',
+    )
+    add_arg(
+        '--outpath',
+        '-o',
+        help='Filepath to store csv with normalized output to. Default is to overwrite original file.'
+    )
+    add_arg(
+        '--keep_unnormalized',
+        '-k',
+        help='Keep unnormalized text in a separate column `unnormalized`. Default is to discard.',
+        action='store_true'
     )
 
 def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
@@ -1066,16 +1081,36 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_textnorm(args: Dict[str, Any]) -> int:
-    from zugubul.textnorm import unicode_normalize, get_char_metadata
+    from zugubul.textnorm import unicode_normalize, get_char_metadata, get_reps_from_chardata, make_replacements
 
     metadata = args['METADATA']
-    df = pd.read_csv(metadata)
+    df = pd.read_csv(metadata, keep_default_na=False)
     text = df['text']
+    if args['keep_unnormalized']:
+        df['unnormalized'] = df['text'].copy()
     if not args['skip_normalize_unicode']:
         text = text.apply(unicode_normalize)
-    
-    
+    char_metadata = get_char_metadata(text)
+    if GUI and PYSIMPLEGUI:
+        from zugubul.textnorm_window import char_metadata_window
+        reps = char_metadata_window(char_metadata)
+    else:
+        with open('charmetadata.json', 'w') as f:
+            json.dump(char_metadata, f, ensure_ascii=False, indent=2)
+        input(
+            'Open charmetadata.json and for each character change the value of `replace` from False to a string or None '+\
+            'to replace the character with another string or delete it. '+\
+            'Additional replacement rules can be specified by creating new objects with the `replace` key. '+\
+            'Hit `Enter` when done.'
+        )
+        with open('charmetadata.json') as f:
+            char_metadata = json.load(f)
+        reps = get_reps_from_chardata(char_metadata)
+    text = text.apply(lambda s: make_replacements(s, reps))
 
+    df['text'] = text
+    outpath = args['outpath'] or metadata
+    df.to_csv(outpath, index=False)
     return 0
 
 def handle_vocab(args: Dict[str, Any]) -> int:
