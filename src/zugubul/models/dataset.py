@@ -175,7 +175,6 @@ def make_lid_labels(
         min_length: int = 1000,
         balance: bool = True,
         sample_strategy: Literal['downsample', 'upsample'] = 'downsample',
-        toml: Optional[Union[str, os.PathLike]] = None,
     ) -> pd.DataFrame:
     """
     annotations is a dataframe or str pointing to csv with a 'text' column.
@@ -193,30 +192,6 @@ def make_lid_labels(
     Creates a new column 'lang' containing the label for each language.
     Returns dataframe.
     """
-    if toml:
-        with open(toml, 'rb') as f:
-            toml_obj = tomli.load(f)
-        lid_params: dict = toml_obj['LID']
-        targetlang = lid_params.get('targetlang', targetlang)
-        metalang = lid_params.get('metalang', metalang)
-        target_labels = lid_params.get('target_labels', target_labels)
-        meta_labels = lid_params.get('meta_labels', meta_labels)
-        empty = lid_params.get('empty', empty)
-        process_length = lid_params.get('process_length', process_length)
-        min_gap = lid_params.get('min_gap', min_gap)
-        min_length = lid_params.get('min_length', min_length)
-        balance - lid_params.get('balance', balance)
-        sample_strategy = lid_params.get('sample_strategy', sample_strategy)
-    else:
-        try:
-            assert targetlang
-            assert metalang
-        except AssertionError:
-            raise ValueError(
-                'If no toml argument is passed, targetlang and metalang must be passed. '\
-                + f'{targetlang=}, {metalang=}'
-            )
-
     if type(annotations) is not pd.DataFrame:
         annotations = Path(annotations)
         if annotations.suffix == '.csv':

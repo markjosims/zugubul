@@ -295,12 +295,6 @@ def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
         help='Whether empty annotations should be mapped to target language, meta language, or excluded.'
     )
     add_arg(
-        '--toml',
-        type=lambda x: is_valid_file(lid_labels_parser, x),
-        widget='FileChooser',
-        help='Path to a .toml file with metadata for args for this script.'
-    )
-    add_arg(
         '--no_length_processing',
         action='store_true',
         help='Default behavior is to merge annotations belonging to the same language with a gap of <=2s and delete annotations shorter than 1s.'\
@@ -974,7 +968,6 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
     min_gap = int(args['min_gap'])
     min_length = int(args['min_length'])
     balance = not args['no_balance']
-    toml = args['toml']
 
     # if target_labels == ['*',]:
     #     target_labels = '*'
@@ -996,7 +989,6 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
         min_gap=min_gap,
         min_length=min_length,
         balance=balance,
-        toml=toml
     )
 
     lid_df.to_csv(out_path, index=False)
