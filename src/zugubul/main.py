@@ -926,7 +926,7 @@ def handle_snip_audio(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_lid_labels(args: Dict[str, Any]) -> int:
-    from zugubul.models.dataset import make_lid_labels
+    from zugubul.models.dataset import make_ac_labels
 
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
@@ -939,7 +939,7 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
         # default behavior is to overwrite annotations
         out_path = annotations
 
-    lid_df = make_lid_labels(
+    lid_df = make_ac_labels(
         annotations=annotations,
         categories=categories,
         default_category=default_category,
