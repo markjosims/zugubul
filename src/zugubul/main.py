@@ -1158,7 +1158,7 @@ def handle_train(args: Dict[str, Any]) -> int:
     # remove COMMAND arg if present
     args.pop('COMMAND', None)
     # remove remote args if running locally
-    remote_args = ['remote', 'server', 'password', 'server_python']
+    remote_args = ['remote', 'server', 'password', 'server_python', 'files_on_server']
     for argname in remote_args:
         args.pop(argname)
 
