@@ -22,11 +22,10 @@ def run_silero_vad(wav_fp: str, convert_to_ms: bool = True) -> List[Dict[str, in
     Pass `convert_to_ms=False` to keep the original behavior and pass samples.
     """
     audio = read_audio(wav_fp, sampling_rate=SAMPLE_RATE)
-    timestamps = get_speech_timestamps(audio, silero_vad, sampling_rate=SAMPLE_RATE)
+    timestamps = get_speech_timestamps(audio, silero_vad, sampling_rate=SAMPLE_RATE, return_seconds=True)
     if convert_to_ms:
         for seg in timestamps:
-            samples_per_ms = SAMPLE_RATE//1000
-            seg['start']*=samples_per_ms
-            seg['end']*=samples_per_ms
+            seg['start']*=1000
+            seg['end']*=1000
 
     return timestamps
