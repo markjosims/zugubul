@@ -159,7 +159,7 @@ def infer(
 def annotate(
         source: Union[str, os.PathLike],
         asr_model: Union[str, os.PathLike],
-        tgt_lang: str,
+        tgt_lang: Optional[str] = None,
         lid_model: Union[str, os.PathLike, None] = None,
         tier: str = 'default-lt',
         etf: Optional[Union[str, Elan.Eaf]] = None,
