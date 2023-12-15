@@ -27,5 +27,6 @@ def run_silero_vad(wav_fp: str, convert_to_ms: bool = True) -> List[Dict[str, in
         for seg in timestamps:
             samples_per_ms = SAMPLE_RATE//1000
             seg['start']*=samples_per_ms
+            seg['end']*=samples_per_ms
 
     return timestamps
