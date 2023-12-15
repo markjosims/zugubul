@@ -42,6 +42,7 @@ def train(
         processor: Union[Wav2Vec2Processor, Wav2Vec2FeatureExtractor, None] = None,
         save_eval_preds: bool = False,
         hf_user: Optional[str] = None,
+        adapter: Optional[str] = None,
         **kwargs
     ) -> str:
 
@@ -113,6 +114,10 @@ def train(
         # other wav2vec2 models like XLSR do not have adapter layers
         # instead, we freeze the feature encoder
         model.freeze_feature_encoder()
+
+    if adapter:
+        print(f'Loading adapters from {adapter}...')
+        model.load_adapter(adapter)
 
     if train_checkpoint:
         torch_args = torch.load(os.path.join(train_checkpoint, 'training_args.bin'))

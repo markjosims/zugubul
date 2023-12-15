@@ -480,6 +480,10 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         help='Run script as a subprocess using accelerate launch.',
         action='store_true',
     )
+    add_arg(
+        '--adapter',
+        help='Path to adapter file to load (if any).'
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
