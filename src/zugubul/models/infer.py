@@ -112,7 +112,7 @@ def infer(
             tier=tier,
             etf=etf
         )
-        data = process_annotation_length(eaf)
+        #data = process_annotation_length(eaf)
     else:
         if type(eaf) is not Elan.Eaf:
             eaf = Elan.Eaf(eaf)
