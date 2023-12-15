@@ -19,6 +19,35 @@ def load_dataset_safe(dataset: str, split: Optional[str] = None) -> Union[Datase
         return load_from_disk(dataset)
     return load_dataset(dataset, split=split)
 
+def make_df_splits(
+        df: pd.DataFrame,
+        label: Optional[str]=None,
+        splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+) -> pd.DataFrame:
+    if label:
+        df = df[df['lang']==label]
+
+    df=df.sample(frac=1)
+
+    train_size = ceil(splitsize[0]*len(df))
+    train_split = df[:train_size]
+
+    val_size = ceil(splitsize[1]*len(df))
+    val_split = df[train_size:train_size+val_size]
+
+    test_split = df[train_size+val_size:]
+    if label:
+        print(
+            f"Partitioning {len(df)} rows for label {label} into {len(train_split)} "+\
+            f"in train, {len(val_split)} in val and {len(test_split)} in test."
+        )
+    else:
+        print(
+            f"Partitioning {len(df)} rows into {len(train_split)} "+\
+            f"in train, {len(val_split)} in val and {len(test_split)} in test."
+        )
+    return {'train': train_split, 'val': val_split, 'test': test_split}
+
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],
         out_dir: Union[str, os.PathLike],
@@ -52,21 +81,24 @@ def split_data(
     # drop unlabeled rows
     eaf_data = eaf_data[eaf_data[label_col] != '']
 
-    eaf_data=eaf_data.sample(frac=1)
-
-    train_size = ceil(splitsize[0]*len(eaf_data))
-    train_split = eaf_data[:train_size]
-
-    val_size = ceil(splitsize[1]*len(eaf_data))
-    val_split = eaf_data[train_size:train_size+val_size]
-
-    test_split = eaf_data[train_size+val_size:]
-
     split_dict = {
-        'train': train_split,
-        'val': val_split,
-        'test': test_split,
+        'train': pd.DataFrame(columns=eaf_data.columns),
+        'val': pd.DataFrame(columns=eaf_data.columns),
+        'test': pd.DataFrame(columns=eaf_data.columns),
     }
+
+
+    if lid:
+        for lang in eaf_data['lang'].unique():
+            lang_splits = make_df_splits(eaf_data, label=lang, splitsize=splitsize)
+            split_dict = {
+                'train': pd.concat([split_dict['train'], lang_splits['train']]),
+                'val':   pd.concat([split_dict['val'], lang_splits['val']]),
+                'test':  pd.concat([split_dict['test'], lang_splits['test']]),
+            }
+
+    else:
+        split_dict = make_df_splits(eaf_data, splitsize=splitsize)
 
     def move_clip_to_split(clip_fp: Path, split_dir: Path) -> str:
         out_relpath = split_dir / clip_fp.name
