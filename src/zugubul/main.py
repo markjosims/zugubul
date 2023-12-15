@@ -935,6 +935,8 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
     empty = args['empty']
     balance = not args['no_balance']
 
+    print(f"Making AC labels with {categories=}")
+
     if not out_path:
         # default behavior is to overwrite annotations
         out_path = annotations
