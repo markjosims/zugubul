@@ -92,7 +92,8 @@ def infer(
         eaf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         task: Literal['LID', 'ASR'] = 'ASR',
-        inference_method: Literal['api', 'local', 'try_api'] = 'try_api'
+        inference_method: Literal['api', 'local', 'try_api'] = 'try_api',
+        max_len: int = 10,
     ) -> Elan.Eaf:
     """
     source is a path to a .wav file,
@@ -116,22 +117,26 @@ def infer(
     else:
         if type(eaf) is not Elan.Eaf:
             eaf = Elan.Eaf(eaf)
-        data = eaf
     
     
     with tempfile.TemporaryDirectory() as tmpdir:
+        breakpoint()
         clip_data = snip_audio(
-            annotations=data,
+            annotations=eaf,
             out_dir=tmpdir,
             audio=source
         )
+        print(f"VAD detected {len(clip_data)} speech segments in source.")
+        above_max_len = clip_data.apply(lambda r: r['end']-r['start'] > max_len*1000, axis=1)
+        clip_data = clip_data[~above_max_len]
+        print(f"After removing segments longer than {max_len} seconds {len(clip_data)} segments remain.")
 
         print(f"Running inference for {task} using {model}...")
         if inference_method == 'local':
             pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
                 else 'audio-classification'
             pipe = pipeline(pipeline_class, model)
-            pipe_out = clip_data['wav_clip'].progress_apply(pipe)
+            pipe_out = pipe(clip_data['wav_clip'].to_list())
             if task == 'LID':
                 labels = [get_label_from_query(x) for x in pipe_out]
             else:
