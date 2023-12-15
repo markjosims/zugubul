@@ -136,7 +136,7 @@ def infer(
             pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
                 else 'audio-classification'
             pipe = pipeline(pipeline_class, model)
-            pipe_out = clip_data['wav_clip'].tqdm_apply(pipe)
+            pipe_out = clip_data['wav_clip'].progress_apply(pipe)
             if task == 'LID':
                 labels = [get_label_from_query(x) for x in pipe_out]
             else:
