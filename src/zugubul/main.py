@@ -795,7 +795,7 @@ def handle_vad_batch(
         file_arg='wav_fp',
         suffix='.wav',
         kwargs = {
-            'rvad_fp': vad,
+            'vad_fp': vad,
             'tier': tier,
             'etf': etf,
         },
