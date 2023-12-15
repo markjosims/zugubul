@@ -158,9 +158,9 @@ def infer(
 
 def annotate(
         source: Union[str, os.PathLike],
-        lid_model: Union[str, os.PathLike],
         asr_model: Union[str, os.PathLike],
         tgt_lang: str,
+        lid_model: Union[str, os.PathLike, None] = None,
         tier: str = 'default-lt',
         etf: Optional[Union[str, Elan.Eaf]] = None,
         inference_method: Literal['api', 'local'] = 'api'
@@ -172,17 +172,20 @@ def annotate(
     If tier is provided, add annotations to tier of that name.
     If etf is provided, use as template for output .eaf file.
     """
-    lid_eaf = infer(
-        source=source,
-        model=lid_model,
-        tier=tier,
-        etf=etf,
-        task='LID',
-        inference_method=inference_method,
-    )
-    print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
-    tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
-    print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
+    if lid_model:
+        lid_eaf = infer(
+            source=source,
+            model=lid_model,
+            tier=tier,
+            etf=etf,
+            task='LID',
+            inference_method=inference_method,
+        )
+        print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
+        tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
+        print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
+    else:
+        tgt_eaf = label_speech_segments(source)
     annotated_eaf = infer(
         source=source,
         model=asr_model,

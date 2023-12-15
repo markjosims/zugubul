@@ -521,10 +521,6 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
         help='Path to .eaf file to save annotations to.'
     )
     add_arg(
-        "LID_URL",
-        widget='DirChooser',
-        help="Path to HuggingFace model to use for language identification.")
-    add_arg(
         "ASR_URL",
         widget='DirChooser',
         help="Path to HuggingFace model to use for automatic speech recognition.")
@@ -532,6 +528,10 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
         "LANG",
         help="ISO code for target language to annotate."
     )
+    add_arg(
+        "ac_url",
+        widget='DirChooser',
+        help="Path to HuggingFace model to use for audio classification. If not passed, annotate all detected utterances.")
     add_arg(
         "--inference_method",
         "-im",
@@ -1201,7 +1201,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     from zugubul.models.infer import annotate
 
     wav_file = args['WAV_FILE']
-    lid_model = args['LID_URL']
+    lid_model = args['ac_url']
     asr_model = args['ASR_URL']
     tgt_lang = args['LANG']
     out_fp = args['OUT']
