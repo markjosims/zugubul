@@ -960,8 +960,8 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
 
     eaf_dir = Path(args['EAF_DIR'])
-    ac_dir = Path(args['ac'])
-    asr_dir = Path(args['asr'])
+    ac_dir = args['ac']
+    asr_dir = args['asr']
     hf_user = args['hf_user']
 
 
@@ -978,6 +978,7 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     handle_eaf_data(args)
 
     if ac_dir:
+        ac_dir = Path(ac_dir)
         # lid_labels
         print('Normalizing LID labels...')
         args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
@@ -1015,6 +1016,7 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     if asr_dir:
     # asr_labels
         print('Normalizing ASR labels')
+        asr_dir = Path(asr_dir)
         make_asr_labels(
             annotations=eaf_dir/'eaf_data.csv',
             lid_labels=args['lang_labels'],
