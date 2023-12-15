@@ -269,48 +269,19 @@ def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
 def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_labels_parser, *args, **kwargs)
     add_arg(
-        '-tl',
-        '--targetlang',
-        help='ISO code or other unique identifier for target (fieldwork) language.'
-    )
-    add_arg(
-        '-ml',
-        '--metalang',
-        help='ISO code or other unique identifier for meta language.'
-    )
-    add_arg(
-        '--target_labels',
-        help="Strings to map to target language, or empty to map all strings except those specified by --meta_labels.", 
+        'CATEGORIES',
+        help="Unique category labels.", 
         nargs='+'
     )
     add_arg(
-        '--meta_labels',
-        help="Strings to map to meta language, or empty to map all strings except those specified by --target_labels.",
-        nargs='+'
+        '--default_category',
+        '-d',
+        help='Unique identifier to map to all other strings.'
     )
     add_arg(
         '-e',
         '--empty',
-        choices=['target', 'meta', 'exclude'],
-        help='Whether empty annotations should be mapped to target language, meta language, or excluded.'
-    )
-    add_arg(
-        '--no_length_processing',
-        action='store_true',
-        help='Default behavior is to merge annotations belonging to the same language with a gap of <=2s and delete annotations shorter than 1s.'\
-        +'Pass this argument to override this behavior and skip processing length for annotations.'
-    )
-    add_arg(
-        '--min_gap',
-        type=int,
-        help='If performing length processing, the minimum duration (in ms) between to annotations of the same language to avoid merging them.',
-        default=200
-    )
-    add_arg(
-        '--min_length',
-        type=int,
-        help='If performing length processing, the minimum duration (in ms) an annotation must be to not be excluded.',
-        default=1000
+        help='What category empty annotations should be mapped to. If not provided, exclude all empty rows.'
     )
     add_arg(
         '--no_balance',
@@ -959,20 +930,10 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
 
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
-    targetlang = args['targetlang']
-    metalang = args['metalang']
-    target_labels = args['target_labels']
-    meta_labels = args['meta_labels']
+    categories=args['CATEGORIES']
+    default_category=args['default_category']
     empty = args['empty']
-    process_length = not args['no_length_processing']
-    min_gap = int(args['min_gap'])
-    min_length = int(args['min_length'])
     balance = not args['no_balance']
-
-    # if target_labels == ['*',]:
-    #     target_labels = '*'
-    # if meta_labels == ['*',]:
-    #     meta_labels = '*'
 
     if not out_path:
         # default behavior is to overwrite annotations
@@ -980,14 +941,9 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
 
     lid_df = make_lid_labels(
         annotations=annotations,
-        targetlang=targetlang,
-        metalang=metalang,
-        target_labels=target_labels,
-        meta_labels=meta_labels,
+        categories=categories,
+        default_category=default_category,
         empty=empty,
-        process_length=process_length,
-        min_gap=min_gap,
-        min_length=min_length,
         balance=balance,
     )
 
