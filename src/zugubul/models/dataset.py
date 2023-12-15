@@ -163,16 +163,11 @@ def make_asr_labels(
     
     return annotations
 
-def make_lid_labels(
+def make_ac_labels(
         annotations: Union[str, pd.DataFrame],
-        targetlang : Optional[str] = None,
-        metalang: Optional[str] = None,
-        target_labels: Optional[Sequence[str]] = None,
-        meta_labels: Optional[Sequence[str]] = None,
-        empty: Union[Literal['target'], Literal['meta'], Literal['exclude']] = 'exclude',
-        process_length: bool = True,
-        min_gap: int = 200,
-        min_length: int = 1000,
+        categories: Sequence[str],
+        default_category: Optional[str] = None,
+        empty: Optional[str] = None,
         balance: bool = True,
         sample_strategy: Literal['downsample', 'upsample'] = 'downsample',
     ) -> pd.DataFrame:
@@ -204,31 +199,17 @@ def make_lid_labels(
 
     annotations['lang'] = ''
     is_empty = annotations['text'].isna()
-    if empty == 'target':
-        annotations.loc[is_empty, 'lang'] = targetlang
-    elif empty == 'meta':
-        annotations.loc[is_empty, 'lang'] = metalang
-    else:
-        # empty = exclude
+    if empty is None:
         annotations = annotations[~is_empty]
-    
-
-    if (not target_labels) and (not meta_labels):
-        raise ValueError("target_labels and meta_labels cannot both be empty.")
-
-    if not target_labels:
-        annotations.loc[~is_empty,'lang'] = annotations.loc[~is_empty, 'text']\
-            .apply(lambda t: metalang if t in meta_labels else targetlang)
-    elif not meta_labels:
-        annotations.loc[~is_empty, 'lang'] = annotations.loc[~is_empty, 'text']\
-            .apply(lambda t: targetlang if t in target_labels else metalang)
     else:
-        annotations.loc[annotations['text'].isin(target_labels), 'lang'] = targetlang
-        annotations.loc[annotations['text'].isin(meta_labels), 'lang'] = metalang
-        annotations = annotations[annotations['lang']!='']
+        annotations.loc[is_empty, 'lang'] = empty
     
-    if process_length:
-        annotations = process_annotation_length(annotations, min_gap=min_gap, min_length=min_length, lid=True)
+    for category in categories:
+        annotations.loc[annotations['text']==category, 'lang'] = category
+    if default_category:
+        annotations.loc[annotations['lang']=='', 'lang'] = default_category
+    else:
+        annotations=annotations[annotations['lang']!='']
 
     if balance:
         annotations = balance_lid_data(df=annotations, sample_strategy=sample_strategy)
