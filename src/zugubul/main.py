@@ -476,9 +476,8 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         widget='DirChooser',
     )
     add_arg(
-        '--disable_accelerate',
-        help='Default behavior is to run accelerate as a subprocess. '+\
-        'Pass this argument to disable that behavior.',
+        '--use_accelerate',
+        help='Run script as a subprocess using accelerate launch.',
         action='store_true',
     )
     add_remote_args(train_parser)
@@ -1125,14 +1124,15 @@ def handle_train(args: Dict[str, Any]) -> int:
             passphrase=args['password'],
             server_python=args['server_python'],
             files_on_server=args['files_on_server'],
-            use_accelerate=not args['disable_accelerate'],
+            use_accelerate=args['use_accelerate'],
         )
 
-    if not args.pop('disable_accelerate'):
+    if args.pop('use_accelerate'):
         from zugubul.remote import make_arg_str
         import subprocess
         arglist = sys.argv[2:]
-        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train', '--disable_accelerate'] + arglist
+        arglist = [x for x in arglist if x != '--use_accelerate']
+        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train'] + arglist
         argstr = make_arg_str(arglist)
         os.environ.pop('GUI', None)
         print('Running accelerate as subprocess with command:', argstr)
