@@ -476,9 +476,8 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         widget='DirChooser',
     )
     add_arg(
-        '--disable_accelerate',
-        help='Default behavior is to run accelerate as a subprocess. '+\
-        'Pass this argument to disable that behavior.',
+        '--use_accelerate',
+        help='Run script as a subprocess using accelerate launch.',
         action='store_true',
     )
     add_remote_args(train_parser)
@@ -926,7 +925,7 @@ def handle_snip_audio(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_lid_labels(args: Dict[str, Any]) -> int:
-    from zugubul.models.dataset import make_lid_labels
+    from zugubul.models.dataset import make_ac_labels
 
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
@@ -935,11 +934,13 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
     empty = args['empty']
     balance = not args['no_balance']
 
+    print(f"Making AC labels with {categories=}")
+
     if not out_path:
         # default behavior is to overwrite annotations
         out_path = annotations
 
-    lid_df = make_lid_labels(
+    lid_df = make_ac_labels(
         annotations=annotations,
         categories=categories,
         default_category=default_category,
@@ -960,8 +961,8 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
 
     eaf_dir = Path(args['EAF_DIR'])
-    ac_dir = Path(args['ac'])
-    asr_dir = Path(args['asr'])
+    ac_dir = args['ac']
+    asr_dir = args['asr']
     hf_user = args['hf_user']
 
 
@@ -978,6 +979,7 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     handle_eaf_data(args)
 
     if ac_dir:
+        ac_dir = Path(ac_dir)
         # lid_labels
         print('Normalizing LID labels...')
         args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
@@ -1015,6 +1017,7 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     if asr_dir:
     # asr_labels
         print('Normalizing ASR labels')
+        asr_dir = Path(asr_dir)
         make_asr_labels(
             annotations=eaf_dir/'eaf_data.csv',
             lid_labels=args['lang_labels'],
@@ -1121,14 +1124,15 @@ def handle_train(args: Dict[str, Any]) -> int:
             passphrase=args['password'],
             server_python=args['server_python'],
             files_on_server=args['files_on_server'],
-            use_accelerate=not args['disable_accelerate'],
+            use_accelerate=args['use_accelerate'],
         )
 
-    if not args.pop('disable_accelerate'):
+    if args.pop('use_accelerate'):
         from zugubul.remote import make_arg_str
         import subprocess
         arglist = sys.argv[2:]
-        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train', '--disable_accelerate'] + arglist
+        arglist = [x for x in arglist if x != '--use_accelerate']
+        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train'] + arglist
         argstr = make_arg_str(arglist)
         os.environ.pop('GUI', None)
         print('Running accelerate as subprocess with command:', argstr)
