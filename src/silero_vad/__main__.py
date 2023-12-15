@@ -14,7 +14,7 @@ silero_vad, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
  VADIterator,
  collect_chunks) = utils
 
-def run_silero_vad(wav: str, convert_to_ms: bool = True) -> List[Dict[str, int]]:
+def run_silero_vad(wav_fp: str, convert_to_ms: bool = True) -> List[Dict[str, int]]:
     """
     Run silero_vad on the file indicated by `wav`.
     silero_vad returns sample indices by default,
