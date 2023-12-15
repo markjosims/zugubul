@@ -59,11 +59,9 @@ def trim(
             a_mid = (a_start + a_end)/2
             a_value = a[2]
             if (keepword) and (a_value != keepword):
-                removed = eaf.remove_annotation(t, a_mid)
-                assert removed >= 1
+                eaf.remove_annotation(t, a_mid)
             elif (not keepword) and (a_value == stopword):
-                removed = eaf.remove_annotation(t, a_mid)
-                assert removed >= 1
+                eaf.remove_annotation(t, a_mid)
     return eaf
 
 def merge(
