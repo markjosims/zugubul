@@ -8,11 +8,12 @@ from time import sleep
 from tqdm import tqdm
 from transformers import pipeline
 from huggingface_hub import HfFolder, login
-from pydub import AudioSegment
 
 from zugubul.vad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
 from zugubul.elan_tools import snip_audio, trim
+from zugubul.main import init_annotate_parser, handle_annotate
+import argparse
 
 # enable pandas progress bars
 tqdm.pandas()
@@ -196,3 +197,14 @@ def annotate(
         inference_method=inference_method,
     )
     return annotated_eaf
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description='Annotate an audio file using an ASR and, optionally, AC model.')
+    init_annotate_parser(parser)
+    args = vars(parser.parse_args(argv))
+
+    handle_annotate(args)
+    return 0
+
+if __name__ == '__main__':
+    main()
