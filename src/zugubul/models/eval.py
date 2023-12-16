@@ -59,10 +59,7 @@ def eval(
                 with torch.no_grad():
                     pred = model(**input_dict)
                 if m == 'accuracy':
-                    model_outs = calc_m(
-                        pred_logits=pred.logits,
-                        return_labels=True,
-                    )
+                    model_outs = calc_m(pred=pred)
                 else:
                     model_outs = calc_m(
                         pred_logits=pred.logits,
