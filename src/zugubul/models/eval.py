@@ -58,12 +58,18 @@ def eval(
             if model:
                 with torch.no_grad():
                     pred = model(**input_dict)
-                model_outs = calc_m(
-                    pred_logits=pred.logits,
-                    processor=processor,
-                    label_str=label,
-                    return_labels=True,
-                )
+                if m == 'accuracy':
+                    model_outs = calc_m(
+                        pred_logits=pred.logits,
+                        return_labels=True,
+                    )
+                else:
+                    model_outs = calc_m(
+                        pred_logits=pred.logits,
+                        processor=processor,
+                        label_str=label,
+                        return_labels=True,
+                    )
                 outputs['model'][m].append(model_outs)        
     print('Evaluating...')
     dataset.map(eval_row, batched=True, batch_size=10)

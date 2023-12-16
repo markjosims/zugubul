@@ -66,6 +66,6 @@ def compute_acc(pred, return_labels: bool = False):
 
     out = accuracy.compute(predictions=pred_ids, references=pred.label_ids)
     if return_labels:
-        out['label'] = pred.label_ids
-        out['pred'] = pred_ids
+        out['label'] = int(pred.label_ids)
+        out['pred'] = int(pred_ids)
     return out
