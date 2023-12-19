@@ -1,4 +1,4 @@
-from transformers import Wav2Vec2ForCTC, AutoProcessor
+from transformers import Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification, AutoProcessor
 from datasets import Dataset, Audio
 from zugubul.models.dataset import load_dataset_safe
 from zugubul.models._metrics import (
@@ -24,6 +24,7 @@ METRICS = {
 def eval(
         dataset: Union[str, Dataset],
         model_str: Optional[str],
+        task: str = 'ASR',
         funct: Optional[Callable] = None,
         metric: Union[str, List[str]] = 'cer_and_wer',
         label_col: str = 'text',
@@ -32,7 +33,10 @@ def eval(
 ) -> None:
     if model_str:
         print('Loading model and processor...')
-        model = Wav2Vec2ForCTC.from_pretrained(model_str)
+        if task == 'ASR':
+            model = Wav2Vec2ForCTC.from_pretrained(model_str)
+        else:
+            model = Wav2Vec2ForSequenceClassification.from_pretrained(model_str)
         processor = AutoProcessor.from_pretrained(model_str)
         model.eval()
 
