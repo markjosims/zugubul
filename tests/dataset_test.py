@@ -1,4 +1,4 @@
-from zugubul.models.dataset import split_data, make_lid_labels, balance_lid_data, process_annotation_length
+from zugubul.models.dataset import split_data, make_lid_labels, balance_lid_data, process_annotation_length, make_lm_dataset
 from datasets import load_dataset
 import pytest
 import csv
@@ -24,9 +24,9 @@ def tmp_dataset():
         os.mkdir(test_dir)
         os.mkdir(val_dir)
 
-        shutil.copy(r'C:\projects\zugubul\tests\wavs\train\train.wav', os.path.join(train_dir, 'train.wav'))
-        shutil.copy(r'C:\projects\zugubul\tests\wavs\test\test.wav', os.path.join(test_dir, 'test.wav'))
-        shutil.copy(r'C:\projects\zugubul\tests\wavs\val\val.wav', os.path.join(val_dir, 'val.wav'))
+        shutil.copy('tests/wavs/train/train.wav', os.path.join(train_dir, 'train.wav'))
+        shutil.copy('tests/wavs/test/test.wav', os.path.join(test_dir, 'test.wav'))
+        shutil.copy('tests/wavs/val/val.wav', os.path.join(val_dir, 'val.wav'))
         csv_path = os.path.join(dir_path, 'metadata.csv')
         with open(csv_path, 'w') as f:
             writer = csv.writer(f, delimiter=',')
@@ -45,8 +45,8 @@ def tmp_unsplit_data():
         dir_path = os.path.join(tmpdir, 'dataset1')
         os.mkdir(dir_path)
 
-        dendi_path = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
-        tira_path = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+        dendi_path = 'tests/wavs/test_dendi1.wav'
+        tira_path = 'tests/wavs/test_tira1.wav'
 
         csv_path = os.path.join(dir_path, 'eaf_data.csv')
 
@@ -71,8 +71,8 @@ def tmp_lid_data():
         dir_path = os.path.join(tmpdir, 'dataset1')
         os.mkdir(dir_path)
 
-        dendi_path = r'C:\projects\zugubul\tests\wavs\test_dendi1.wav'
-        tira_path = r'C:\projects\zugubul\tests\wavs\test_tira1.wav'
+        dendi_path = 'tests/wavs/test_dendi1.wav'
+        tira_path = 'tests/wavs/test_tira1.wav'
 
         csv_path = os.path.join(dir_path, 'eaf_data.csv')
 
@@ -96,7 +96,7 @@ def tmp_lid_data():
                 'LID': {
                     'targetlang': 'TIC',
                     'metalang': 'DDN',
-                    'target_labels': '*',
+                    'target_labels': False,
                     'meta_labels': ['DDN', 'DDN1'],
                     'empty': 'meta',
                     'balance': False,
@@ -163,7 +163,7 @@ def test_make_lid_labels(tmp_lid_data):
     
     targetlang = 'TIC'
     metalang = 'DDN'
-    target_labels = '*'
+    target_labels = None
     meta_labels = ['DDN', 'DDN1']
 
     df = make_lid_labels(
@@ -209,6 +209,12 @@ def test_make_lid_labels1(tmp_lid_data):
 
     assert len(df[df['lang']=='TIC']) == 3
     assert len(df[df['lang']=='DDN']) == 3
+
+def test_make_lm_data(tmp_unsplit_data):
+    _, csv_path = tmp_unsplit_data
+    text =['apri. jicelo. ngamhare. n na suba. a ci deesu. n na gbei.']
+    dataset = make_lm_dataset(csv_path, make_splits=False)
+    assert list(dataset['text']) == text
 
 def test_balance_lid_data(lid_df):
     out = balance_lid_data(lid_df)

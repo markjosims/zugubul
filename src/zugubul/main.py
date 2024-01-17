@@ -26,9 +26,12 @@ from tqdm import tqdm
 from pympi import Elan
 import importlib_resources
 import importlib
+import json
 
 TORCH = importlib.util.find_spec('torch') is not None
 GOOEY = importlib.util.find_spec('gooey_tools') is not None
+PYSIMPLEGUI = importlib.util.find_spec('PySimpleGUIWx') is not None
+GUI = os.environ.get('GUI', 0)
 
 if not GOOEY:
     # hacky way of avoiding calling gooey_tools
@@ -48,6 +51,23 @@ if not GOOEY:
 else:
     from gooey_tools import HybridGooey, HybridGooeyParser, add_hybrid_arg
 
+
+DEFAULT_HYPERPARAMS = {
+    'group_by_length': True,
+    'per_device_train_batch_size': 1,
+    'gradient_accumulation_steps': 1,
+    'evaluation_strategy': "steps",
+    'num_train_epochs': 4,
+    'gradient_checkpointing': True,
+    'fp16': False,
+    'save_steps': 5000,
+    'eval_steps': 1000,
+    'logging_steps': 500,
+    'learning_rate': 3e-4,
+    'warmup_steps': 500,
+    'torch_compile': False,
+    'report_to': 'tensorboard',
+}
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
     add_arg = lambda *args, **kwargs: add_hybrid_arg(merge_parser, *args, **kwargs)
@@ -249,54 +269,19 @@ def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
 def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_labels_parser, *args, **kwargs)
     add_arg(
-        '-tl',
-        '--targetlang',
-        help='ISO code or other unique identifier for target (fieldwork) language.'
-    )
-    add_arg(
-        '-ml',
-        '--metalang',
-        help='ISO code or other unique identifier for meta language.'
-    )
-    add_arg(
-        '--target_labels',
-        help="Strings to map to target language, or empty to map all strings except those specified by --meta_labels.", 
+        'CATEGORIES',
+        help="Unique category labels.", 
         nargs='+'
     )
     add_arg(
-        '--meta_labels',
-        help="Strings to map to meta language, or empty to map all strings except those specified by --target_labels.",
-        nargs='+'
+        '--default_category',
+        '-d',
+        help='Unique identifier to map to all other strings.'
     )
     add_arg(
         '-e',
         '--empty',
-        choices=['target', 'meta', 'exclude'],
-        help='Whether empty annotations should be mapped to target language, meta language, or excluded.'
-    )
-    add_arg(
-        '--toml',
-        type=lambda x: is_valid_file(lid_labels_parser, x),
-        widget='FileChooser',
-        help='Path to a .toml file with metadata for args for this script.'
-    )
-    add_arg(
-        '--no_length_processing',
-        action='store_true',
-        help='Default behavior is to merge annotations belonging to the same language with a gap of <=2s and delete annotations shorter than 1s.'\
-        +'Pass this argument to override this behavior and skip processing length for annotations.'
-    )
-    add_arg(
-        '--min_gap',
-        type=int,
-        help='If performing length processing, the minimum duration (in ms) between to annotations of the same language to avoid merging them.',
-        default=200
-    )
-    add_arg(
-        '--min_length',
-        type=int,
-        help='If performing length processing, the minimum duration (in ms) an annotation must be to not be excluded.',
-        default=1000
+        help='What category empty annotations should be mapped to. If not provided, exclude all empty rows.'
     )
     add_arg(
         '--no_balance',
@@ -313,6 +298,39 @@ def init_asr_labels_parser(asr_labels_parser: argparse.ArgumentParser) -> None:
         nargs='+'
     )
 
+def init_textnorm_parser(textnorm_parser: argparse.ArgumentParser) -> None:
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(textnorm_parser, *args, **kwargs)
+    add_arg(
+        'METADATA',
+        type=lambda x: is_valid_file(textnorm_parser, x),
+        widget='FileChooser',
+        help="Path to metadata.csv, eaf_data.csv, or other .csv file containing a 'text' column to normalize.",
+    )
+    add_arg(
+        '--skip_normalize_unicode',
+        action='store_true',
+        help='Pass this arg to skip unicode normalization '+\
+            '(replacing composite diacritics with combining '+\
+            'and replacing non-canonical character variants with their canonical equivalent). '+\
+            'Default behavior is to perform normalization.',
+    )
+    add_arg(
+        '--dont_lower',
+        action='store_true',
+        help='Pass this arg to skip casting all letters to lowercase.'
+    )
+    add_arg(
+        '--outpath',
+        '-o',
+        help='Filepath to store csv with normalized output to. Default is to overwrite original file.'
+    )
+    add_arg(
+        '--keep_unnormalized',
+        '-k',
+        help='Keep unnormalized text in a separate column `unnormalized`. Default is to discard.',
+        action='store_true'
+    )
+
 def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_parser, *args, **kwargs)
     add_arg(
@@ -322,13 +340,13 @@ def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
         help='Folder containing .eafs for processing into training datasets.'
     )
     add_arg(
-        'LID_DIR',
+        '--ac',
         type=lambda x: is_valid_dir(lid_parser, x),
         widget='DirChooser',
-        help='Folder to initalize Language IDentification (LID) dataset in.'
+        help='Folder to initalize Audio Classification (AC) dataset in.'
     )
     add_arg(
-        'ASR_DIR',
+        '--asr',
         type=lambda x: is_valid_dir(lid_parser, x),
         widget='DirChooser',
         help='Folder to initalize Automatic Speech Recognition (ASR) dataset in.'
@@ -357,11 +375,11 @@ def init_dataset_parser(lid_parser: argparse.ArgumentParser) -> None:
         '--hf_user',
         help='User name for Huggingface Hub. Only pass if wanting to save dataset to Huggingface Hub, otherwise saves locally only.'
     )
-    lid_args = lid_parser.add_argument_group('LID', 'Arguments for LID dataset')
-    init_lid_labels_parser(lid_args)
-
     asr_args = lid_parser.add_argument_group('ASR', 'Arguments for ASR dataset')
     init_asr_labels_parser(asr_args)
+    
+    lid_args = lid_parser.add_argument_group('LID', 'Arguments for LID dataset')
+    init_lid_labels_parser(lid_args)
 
 def init_vocab_parser(vocab_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(vocab_parser, *args, **kwargs)
@@ -400,19 +418,71 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
     )
     add_arg(
         'TASK',
-        choices=['LID', 'ASR'],
-        help='Task to be trained, either Language IDentification (LID) or Automatic Speech Recognition (ASR).'
+        choices=['LID', 'ASR', 'LM'],
+        help='Task to be trained, either Language IDentification (LID), Automatic Speech Recognition (ASR) or Language Modeling (LM).'
     )
     add_arg(
-        '--hf',
-        action='store_true',
-        help='Download dataset from and save model to HuggingFace Hub.'
+        '--hf_user',
+        help='User name for Huggingface Hub. Only pass if wanting to save model to Huggingface Hub, otherwise saves locally only.'
     )
     add_arg(
         '-m',
         '--model_url',
-        default='facebook/mms-1b-all',
-        help='url or filepath to pretrained model to finetune. Uses Massive Multilingual Speech by default (facebook/mms-1b-all)'
+        help='url or filepath to pretrained model to finetune. '\
+        +'By default uses Massive Multilingual Speech (facebook/mms-1b-all) for ASR and LID '\
+        +'and gpt2 for LM.'
+    )
+    add_arg(
+        '-v',
+        '--vocab_path',
+        default='vocab.json',
+        help='Filepath for vocab object.'
+    )
+    add_arg(
+        '-lc',
+        '--label_col',
+        help="Column in dataset to use for label (default is 'text' for ASR or LM and 'lang' for LID)."
+    )
+    add_arg(
+        '--audio_cutoff',
+        '-ac',
+        help='Exclude any audio records with length greater than cutoff (in frames).',
+        type=int
+    )
+    add_arg(
+        '--sort_by_len',
+        '-sbl',
+        help='Sort dataset so that shorter inputs come first.',
+        action='store_true',
+    )
+    add_arg(
+        '--save_eval_preds',
+        action='store_true',
+        help='Save eval predictions to output file for each eval loop.',
+    )
+    add_arg(
+        '--device_map',
+        help='Device map for model (default is `auto`).',
+        default='auto',
+    )
+    add_arg(
+        '--train_data_percent',
+        help='Percent of train data to load (if None, load all)',
+        type=float,
+    )
+    add_arg(
+        '--train_checkpoint',
+        help='Path to checkpoint folder if resuming from checkpoint.',
+        widget='DirChooser',
+    )
+    add_arg(
+        '--use_accelerate',
+        help='Run script as a subprocess using accelerate launch.',
+        action='store_true',
+    )
+    add_arg(
+        '--adapter',
+        help='Path to adapter file to load (if any).'
     )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
@@ -454,17 +524,17 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
         help='Path to .eaf file to save annotations to.'
     )
     add_arg(
-        "LID_URL",
-        widget='DirChooser',
-        help="Path to HuggingFace model to use for language identification.")
-    add_arg(
-        "ASR_URL",
+        "ASR_PATH",
         widget='DirChooser',
         help="Path to HuggingFace model to use for automatic speech recognition.")
     add_arg(
-        "LANG",
+        "--lang",
         help="ISO code for target language to annotate."
     )
+    add_arg(
+        "--ac_path",
+        widget='DirChooser',
+        help="Path to HuggingFace model to use for audio classification. If not passed, annotate all detected utterances.")
     add_arg(
         "--inference_method",
         "-im",
@@ -489,6 +559,48 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     
     add_batch_args(annotate_parser)
     add_remote_args(annotate_parser)
+
+def init_eval_parser(eval_parser: argparse.ArgumentParser) -> None:
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(eval_parser, *args, **kwargs)
+    add_arg(
+        'DATASET',
+        help='Path to dataset to use for evaluation.'
+    )
+    add_arg(
+        'MODEL',
+        help='Path to model to evalute on.'
+    )
+    # funct: Optional[Callable] = None, #TODO: implement passing the path to python file
+    add_arg(
+        '--out',
+        '-o',
+        help='Path to save output to (default is $MODEL_eval.json)'
+    )
+    add_arg(
+        '--metric',
+        '-m',
+        nargs='+',
+        help='Metrics to evaluate on.',
+        default='cer_and_wer'
+    )
+    add_arg(
+        '--label_col',
+        '-lc',
+        help='Name of column in dataset containing label. Default `text`.',
+        default='text',
+    )
+    add_arg(
+        '--input_col',
+        '-ic',
+        help='Name of column in dataset containing input data. Default `audio`.',
+        default='audio',
+    )
+    add_arg(
+        '--split',
+        '-s',
+        help='Name of split to evaluate on. Default `test`.',
+        default='test',
+    )
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     batch_args = parser.add_argument_group(
@@ -539,6 +651,11 @@ def add_remote_args(parser: argparse.ArgumentParser) -> None:
         "--server_python",
         help="Path to python interpreter to use on server."
     )
+    add_arg(
+        "--files_on_server",
+        help="Indicates that datafiles for command are already located on server and do not need to be uploaded.",
+        action='store_true',
+    )
 
 def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
     hyper_args = parser.add_argument_group(
@@ -547,23 +664,7 @@ def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
     )
     add_arg = lambda *args, **kwargs: add_hybrid_arg(hyper_args, *args, **kwargs)
 
-    default_hyper = {
-        'group_by_length': True,
-        'per_device_train_batch_size': 1,
-        'evaluation_strategy': "steps",
-        'num_train_epochs': 4,
-        'gradient_checkpointing': True,
-        'fp16': False,
-        'save_steps': 100,
-        'eval_steps': 100,
-        'logging_steps': 100,
-        'learning_rate': 1e-3,
-        'warmup_steps': 100,
-        'save_total_limit': 2,
-        'torch_compile': False,
-        'push_to_hub': False,
-    }
-    for k, v in default_hyper.items():
+    for k, v in DEFAULT_HYPERPARAMS.items():
         if type(v) is bool:
             add_arg('--'+k, default=v, action='store_true')
         else:
@@ -622,7 +723,7 @@ def handle_merge(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_vad(args: Dict[str, Any]) -> int:
-    from zugubul.rvad_to_elan import label_speech_segments
+    from zugubul.vad_to_elan import label_speech_segments
 
     wav_fp = args['WAV_FILEPATH']
     eaf_fp = args['EAF_FILEPATH']
@@ -658,6 +759,7 @@ def handle_vad(args: Dict[str, Any]) -> int:
         args['EAF_MATRIX'] = eaf_fp
         args['EAF_SOURCE'] = eaf_source
         args['eaf_out'] = eaf_fp
+        args['overwrite'] = True
         handle_merge(args)
     return 0
 
@@ -674,7 +776,7 @@ def handle_vad_batch(
     """
     Helper for batch processing of handle_vad
     """
-    from zugubul.rvad_to_elan import label_speech_segments, RvadError
+    from zugubul.vad_to_elan import label_speech_segments, RvadError
 
 
     assert os.path.isdir(wav_fp) and os.path.isdir(eaf_fp),\
@@ -696,7 +798,7 @@ def handle_vad_batch(
         file_arg='wav_fp',
         suffix='.wav',
         kwargs = {
-            'rvad_fp': vad,
+            'vad_fp': vad,
             'tier': tier,
             'etf': etf,
         },
@@ -827,42 +929,27 @@ def handle_snip_audio(args: Dict[str, Any]) -> int:
     return 0
 
 def handle_lid_labels(args: Dict[str, Any]) -> int:
-    from zugubul.models.dataset import make_lid_labels
+    from zugubul.models.dataset import make_ac_labels
 
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
-    targetlang = args['targetlang']
-    metalang = args['metalang']
-    target_labels = args['target_labels']
-    meta_labels = args['meta_labels']
+    categories=args['CATEGORIES']
+    default_category=args['default_category']
     empty = args['empty']
-    process_length = not args['no_length_processing']
-    min_gap = int(args['min_gap'])
-    min_length = int(args['min_length'])
     balance = not args['no_balance']
-    toml = args['toml']
 
-    # if target_labels == ['*',]:
-    #     target_labels = '*'
-    # if meta_labels == ['*',]:
-    #     meta_labels = '*'
+    print(f"Making AC labels with {categories=}")
 
     if not out_path:
         # default behavior is to overwrite annotations
         out_path = annotations
 
-    lid_df = make_lid_labels(
+    lid_df = make_ac_labels(
         annotations=annotations,
-        targetlang=targetlang,
-        metalang=metalang,
-        target_labels=target_labels,
-        meta_labels=meta_labels,
+        categories=categories,
+        default_category=default_category,
         empty=empty,
-        process_length=process_length,
-        min_gap=min_gap,
-        min_length=min_length,
         balance=balance,
-        toml=toml
     )
 
     lid_df.to_csv(out_path, index=False)
@@ -878,8 +965,13 @@ def handle_dataset(args: Dict[str, Any]) -> int:
 
 
     eaf_dir = Path(args['EAF_DIR'])
-    lid_dir = Path(args['LID_DIR'])
-    asr_dir = Path(args['ASR_DIR'])
+    ac_dir = args['ac']
+    asr_dir = args['asr']
+    hf_user = args['hf_user']
+
+
+    if (not ac_dir) and (not asr_dir):
+        print("Pass `ac`, `asr` or both in order to create a dataset for finetuning.")
 
     # eaf_data
     print('Generating eaf_data.csv...')
@@ -890,80 +982,125 @@ def handle_dataset(args: Dict[str, Any]) -> int:
     args['media'] = None
     handle_eaf_data(args)
 
-    # lid_labels
-    print('Normalizing LID labels...')
-    args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
-    args['out_path'] = lid_dir/'metadata.csv'
-    handle_lid_labels(args)
+    if ac_dir:
+        ac_dir = Path(ac_dir)
+        # lid_labels
+        print('Normalizing LID labels...')
+        args['ANNOTATIONS'] = eaf_dir/'eaf_data.csv'
+        args['out_path'] = ac_dir/'metadata.csv'
+        handle_lid_labels(args)
 
-    # split_data
-    print('Making train/validation/test splits for LID...')
-    args['EAF_DATA'] = lid_dir/'metadata.csv'
-    args['OUT_DIR'] = lid_dir
-    args['lid'] = True
-    handle_split_data(args)
+        # split_data
+        print('Making train/validation/test splits for LID...')
+        args['EAF_DATA'] = ac_dir/'metadata.csv'
+        args['OUT_DIR'] = ac_dir
+        args['lid'] = True
+        handle_split_data(args)
 
-    # make LID tokenizer
-    print('Making vocab file for LID...')
-    lid_vocab = vocab_from_csv(
-        csv_path=lid_dir/'metadata.csv',
-        vocab_dir=lid_dir,
-        lid=True
-    )
+        # make LID tokenizer
+        print('Making vocab file for LID...')
+        lid_vocab = vocab_from_csv(
+            csv_path=ac_dir/'metadata.csv',
+            vocab_dir=ac_dir,
+            lid=True
+        )
+        # push to hf, if indicated by user
+        if hf_user:
+            login()
+            lid_name = hf_user/ac_dir.stem
+            dataset = load_dataset(ac_dir)
+            dataset.push_to_hub(lid_name, private=True)
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj=lid_vocab,
+                path_in_repo='vocab.json',
+                repo_id=lid_name,
+                repo_type='dataset'
+            )
 
+    if asr_dir:
     # asr_labels
-    print('Normalizing ASR labels')
-    make_asr_labels(
-        annotations=eaf_dir/'eaf_data.csv',
-        lid_labels=args['lang_labels'],
-        process_length = not args['no_length_processing'],
-        min_gap=int(args['min_gap']),
-        min_length=int(args['min_length']),
-    ).to_csv(asr_dir/'metadata.csv')
+        print('Normalizing ASR labels')
+        asr_dir = Path(asr_dir)
+        make_asr_labels(
+            annotations=eaf_dir/'eaf_data.csv',
+            lid_labels=args['lang_labels'],
+            process_length = not args['no_length_processing'],
+            min_gap=int(args['min_gap']),
+            min_length=int(args['min_length']),
+        ).to_csv(asr_dir/'metadata.csv')
 
-    # split_data
-    print('Making train/validation/test splits for ASR...')
-    args['EAF_DATA'] = asr_dir/'metadata.csv'
-    args['OUT_DIR'] = asr_dir
-    args['lid'] = False
-    handle_split_data(args)
+        # split_data
+        print('Making train/validation/test splits for ASR...')
+        args['EAF_DATA'] = asr_dir/'metadata.csv'
+        args['OUT_DIR'] = asr_dir
+        args['lid'] = False
+        handle_split_data(args)
 
-    # make ASR tokenizer
-    print('Making vocab file for ASR...')
-    asr_vocab = vocab_from_csv(
-        csv_path=asr_dir/'metadata.csv',
-        vocab_dir=asr_dir,
-        lid=False
-    )
-
-    # push to hf, if indicated by user
-    hf_user = args['hf_user']
-
-    if hf_user:
-        
-        login()
-        lid_name = hf_user/lid_dir.stem
-        dataset = load_dataset(lid_dir)
-        dataset.push_to_hub(lid_name, private=True)
-        api = HfApi()
-        api.upload_file(
-            path_or_fileobj=lid_vocab,
-            path_in_repo='vocab.json',
-            repo_id=lid_name,
-            repo_type='dataset'
+        # make ASR tokenizer
+        print('Making vocab file for ASR...')
+        asr_vocab = vocab_from_csv(
+            csv_path=asr_dir/'metadata.csv',
+            vocab_dir=asr_dir,
+            lid=False
         )
+        # push to hf, if indicated by user
+        if hf_user:
+            login()
+            asr_name = hf_user/asr_dir.stem
+            dataset = load_dataset(asr_dir)
+            dataset.push_to_hub(asr_name, private=True)
+            api = HfApi()
+            api.upload_file(
+                path_or_fileobj=asr_vocab,
+                path_in_repo='vocab.json',
+                repo_id=asr_name,
+                repo_type='dataset'
+            )
 
-        asr_name = hf_user/asr_dir.stem
-        dataset = load_dataset(asr_dir)
-        dataset.push_to_hub(asr_name, private=True)
-        api = HfApi()
-        api.upload_file(
-            path_or_fileobj=asr_vocab,
-            path_in_repo='vocab.json',
-            repo_id=asr_name,
-            repo_type='dataset'
+
+
+    return 0
+
+def handle_textnorm(args: Dict[str, Any]) -> int:
+    from zugubul.textnorm import unicode_normalize, get_char_metadata, get_reps_from_chardata, make_replacements
+
+    metadata = args['METADATA']
+    df = pd.read_csv(metadata, keep_default_na=False)
+    text = df['text']
+    if args['keep_unnormalized']:
+        df['unnormalized'] = df['text'].copy()
+    if not args['skip_normalize_unicode']:
+        print('Normalizing unicode symbols and diacritics...')
+        text = text.apply(unicode_normalize)
+    if not args['dont_lower']:
+        print('Normalizing all letters to lowercase...')
+        text = text.apply(str.lower)
+    print('Stripping newlines and trailing whitespace...')
+    text = text.apply(str.strip)
+    text = text.apply(lambda s: s.replace('\n', '').replace('\r', ''))
+
+    char_metadata = get_char_metadata(text)
+    if GUI and PYSIMPLEGUI:
+        from zugubul.textnorm_window import char_metadata_window
+        reps = char_metadata_window(char_metadata)
+    else:
+        with open('charmetadata.json', 'w') as f:
+            json.dump(char_metadata, f, ensure_ascii=False, indent=2)
+        input(
+            'Open charmetadata.json and for each character change the value of `replace` from False to a string or None '+\
+            'to replace the character with another string or delete it. '+\
+            'Additional replacement rules can be specified by creating new objects with the `replace` key. '+\
+            'Hit `Enter` when done.'
         )
+        with open('charmetadata.json') as f:
+            char_metadata = json.load(f)
+        reps = get_reps_from_chardata(char_metadata)
+    text = text.apply(lambda s: make_replacements(s, reps))
 
+    df['text'] = text
+    outpath = args['outpath'] or metadata
+    df.to_csv(outpath, index=False)
     return 0
 
 def handle_vocab(args: Dict[str, Any]) -> int:
@@ -990,25 +1127,48 @@ def handle_train(args: Dict[str, Any]) -> int:
             server=args['server'],
             passphrase=args['password'],
             server_python=args['server_python'],
+            files_on_server=args['files_on_server'],
+            use_accelerate=args['use_accelerate'],
         )
+
+    if args.pop('use_accelerate'):
+        from zugubul.remote import make_arg_str
+        import subprocess
+        arglist = sys.argv[2:]
+        arglist = [x for x in arglist if x != '--use_accelerate']
+        arglist = ['accelerate', 'launch', '-m', 'zugubul.models.train'] + arglist
+        argstr = make_arg_str(arglist)
+        os.environ.pop('GUI', None)
+        print('Running accelerate as subprocess with command:', argstr)
+        return subprocess.run(argstr, shell=True)
+
     if not TORCH:
         print("Cannot run train locally if using Zugubul without PyTorch.")
         return 1
     from zugubul.models.train import train
 
-    data_dir = args['DATA_PATH']
-    out_dir = args['OUT_PATH']
-    hf = args['hf']
+    data_dir = args.pop('DATA_PATH')
+    vocab = args.pop('vocab_path')
+    out_dir = args.pop('OUT_PATH')
+    task = args.pop('TASK')
+    model_name = args.pop('model_url')
+    if not model_name:
+        model_name = 'gpt2' if task=='LM' else 'facebook/mms-1b-all'
 
-    task = args['TASK'].lower()
-    model_name = args['model_url']
+    # remove COMMAND arg if present
+    args.pop('COMMAND', None)
+    # remove remote args if running locally
+    remote_args = ['remote', 'server', 'password', 'server_python', 'files_on_server']
+    for argname in remote_args:
+        args.pop(argname)
+
     train(
         out_dir=out_dir,
-        model=model_name,
+        model_str=model_name,
         dataset=data_dir,
-        hf=hf,
         task=task,
-        vocab=os.path.join(data_dir,'vocab.json') if not hf else None
+        vocab=vocab,
+        **args,
     )
     return 0
 
@@ -1044,13 +1204,14 @@ def handle_annotate(args: Dict[str, Any]) -> int:
             server=args['server'],
             server_python=args['server_python'],
             passphrase=args['password'],
+            files_on_server=args['files_on_server'],
         )
     from zugubul.models.infer import annotate
 
     wav_file = args['WAV_FILE']
-    lid_model = args['LID_URL']
-    asr_model = args['ASR_URL']
-    tgt_lang = args['LANG']
+    lid_model = args['ac_path']
+    asr_model = args['ASR_PATH']
+    tgt_lang = args['lang']
     out_fp = args['OUT']
     inference_method = args['inference_method']
     tier = args['tier']
@@ -1064,7 +1225,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         batch_funct(
             f=annotate,
             dir=wav_file,
-            suffx='.wav',
+            suffix='.wav',
             file_arg='source',
             kwargs={
                 'lid_model': lid_model,
@@ -1074,8 +1235,8 @@ def handle_annotate(args: Dict[str, Any]) -> int:
                 'tier': tier,
                 'etf': etf,
             },
-            out_path_f=get_eaf_outpath,
-            save_f=save_eaf_batch,
+            out_path_f=lambda data_file: get_eaf_outpath(data_file, wav_file),
+            save_f=lambda data_file, out: save_eaf_batch(data_file, out, wav_file),
             recursive=recursive,
             overwrite=overwrite
         )
@@ -1092,6 +1253,26 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         eaf.to_file(out_fp)
 
     return 0
+
+def handle_eval(args: Dict[str, Any]) -> int:
+    from zugubul.models.eval import eval
+    import json
+    dataset = args.pop("DATASET")
+    model = args.pop("MODEL")
+    out_path = args.pop("out")
+    args.pop("COMMAND", None)
+    if not out_path:
+        out_path = model+'_eval.json'
+    out = eval(
+        dataset=dataset,
+        model_str=model,
+        **args
+    )
+    with open(out_path, 'w') as f:
+        breakpoint()
+        json.dump(out, f)
+    return 0
+
 
 def get_eaf_outpath(data_file: str, out_folder: str) -> str:
     """
@@ -1155,8 +1336,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     init_lid_labels_parser(lid_labels_parser)
 
-    dataset_parser = subparsers.add_parser('dataset', help='Initialize Language IDentification (LID) and Automatic Speech Recognition (ASR) datasets from directory of .eaf files.')
+    dataset_parser = subparsers.add_parser('dataset', help='Initialize Audio Classification (AC) and Automatic Speech Recognition (ASR) datasets from directory of .eaf files.')
     init_dataset_parser(dataset_parser)
+
+    textnorm_parser = subparsers.add_parser('textnorm', help='Normalize text column in a csv file.')
+    init_textnorm_parser(textnorm_parser)
 
     vocab_parser = subparsers.add_parser('vocab', help='Create vocab.json for initializing a tokenizer from a datafile (eaf_data.csv or metadata.csv).')
     init_vocab_parser(vocab_parser)
@@ -1169,6 +1353,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     annotate_parser = subparsers.add_parser('annotate', help='Automatically annotate a fieldwork recording in the target language.')
     init_annotate_parser(annotate_parser)
+
+    eval_parser = subparsers.add_parser('eval', help='Evaluate a HF model on test data.')
+    init_eval_parser(eval_parser)
 
     args = vars(parser.parse_args(argv))
 
@@ -1187,6 +1374,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_lid_labels(args)
     elif command == 'dataset':
         return handle_dataset(args)
+    elif command == 'textnorm':
+        return handle_textnorm(args)
     elif command == 'vocab':
         return handle_vocab(args)
     elif command == 'train':
@@ -1195,6 +1384,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_infer(args)
     elif command == 'annotate':
         return handle_annotate(args)
+    elif command == 'eval':
+        return handle_eval(args)
     return 1
 
 if __name__ == '__main__':

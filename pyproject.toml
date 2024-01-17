@@ -3,12 +3,12 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["rVAD", "zugubul", "zugubul_icons"]
+packages = ["rVAD", "zugubul", "zugubul_icons", "silero_vad"]
 package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
-optional-dependencies = {torch = {file = ["torch-requirements.txt"]}}
+optional-dependencies = {torch = {file = ["torch-requirements.txt"]}, gui= {file = ["gui-requirements.txt"]}, pyannote= {file = ["pyannote-requirements.txt"]}}
 
 [project]
 name = "zugubul"

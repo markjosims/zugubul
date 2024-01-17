@@ -4,7 +4,8 @@ import os
 from fabric import Connection
 from paramiko.ssh_exception import PasswordRequiredException
 from typing import Sequence, Optional
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from tqdm import tqdm
 
 GUI = os.environ.get('GUI')
 
@@ -15,49 +16,66 @@ def run_script_on_server(
         server: str,
         server_python: str,
         passphrase: str,
+        files_on_server: bool = False,
+        use_accelerate: bool = True,
     ) -> int:
     server_args = [
         '--remote',
         '--password', passphrase,
         '--server', server,
         '--server_python', server_python,
+        '--files_on_server',
     ]
     argv = [x for x in argv if x not in server_args]
 
     with connect(server, passphrase) as c:
         # replace local fps w server fps in arg str and put to server
         # TODO: dynamically check if input file is already present
-        print(f'Uploading input files to server {server}...')
-        server_dir = Path('/tmp/annotate/')
-        c.run(f'mkdir -p {server_dir}')
-        for local_fp in in_files:
-            filename = Path(local_fp).name
-            server_fp = server_dir/filename
-            
-            print(f'Putting {local_fp} to {server_fp}')
-            if os.path.isdir(local_fp):
-                put_dir(local_fp, server_fp, c)
-            else:
-                c.put(str(local_fp), str(server_fp))
-            argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
+        if not files_on_server:
+            print(f'Uploading input files to server {server}...')
+            server_dir = PurePosixPath('/tmp/zugubul/')
+            c.run(f'mkdir -p {server_dir}')
+            for local_fp in in_files:
+                filename = Path(local_fp).name
+                server_fp = PurePosixPath(server_dir/filename)
+                
+                print(f'Putting {local_fp} to {server_fp}')
+                if os.path.isdir(local_fp):
+                    put_dir(local_fp, server_fp, c)
+                else:
+                    c.put(str(local_fp), str(server_fp))
+                argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
-        # replace local fps with server fp but don't put to server
-        server_out_files = []
-        for local_fp in out_files:
-            filename = Path(local_fp).name
-            server_fp = server_dir/filename
-            server_out_files.append(server_fp)
-            argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
+            # replace local fps with server fp but don't put to server
+            server_out_files = []
+            for local_fp in out_files:
+                filename = Path(local_fp).name
+                server_fp = PurePosixPath(server_dir/filename)
+                server_out_files.append(server_fp)
+                argv = [arg if arg!=local_fp else str(server_fp) for arg in argv]
 
         print('Executing command on server...')
-        argv = [server_python, '-m', 'zugubul.main'] + argv[1:]
+        print(argv)
+        if use_accelerate:
+            argv = [
+                server_python,
+                'launch',
+                '-m',
+                'zugubul.main',
+                argv[1],
+                '--disable_accelerate',
+                *argv[2:],
+            ]
+        else:
+            argv = [server_python, '-m', 'zugubul.main'] + argv[1:]
         arg_str = make_arg_str(argv)
         c.run(arg_str)
 
-        print('Downloading output files from server...')
-        for local_fp, server_fp in zip(out_files, server_out_files):
-            c.get(str(server_fp), str(local_fp))
-            print('Output filed saved to', local_fp)
+        if not files_on_server:
+            print('Downloading output files from server...')
+            for local_fp, server_fp in zip(out_files, server_out_files):
+                c.get(str(server_fp), str(local_fp))
+                print('Output filed saved to', local_fp)
 
 def make_arg_str(argv: Sequence[str]) -> str:
     """
@@ -71,17 +89,23 @@ def make_arg_str(argv: Sequence[str]) -> str:
     return arg_str
 
 def put_dir(local_dir: Path, server_dir: Path, connection: Connection) -> None:
+    print('Making dir', server_dir)
     connection.run(f'mkdir -p {server_dir}')
-    for dirpath, dirnames, filenames in os.walk(local_dir):
-        for fname in filenames:
-            local_fpath = os.path.join(dirpath, fname)
-            relpath = os.path.relpath(local_dir, local_fpath)
-            server_fpath = os.path.join(server_dir, relpath)
-            connection.put(local_fpath, server_fpath)
-        for dir in dirnames:
-            local_subdir = os.path.join(dirpath, dir)
-            relpath = os.path.relpath(local_dir, local_subdir)
-            server_subdir = os.path.join(server_dir, relpath)
+    for dirpath, dirnames, filenames in tqdm(
+        list(os.walk(local_dir)),
+        desc=f'Putting dir {dirpath} to server'
+    ):
+        for fname in tqdm(filenames, desc=f'Putting files in dir {dirpath}'):
+            local_fpath = Path(dirpath)/fname
+            relpath = local_fpath.relative_to(local_dir)
+            server_fpath = PurePosixPath(server_dir)/relpath
+            #print(f'Putting {local_fpath} to {server_fpath}')
+            connection.put(str(local_fpath), str(server_fpath))
+        for dir in tqdm(dirnames, desc=f'Putting dirs in dir {dirpath}'):
+            local_subdir = Path(dirpath)/dir
+            relpath = local_subdir.relative_to(local_dir)
+            server_subdir = server_dir/relpath
+            #print('Making dir', server_subdir)
             connection.run(f'mkdir -p {server_subdir}')
 
         
@@ -107,24 +131,9 @@ def connect(address: str, passphrase: Optional[str]) -> Connection:
     return r
 
 if __name__ == '__main__':
-    wav_file = '/Users/markjos/Google Drive/Shared drives/Tira/Audacity Recording 200.wav'
-    eaf_file = '/Users/markjos/Google Drive/Shared drives/Tira/Audacity Recording 200-MODEL.eaf'
-    etf_file = '/Users/markjos/Google Drive/Shared drives/Tira/Tira_template.etf'
-    run_script_on_server(
-        argv=[
-            'python',
-            'annotate',
-            wav_file,
-            'markjosims/wav2vec2-large-mms-1b-tira-lid',
-            'markjosims/wav2vec2-large-xls-r-300m-tira-colab',
-            'TIC',
-            eaf_file,
-            '--inference_method', 'local',
-            '-t', 'IPA Transcription',
-            '--template', etf_file,
-        ],
-        in_files=[wav_file, etf_file],
-        out_files=[eaf_file],
-        server='mjsimmons@grice.ucsd.edu',
-        server_python='zugubul/.venv/bin/python'
-    )
+    dirpath = r'C:\projects\dendi-speechproc\dendi-asr'
+    serverpath = '/tmp/zugubul/dendi-asr'
+    server = 'mjsimmons@grice.ucsd.edu'
+    password = os.environ.get('PASSWORD')
+    with connect(server, password) as c:
+        put_dir(dirpath, serverpath, c)

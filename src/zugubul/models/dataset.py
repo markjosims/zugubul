@@ -1,7 +1,7 @@
 from typing import Union, Sequence, Tuple, Optional, Literal
 import os
 import pandas as pd
-from datasets import Dataset, load_dataset
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 from huggingface_hub import login
 from zugubul.elan_tools import snip_audio, eaf_data
 from math import ceil
@@ -10,6 +10,43 @@ from pympi import Elan
 import shutil
 import tomli
 import numpy as np
+import string
+
+def load_dataset_safe(dataset: str, split: Optional[str] = None) -> Union[Dataset, DatasetDict]:
+    if os.path.exists(dataset):
+        if split and os.path.exists(os.path.join(dataset, split)):
+            return load_from_disk(os.path.join(dataset, split))
+        return load_from_disk(dataset)
+    return load_dataset(dataset, split=split)
+
+def make_df_splits(
+        df: pd.DataFrame,
+        label: Optional[str]=None,
+        splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+) -> pd.DataFrame:
+    if label:
+        df = df[df['lang']==label]
+
+    df=df.sample(frac=1)
+
+    train_size = ceil(splitsize[0]*len(df))
+    train_split = df[:train_size]
+
+    val_size = ceil(splitsize[1]*len(df))
+    val_split = df[train_size:train_size+val_size]
+
+    test_split = df[train_size+val_size:]
+    if label:
+        print(
+            f"Partitioning {len(df)} rows for label {label} into {len(train_split)} "+\
+            f"in train, {len(val_split)} in val and {len(test_split)} in test."
+        )
+    else:
+        print(
+            f"Partitioning {len(df)} rows into {len(train_split)} "+\
+            f"in train, {len(val_split)} in val and {len(test_split)} in test."
+        )
+    return {'train': train_split, 'val': val_split, 'test': test_split}
 
 def split_data(
         eaf_data: Union[str, os.PathLike, pd.DataFrame],
@@ -44,21 +81,24 @@ def split_data(
     # drop unlabeled rows
     eaf_data = eaf_data[eaf_data[label_col] != '']
 
-    eaf_data=eaf_data.sample(frac=1)
-
-    train_size = ceil(splitsize[0]*len(eaf_data))
-    train_split = eaf_data[:train_size]
-
-    val_size = ceil(splitsize[1]*len(eaf_data))
-    val_split = eaf_data[train_size:train_size+val_size]
-
-    test_split = eaf_data[train_size+val_size:]
-
     split_dict = {
-        'train': train_split,
-        'val': val_split,
-        'test': test_split,
+        'train': pd.DataFrame(columns=eaf_data.columns),
+        'val': pd.DataFrame(columns=eaf_data.columns),
+        'test': pd.DataFrame(columns=eaf_data.columns),
     }
+
+
+    if lid:
+        for lang in eaf_data['lang'].unique():
+            lang_splits = make_df_splits(eaf_data, label=lang, splitsize=splitsize)
+            split_dict = {
+                'train': pd.concat([split_dict['train'], lang_splits['train']]),
+                'val':   pd.concat([split_dict['val'], lang_splits['val']]),
+                'test':  pd.concat([split_dict['test'], lang_splits['test']]),
+            }
+
+    else:
+        split_dict = make_df_splits(eaf_data, splitsize=splitsize)
 
     def move_clip_to_split(clip_fp: Path, split_dir: Path) -> str:
         out_relpath = split_dir / clip_fp.name
@@ -86,6 +126,42 @@ def split_data(
     metadata.to_csv(out_path, index=False)
 
     return out_path
+
+def make_lm_dataset(
+        annotations: Union[str, pd.DataFrame],
+        text_col: str = 'text',
+        splitsize: Tuple[float, float, float] = (0.8, 0.1, 0.1),
+        make_splits: bool = True,
+) -> Union[Dataset, DatasetDict]:
+    """
+    Concatenates all text from a dataframe or .csv file containing ASR labels
+    and returns a dataframe to be used for LM training.
+    Assumes that all language labels have been trimmed,
+    meaning you should run make_asr_labels on your .eaf files before this.
+    """
+    if type(annotations) is not pd.DataFrame:
+        if not Path(annotations).suffix == '.csv':
+            raise ValueError('Annotations must be pandas Dataframe or path to .csv file.')
+        annotations = pd.read_csv(annotations)
+    annotations=annotations.dropna(subset=text_col)
+    add_period = lambda s: s+'.' if s.strip()[-1] not in string.punctuation else s.strip()
+
+    text = ' '.join(annotations[text_col].apply(add_period))
+    if not make_splits:
+        return Dataset.from_dict({'text': [text]})
+    train_size, val_size, _ = splitsize
+    train_chars = int(len(text)*train_size)
+    val_chars = train_chars+int(len(text)*val_size)
+    train = Dataset.from_dict({'text': [text[:train_chars]]})
+    val = Dataset.from_dict({'text': [text[train_chars:val_chars]]})
+    test = Dataset.from_dict({'text': [text[val_chars:]]})
+    
+    return DatasetDict({
+        'train': train,
+        'val': val,
+        'test': test
+    })
+
 
 def make_asr_labels(
         annotations: Union[str, pd.DataFrame],
@@ -119,19 +195,13 @@ def make_asr_labels(
     
     return annotations
 
-def make_lid_labels(
+def make_ac_labels(
         annotations: Union[str, pd.DataFrame],
-        targetlang : Optional[str] = None,
-        metalang: Optional[str] = None,
-        target_labels: Optional[Sequence[str]] = None,
-        meta_labels: Optional[Sequence[str]] = None,
-        empty: Union[Literal['target'], Literal['meta'], Literal['exclude']] = 'exclude',
-        process_length: bool = True,
-        min_gap: int = 200,
-        min_length: int = 1000,
+        categories: Sequence[str],
+        default_category: Optional[str] = None,
+        empty: Optional[str] = None,
         balance: bool = True,
         sample_strategy: Literal['downsample', 'upsample'] = 'downsample',
-        toml: Optional[Union[str, os.PathLike]] = None,
     ) -> pd.DataFrame:
     """
     annotations is a dataframe or str pointing to csv with a 'text' column.
@@ -149,30 +219,6 @@ def make_lid_labels(
     Creates a new column 'lang' containing the label for each language.
     Returns dataframe.
     """
-    if toml:
-        with open(toml, 'rb') as f:
-            toml_obj = tomli.load(f)
-        lid_params: dict = toml_obj['LID']
-        targetlang = lid_params.get('targetlang', targetlang)
-        metalang = lid_params.get('metalang', metalang)
-        target_labels = lid_params.get('target_labels', target_labels)
-        meta_labels = lid_params.get('meta_labels', meta_labels)
-        empty = lid_params.get('empty', empty)
-        process_length = lid_params.get('process_length', process_length)
-        min_gap = lid_params.get('min_gap', min_gap)
-        min_length = lid_params.get('min_length', min_length)
-        balance - lid_params.get('balance', balance)
-        sample_strategy = lid_params.get('sample_strategy', sample_strategy)
-    else:
-        try:
-            assert targetlang
-            assert metalang
-        except AssertionError:
-            raise ValueError(
-                'If no toml argument is passed, targetlang and metalang must be passed. '\
-                + f'{targetlang=}, {metalang=}'
-            )
-
     if type(annotations) is not pd.DataFrame:
         annotations = Path(annotations)
         if annotations.suffix == '.csv':
@@ -185,31 +231,17 @@ def make_lid_labels(
 
     annotations['lang'] = ''
     is_empty = annotations['text'].isna()
-    if empty == 'target':
-        annotations.loc[is_empty, 'lang'] = targetlang
-    elif empty == 'meta':
-        annotations.loc[is_empty, 'lang'] = metalang
-    else:
-        # empty = exclude
+    if empty is None:
         annotations = annotations[~is_empty]
-    
-
-    if (not target_labels) and (not meta_labels):
-        raise ValueError("target_labels and meta_labels cannot both be empty.")
-
-    if not target_labels:
-        annotations.loc[~is_empty,'lang'] = annotations.loc[~is_empty, 'text']\
-            .apply(lambda t: metalang if t in meta_labels else targetlang)
-    elif not meta_labels:
-        annotations.loc[~is_empty, 'lang'] = annotations.loc[~is_empty, 'text']\
-            .apply(lambda t: targetlang if t in target_labels else metalang)
     else:
-        annotations.loc[annotations['text'].isin(target_labels), 'lang'] = targetlang
-        annotations.loc[annotations['text'].isin(meta_labels), 'lang'] = metalang
-        annotations = annotations[annotations['lang']!='']
+        annotations.loc[is_empty, 'lang'] = empty
     
-    if process_length:
-        annotations = process_annotation_length(annotations, min_gap=min_gap, min_length=min_length, lid=True)
+    for category in categories:
+        annotations.loc[annotations['text']==category, 'lang'] = category
+    if default_category:
+        annotations.loc[annotations['lang']=='', 'lang'] = default_category
+    else:
+        annotations=annotations[annotations['lang']!='']
 
     if balance:
         annotations = balance_lid_data(df=annotations, sample_strategy=sample_strategy)

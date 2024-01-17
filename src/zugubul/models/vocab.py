@@ -1,4 +1,5 @@
-from typing import Sequence, Union
+from typing import Sequence, Union, Optional, Dict
+from datasets import Dataset
 import os
 import csv
 import json
@@ -31,7 +32,7 @@ def vocab_from_list(
         tokens_dict['<unk>'] = len(tokens_dict)
 
     json_path = os.path.join(vocab_dir, 'vocab.json')
-    with open(json_path, 'w') as f:
+    with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(tokens_dict, f)
     return json_path
 
@@ -50,8 +51,30 @@ def vocab_from_csv(
     label_col = 'text'
     if lid:
         label_col = 'lang'
-    with open(csv_path) as f:
+    with open(csv_path, encoding='utf-8') as f:
         reader = csv.DictReader(f, delimiter=',')
         for row in reader:
             vocab.add(row[label_col])
     return vocab_from_list(vocab=vocab, vocab_dir=vocab_dir, lid=lid)
+
+def make_lm_vocab(
+        text: Union[str, Dataset],
+        initial_vocab: Optional[Dict[str, str]] = None,
+        text_col: Optional[str] = 'text',
+    ) -> dict:
+    """
+    Returns a dictionary containing the vocab for a given LM dataset.
+    If passed initial_vocab, only adds what chars are not already present.
+    """
+    if type(text) is str:
+        unique_chars = set(text)
+    else:
+        unique_chars = set()
+        text.map(lambda r: set.update(r[text_col]))
+    vocab = {}
+    if initial_vocab:
+        vocab = initial_vocab
+    for c in unique_chars:
+        if c not in vocab:
+            vocab[c] = len(vocab)
+    return vocab
