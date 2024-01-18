@@ -601,6 +601,13 @@ def init_eval_parser(eval_parser: argparse.ArgumentParser) -> None:
         help='Name of split to evaluate on. Default `test`.',
         default='test',
     )
+    add_arg(
+        '--task',
+        '-t',
+        help='Task to evaluate on. Default is ASR',
+        default='ASR',
+        choices=['ASR', 'LID'],
+    )
 
 def add_batch_args(parser: argparse.ArgumentParser) -> None:
     batch_args = parser.add_argument_group(
