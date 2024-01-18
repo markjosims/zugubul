@@ -219,7 +219,7 @@ def train(
     
     trainer.train(resume_from_checkpoint=train_checkpoint)
     print('Done training')
-    results = trainer.evaluate(dataset['test'])
+    results = trainer.predict(dataset['test'])
     trainer.save_metrics('test', results.metrics)
     print(results.metrics)
 
