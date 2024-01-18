@@ -165,17 +165,13 @@ multiprocess==0.70.15
     # via datasets
 numba==0.58.0
     # via librosa
-numpy==1.26.2
-    # via
-    #   datasets
-    #   evaluate
 nest-asyncio==1.5.7
     # via orbax-checkpoint
 networkx==3.1
     # via torch
 ninja==1.11.1
     # via deepspeed
-numpy==1.23.5
+numpy==1.25.2
     # via
     #   accelerate
     #   chex
