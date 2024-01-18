@@ -95,7 +95,7 @@ networkx==3.1
     # via torch
 ninja==1.11.1
     # via deepspeed
-numpy==1.23.5
+numpy==1.25.2
     # via
     #   accelerate
     #   chex
