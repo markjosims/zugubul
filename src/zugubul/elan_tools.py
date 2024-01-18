@@ -7,6 +7,8 @@ from pydub import AudioSegment
 from pathlib import Path
 from tqdm import tqdm
 
+tqdm.pandas()
+
 """
 Contains following helper functions for processing .eaf files:
 - trim:
@@ -57,11 +59,9 @@ def trim(
             a_mid = (a_start + a_end)/2
             a_value = a[2]
             if (keepword) and (a_value != keepword):
-                removed = eaf.remove_annotation(t, a_mid)
-                assert removed >= 1
+                eaf.remove_annotation(t, a_mid)
             elif (not keepword) and (a_value == stopword):
-                removed = eaf.remove_annotation(t, a_mid)
-                assert removed >= 1
+                eaf.remove_annotation(t, a_mid)
     return eaf
 
 def merge(
@@ -146,7 +146,13 @@ def eaf_data(
     if not media:
         media = media_paths[0]
         # trim prefix added by ELAN
-        media = media.replace('file:///', '')
+        # have to keep initial / on posix systems
+        # and remove on Windows
+        if os.name == 'nt':
+            media = media.replace('file:///', '')
+        else:
+            media = media.replace('file://', '')
+        # computers why must you be so silly
         if len(media_paths) > 1:
             print(f'No media argument provided and eaf has multiple linked files. {media=}, {media_paths=}')
 
@@ -161,7 +167,7 @@ def eaf_data(
         annotations = eaf_obj.get_annotation_data_for_tier(t)
         start_times = [a[0] for a in annotations]
         end_times = [a[1] for a in annotations]
-        values = [a[2] for a in annotations]
+        values = [a[2].strip() for a in annotations]
 
         t_df = pd.DataFrame(data={
             'start': start_times,
@@ -216,6 +222,7 @@ def snip_audio(
     df['wav_clip'] = ''
 
     for wav_source in tqdm(df['wav_source'].unique(), desc='Snipping audio'):
+        tqdm.write(f'Snipping clips from audio source {wav_source}.')
         from_source = df['wav_source'] == wav_source
         try:
             wav_obj = AudioSegment.from_wav(wav_source)
@@ -228,7 +235,7 @@ def snip_audio(
             else:
                 raise error
 
-        wav_clips = df[from_source].apply(
+        wav_clips = df[from_source].progress_apply(
             lambda r: save_clip(
                 start = r['start'],
                 end = r['end'],
@@ -236,11 +243,11 @@ def snip_audio(
                 out_dir = out_dir,
                 wav_obj = wav_obj,
             ),
-            axis=1
+            axis=1,
         )
         df.loc[from_source, 'wav_clip'] = wav_clips
-        df['start'] = df['start'].astype(int)
-        df['end'] = df['end'].astype(int)
+    df['start'] = df['start'].astype(int)
+    df['end'] = df['end'].astype(int)
     return df
 
 def save_clip(

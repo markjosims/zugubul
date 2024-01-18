@@ -163,6 +163,7 @@ cython_debug/
 *.eaf
 *.wav
 *.pfsx
+*.etf
 
 # vscode
 .vscode
@@ -175,3 +176,5 @@ cache
 cache/
 sandbox
 sandbox/
+
+.DS_Store

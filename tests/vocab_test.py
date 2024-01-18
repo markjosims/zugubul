@@ -3,8 +3,9 @@ import pytest
 import csv
 import json
 import os
+from zugubul.models.processor import init_processor
 
-from zugubul.models.vocab import vocab_from_csv, vocab_from_list, init_processor
+from zugubul.models.vocab import vocab_from_csv, vocab_from_list
 from transformers import Wav2Vec2CTCTokenizer
 
 
@@ -91,7 +92,7 @@ def test_init_processor(tmp_path):
     ]
     vocab_dir = tmp_path / 'vocab5'
     vocab_dir.mkdir()
-    processor = init_processor(vocab=vocab, vocab_dir=vocab_dir, lid=True)
+    processor = init_processor(vocab=vocab, vocab_dir=vocab_dir, task='LID')
     assert len(processor(text='[ENG][TIC][DDN]').input_ids) == 3
     assert processor(text='[DDN]').input_ids != processor(text='[TIC]').input_ids
     assert processor(text='[DDN]').input_ids != processor(text='[ENG]').input_ids

@@ -1,18 +1,25 @@
-from typing import Union, Optional, Literal, Sequence, List
+from typing import Union, Optional, Literal, Sequence, List, Dict
 
 import os
 import tempfile
 import requests
 from pympi import Elan
 from time import sleep
+from tqdm import tqdm
 from transformers import pipeline
 from huggingface_hub import HfFolder, login
 
-from zugubul.rvad_to_elan import label_speech_segments
+from zugubul.vad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
 from zugubul.elan_tools import snip_audio, trim
+from zugubul.main import init_annotate_parser, handle_annotate
+import argparse
 
+# enable pandas progress bars
+tqdm.pandas()
 
+def split_audio_windows(filename: str, window_len: int, frameshift: int) -> List[List[bytes]]:
+    ...
 
 def query(filename: str, model: str, label_only: bool = False, task: Literal['ASR', 'LID'] = 'ASR') -> dict:
     api_url = f"https://api-inference.huggingface.co/models/{model}"
@@ -39,15 +46,15 @@ def query(filename: str, model: str, label_only: bool = False, task: Literal['AS
     return response.json()
 
 def query_list(
-        filename: Sequence[str],
+        filenames: Sequence[str],
         model: str,
         task: Literal['ASR', 'LID'] = 'ASR',
         label_only: bool = False,
-    ) -> List[Union[str, dict[str, str]]]:
+    ) -> List[Union[str, Dict[str, str]]]:
     # only build pipeline if API query returns error
     pipe = None
     outputs = []
-    for f in filename:
+    for f in tqdm(filenames):
         if pipe:
             response_obj = pipe(f)
         else:
@@ -85,7 +92,8 @@ def infer(
         eaf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         task: Literal['LID', 'ASR'] = 'ASR',
-        inference_method: Literal['api', 'local', 'try_api'] = 'try_api'
+        inference_method: Literal['api', 'local', 'try_api'] = 'try_api',
+        max_len: int = 5,
     ) -> Elan.Eaf:
     """
     source is a path to a .wav file,
@@ -105,33 +113,37 @@ def infer(
             tier=tier,
             etf=etf
         )
-        data = process_annotation_length(eaf)
+        #data = process_annotation_length(eaf)
     else:
         if type(eaf) is not Elan.Eaf:
             eaf = Elan.Eaf(eaf)
-        data = eaf
     
     
     with tempfile.TemporaryDirectory() as tmpdir:
         clip_data = snip_audio(
-            annotations=data,
+            annotations=eaf,
             out_dir=tmpdir,
-            audio=source
+            audio=source,
+            tier=tier,
         )
+        print(f"VAD detected {len(clip_data)} speech segments in source.")
+        above_max_len = clip_data.apply(lambda r: r['end']-r['start'] > max_len*1000, axis=1)
+        clip_data = clip_data[~above_max_len]
+        print(f"After removing segments longer than {max_len} seconds {len(clip_data)} segments remain.")
 
-        print(f"Running inference for {task}...")
+        print(f"Running inference for {task} using {model}...")
         if inference_method == 'local':
             pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
                 else 'audio-classification'
             pipe = pipeline(pipeline_class, model)
-            pipe_out = clip_data['wav_clip'].apply(pipe)
+            pipe_out = clip_data['wav_clip'].progress_apply(pipe)
             if task == 'LID':
                 labels = [get_label_from_query(x) for x in pipe_out]
             else:
                 labels = [x['text'] for x in pipe_out]
         elif inference_method == 'api':
             query_rows = lambda clip_f: query(clip_f, model, label_only=True)
-            labels = clip_data['wav_clip'].apply(query_rows)
+            labels = clip_data['wav_clip'].progress_apply(query_rows)
         else:
             # inference_method == 'try_api'
             labels = query_list(
@@ -152,24 +164,34 @@ def infer(
 
 def annotate(
         source: Union[str, os.PathLike],
-        lid_model: Union[str, os.PathLike],
         asr_model: Union[str, os.PathLike],
-        tgt_lang: str,
+        tgt_lang: Optional[str] = None,
+        lid_model: Union[str, os.PathLike, None] = None,
         tier: str = 'default-lt',
         etf: Optional[Union[str, Elan.Eaf]] = None,
         inference_method: Literal['api', 'local'] = 'api'
     ) -> Elan.Eaf:
-    lid_eaf = infer(
-        source=source,
-        model=lid_model,
-        tier=tier,
-        etf=etf,
-        task='LID',
-        inference_method=inference_method,
-    )
-    print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
-    tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
-    print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
+    """
+    Perform LID on source file using model at lid_model (a filepath or URL).
+    Remove all annotations not belonging to the target language, then run ASR
+    using model at asr_model.
+    If tier is provided, add annotations to tier of that name.
+    If etf is provided, use as template for output .eaf file.
+    """
+    if lid_model:
+        lid_eaf = infer(
+            source=source,
+            model=lid_model,
+            tier=tier,
+            etf=etf,
+            task='LID',
+            inference_method=inference_method,
+        )
+        print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
+        tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
+        print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
+    else:
+        tgt_eaf = label_speech_segments(source)
     annotated_eaf = infer(
         source=source,
         model=asr_model,
@@ -180,3 +202,14 @@ def annotate(
         inference_method=inference_method,
     )
     return annotated_eaf
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    parser = argparse.ArgumentParser(description='Annotate an audio file using an ASR and, optionally, AC model.')
+    init_annotate_parser(parser)
+    args = vars(parser.parse_args(argv))
+
+    handle_annotate(args)
+    return 0
+
+if __name__ == '__main__':
+    main()

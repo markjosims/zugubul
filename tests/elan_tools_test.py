@@ -55,7 +55,7 @@ def dummy_eafs():
 @pytest.fixture
 def tira_eaf():
     eaf = Elan.Eaf()
-    eaf.add_linked_file(r'C:\projects\zugubul\tests\wavs\test_tira1.wav')
+    eaf.add_linked_file('tests/wavs/test_tira1.wav')
     eaf.add_tier('default-lt')
     eaf.add_annotation(id_tier='default-lt', start=100, end=1150, value='apri')
     eaf.add_annotation(id_tier='default-lt', start=1170, end=2150, value='jicelo')
@@ -64,7 +64,7 @@ def tira_eaf():
 @pytest.fixture
 def dendi_eaf():
     eaf = Elan.Eaf()
-    eaf.add_linked_file(r'C:\projects\zugubul\tests\wavs\test_dendi1.wav')
+    eaf.add_linked_file('tests/wavs/test_dendi1.wav')
     eaf.add_tier('default-lt')
     eaf.add_annotation(id_tier='default-lt', start=2000, end=3000, value='foo')
     eaf.add_annotation(id_tier='default-lt', start=4000, end=5000, value='baz')
