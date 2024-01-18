@@ -162,6 +162,10 @@ multidict==6.0.4
     #   aiohttp
     #   yarl
 multiprocess==0.70.15
+    # via datasets
+numba==0.58.0
+    # via librosa
+numpy==1.26.2
     # via
     #   datasets
     #   evaluate
