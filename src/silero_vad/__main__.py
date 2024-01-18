@@ -35,11 +35,10 @@ def run_silero_vad(
     """
     audio = read_audio(
         wav_fp,
-        sampling_rate=SAMPLE_RATE,
+        sampling_rate=sampling_rate or SAMPLE_RATE,
     )
     vad_kwargs = {
         'threshold':                    threshold,
-        'sampling_rate':                sampling_rate,
         'min_speech_duration_ms':       min_speech_duration_ms,
         'max_speech_duration_s':        max_speech_duration_s,
         'min_silence_duration_ms':      min_silence_duration_ms,
@@ -51,7 +50,7 @@ def run_silero_vad(
     timestamps = get_speech_timestamps(
         audio,
         silero_vad,
-        sampling_rate=SAMPLE_RATE,
+        sampling_rate=sampling_rate or SAMPLE_RATE,
         return_seconds=True,
         **vad_kwargs,
     )

@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 import pandas as pd
 import argparse
-from typing import Optional, Sequence, Dict, Any
+from typing import Optional, Sequence, Callable, Dict, Any
 from zugubul.utils import is_valid_file, file_in_valid_dir, is_valid_dir, batch_funct, eaf_to_file_safe
 from tqdm import tqdm
 from pympi import Elan
@@ -67,6 +67,17 @@ DEFAULT_HYPERPARAMS = {
     'warmup_steps': 500,
     'torch_compile': False,
     'report_to': 'tensorboard',
+}
+
+DEFAULT_VAD_PARAMS = {
+    "threshold": 0.5,
+    "sampling_rate": 16000,
+    "min_speech_duration_ms": 250,
+    "max_speech_duration_s": float('inf'),
+    "min_silence_duration_ms": 100,
+    "window_size_samples": 512,
+    "speech_pad_ms": 30,
+    "visualize_probs": False,
 }
 
 def init_merge_parser(merge_parser: argparse.ArgumentParser):
@@ -189,6 +200,9 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
         nargs='+',
         help='Tier label(s) to add annotations to. If none specified uses `default-lt`'\
     )
+    silero_args = vad_parser.add_argument_group("silero_params", "Parameters used by Silero VAD")
+    add_args_from_dict(DEFAULT_VAD_PARAMS, silero_args)
+
     add_batch_args(vad_parser)
 
 def init_eaf_data_parser(eaf_data_parser: argparse.ArgumentParser) -> None:
@@ -669,9 +683,11 @@ def add_hyperparameter_args(parser: argparse.ArgumentParser) -> None:
         'hyperparameters',
         description='Hyperparameter values for training'
     )
-    add_arg = lambda *args, **kwargs: add_hybrid_arg(hyper_args, *args, **kwargs)
+    add_args_from_dict(DEFAULT_HYPERPARAMS, hyper_args)
 
-    for k, v in DEFAULT_HYPERPARAMS.items():
+def add_args_from_dict(args_dict: Dict[str, Any], arg_group: argparse.ArgumentParser) -> None:
+    add_arg = lambda *args, **kwargs: add_hybrid_arg(arg_group, *args, **kwargs)
+    for k, v in args_dict.items():
         if type(v) is bool:
             add_arg('--'+k, default=v, action='store_true')
         else:
