@@ -198,7 +198,8 @@ def init_vad_parser(vad_parser: argparse.ArgumentParser):
         '-t',
         '--tier',
         nargs='+',
-        help='Tier label(s) to add annotations to. If none specified uses `default-lt`'\
+        help='Tier label(s) to add annotations to. If none specified uses `default-lt`',
+        default='default-lt'
     )
     silero_args = vad_parser.add_argument_group("silero_params", "Parameters used by Silero VAD")
     add_args_from_dict(DEFAULT_VAD_PARAMS, silero_args)
