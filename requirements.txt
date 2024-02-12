@@ -93,14 +93,11 @@ nest-asyncio==1.5.8
     # via orbax-checkpoint
 networkx==3.1
     # via torch
-ninja==1.11.1
-    # via deepspeed
 numpy==1.25.2
     # via
     #   accelerate
     #   chex
     #   datasets
-    #   deepspeed
     #   evaluate
     #   flax
     #   h5py
