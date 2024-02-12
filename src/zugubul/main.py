@@ -284,7 +284,7 @@ def init_snip_audio_parser(snip_audio_parser: argparse.ArgumentParser) -> None:
 def init_lid_labels_parser(lid_labels_parser: argparse.ArgumentParser) -> None:
     add_arg = lambda *args, **kwargs: add_hybrid_arg(lid_labels_parser, *args, **kwargs)
     add_arg(
-        'CATEGORIES',
+        '--categories',
         help="Unique category labels.", 
         nargs='+'
     )
@@ -957,7 +957,7 @@ def handle_lid_labels(args: Dict[str, Any]) -> int:
 
     annotations = args['ANNOTATIONS']
     out_path = args['out_path']
-    categories=args['CATEGORIES']
+    categories=args['categories']
     default_category=args['default_category']
     empty = args['empty']
     balance = not args['no_balance']
