@@ -89,7 +89,7 @@ multiprocess==0.70.15
     # via
     #   datasets
     #   evaluate
-nest-asyncio==1.5.7
+nest-asyncio==1.5.8
     # via orbax-checkpoint
 networkx==3.1
     # via torch
