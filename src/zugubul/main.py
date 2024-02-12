@@ -1050,8 +1050,8 @@ def handle_dataset(args: Dict[str, Any]) -> int:
             annotations=eaf_dir/'eaf_data.csv',
             lid_labels=args['lang_labels'],
             #process_length = not args['no_length_processing'],
-            min_gap=int(args['min_gap']),
-            min_length=int(args['min_length']),
+            #min_gap=int(args['min_gap']),
+            #min_length=int(args['min_length']),
         ).to_csv(asr_dir/'metadata.csv')
 
         # split_data
