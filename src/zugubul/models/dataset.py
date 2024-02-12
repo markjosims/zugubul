@@ -182,8 +182,9 @@ def make_asr_labels(
 
     print('Removing LID and empty labels from ASR dataset.')
     num_rows = len(annotations)
-    is_lid_label = annotations['text'].isin(lid_labels)
-    annotations = annotations[~is_lid_label]
+    if lid_labels:
+        is_lid_label = annotations['text'].isin(lid_labels)
+        annotations = annotations[~is_lid_label]
 
     is_empty = annotations['text'].isna()
     annotations = annotations[~is_empty]
