@@ -164,7 +164,7 @@ def infer(
 
 def annotate(
         source: Union[str, os.PathLike],
-        asr_model: Union[str, os.PathLike],
+        asr_model: Union[str, os.PathLike, None] = None,
         tgt_lang: Optional[str] = None,
         lid_model: Union[str, os.PathLike, None] = None,
         tier: str = 'default-lt',
@@ -178,6 +178,9 @@ def annotate(
     If tier is provided, add annotations to tier of that name.
     If etf is provided, use as template for output .eaf file.
     """
+    if not asr_model and not lid_model:
+        raise ValueError("Either ASR or AC model or both must be passed.")
+
     if lid_model:
         lid_eaf = infer(
             source=source,
@@ -192,15 +195,16 @@ def annotate(
         print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
     else:
         tgt_eaf = label_speech_segments(source)
-    annotated_eaf = infer(
-        source=source,
-        model=asr_model,
-        eaf=tgt_eaf,
-        tier=tier,
-        etf=etf,
-        task='ASR',
-        inference_method=inference_method,
-    )
+    if asr_model:
+        annotated_eaf = infer(
+            source=source,
+            model=asr_model,
+            eaf=tgt_eaf,
+            tier=tier,
+            etf=etf,
+            task='ASR',
+            inference_method=inference_method,
+        )
     return annotated_eaf
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
