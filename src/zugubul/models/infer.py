@@ -173,7 +173,7 @@ def infer(
                 start = row['start']
                 end = row['end']
                 for t in tiers:
-                    eaf.add_annotation(t, start, end, str(probs[t]))
+                    eaf.add_annotation(t, start, end, str(round(probs[t]), 5))
             clip_data.apply(add_probs_to_eaf, axis=1)
             return eaf
         
