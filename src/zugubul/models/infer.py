@@ -75,7 +75,7 @@ def query_list(
     
     return outputs
 
-def get_label_from_query(response_obj: list) -> str:
+def get_label_from_query(response_obj: List[Dict[str, str]]) -> str:
     max_score = 0
     pred = ''
     for score_dict in response_obj:
@@ -85,14 +85,22 @@ def get_label_from_query(response_obj: list) -> str:
             max_score = score
     return pred
 
+def get_label_probs_from_query(response_obj: List[Dict[str, str]]) -> Dict[str, str]:
+    scores = {}
+    for score_dict in response_obj:
+        score, label = score_dict['score'], score_dict['label']
+        scores[label] = score
+    return scores
+
 def infer(
         source: Union[str, os.PathLike],
         model: Union[str, os.PathLike],
-        tier: str = 'default-lt',
+        tier: Optional[str] = None,
         eaf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         task: Literal['LID', 'ASR'] = 'ASR',
         inference_method: Literal['api', 'local', 'try_api'] = 'try_api',
+        return_ac_probs: bool = False,
         max_len: int = 5,
     ) -> Elan.Eaf:
     """
@@ -137,7 +145,9 @@ def infer(
                 else 'audio-classification'
             pipe = pipeline(pipeline_class, model)
             pipe_out = clip_data['wav_clip'].progress_apply(pipe)
-            if task == 'LID':
+            if task == 'LID' and return_ac_probs:
+                labels = [get_label_probs_from_query(x) for x in pipe_out]
+            elif task == 'LID':
                 labels = [get_label_from_query(x) for x in pipe_out]
             else:
                 labels = [x['text'] for x in pipe_out]
@@ -154,7 +164,21 @@ def infer(
             )
         clip_data['text'] = labels
 
+    if return_ac_probs and not tier:
+            tiers = labels[0].keys()
+            for t in tiers:
+                eaf.add_tier(t)
+            def add_probs_to_eaf(row):
+                probs = row['text']
+                start = row['start']
+                end = row['end']
+                for t in tiers:
+                    eaf.add_annotation(t, start, end, probs[t])
+            clip_data.apply(add_probs_to_eaf, axis=1)
+            return eaf
+        
 
+    tier = 'default-lt' if not tier else tier
     eaf.remove_all_annotations_from_tier(tier)
     eaf.add_tier(tier)
     add_rows_to_eaf = lambda r: eaf.add_annotation(tier, r['start'], r['end'], r['text'])
@@ -189,6 +213,7 @@ def annotate(
             etf=etf,
             task='LID',
             inference_method=inference_method,
+            return_ac_probs=not asr_model,
         )
         print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
         tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
