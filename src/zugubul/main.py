@@ -465,12 +465,6 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         type=int
     )
     add_arg(
-        '--sort_by_len',
-        '-sbl',
-        help='Sort dataset so that shorter inputs come first.',
-        action='store_true',
-    )
-    add_arg(
         '--save_eval_preds',
         action='store_true',
         help='Save eval predictions to output file for each eval loop.',
@@ -539,9 +533,9 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
         help='Path to .eaf file to save annotations to.'
     )
     add_arg(
-        "ASR_PATH",
+        "--asr_path",
         widget='DirChooser',
-        help="Path to HuggingFace model to use for automatic speech recognition.")
+        help="Path to HuggingFace model to use for automatic speech recognition. If not passed, label utterances with detected language/speaker probabilities.")
     add_arg(
         "--lang",
         help="ISO code for target language to annotate."
@@ -1234,7 +1228,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
 
     wav_file = args['WAV_FILE']
     lid_model = args['ac_path']
-    asr_model = args['ASR_PATH']
+    asr_model = args['asr_path']
     tgt_lang = args['lang']
     out_fp = args['OUT']
     inference_method = args['inference_method']
