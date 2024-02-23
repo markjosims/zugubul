@@ -141,8 +141,6 @@ def eaf_data(
         eaf_obj = Elan.Eaf(eaf)
 
     media_paths = [x['MEDIA_URL'] for x in eaf_obj.media_descriptors]
-    if (media) and (media not in media_paths):
-        raise ValueError(f'If media argument passed must be found in eaf linked files, {media=}, {media_paths=}')
     if not media:
         media = media_paths[0]
         # trim prefix added by ELAN
