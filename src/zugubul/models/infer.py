@@ -100,6 +100,7 @@ def infer(
         etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
         task: Literal['LID', 'ASR'] = 'ASR',
         inference_method: Literal['api', 'local', 'try_api'] = 'try_api',
+        tgt_lang: Optional[str] = None,
         return_ac_probs: bool = False,
         max_len: int = 5,
     ) -> Elan.Eaf:
@@ -166,6 +167,8 @@ def infer(
 
     if return_ac_probs:
             tiers = labels[0].keys()
+            if tgt_lang:
+                tiers = [tgt_lang,]
             for t in tiers:
                 eaf.add_tier(t)
             def add_probs_to_eaf(row):
