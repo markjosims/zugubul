@@ -164,7 +164,7 @@ def infer(
             )
         clip_data['text'] = labels
 
-    if return_ac_probs and not tier:
+    if return_ac_probs:
             tiers = labels[0].keys()
             for t in tiers:
                 eaf.add_tier(t)
