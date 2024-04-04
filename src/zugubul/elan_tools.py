@@ -156,7 +156,7 @@ def eaf_data(
 
     if tier and type(tier) is str:
         tier = [tier,]
-    else:
+    elif not tier:
         tier = eaf_obj.get_tier_names()
 
     dfs = []
