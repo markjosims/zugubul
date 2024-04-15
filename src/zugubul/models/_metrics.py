@@ -1,7 +1,7 @@
 from evaluate import load, EvaluationModule
 from transformers import PreTrainedTokenizer
 import numpy as np
-from typing import Dict, Union, Mapping, Optional
+from typing import Dict, Union, Mapping, Optional, Sequence
 import torch
 
 wer_metric = load("wer")
@@ -17,10 +17,11 @@ def get_pred_str(pred_logits, processor) -> str:
     return pred_str    
 
 def compute_str_acc(
-        pred: Union[Mapping, list, None] = None,
+        pred: Union[Mapping, None] = None,
+        pred_str: Union[str, Sequence[str], None] = None, 
         processor: Optional[PreTrainedTokenizer] = None,
         pred_logits: Optional[torch.tensor] = None,
-        label_str: Optional[str] = None,
+        label_str: Union[str, Sequence[str], None] = None,
         metrics: Dict[str, EvaluationModule] = 'wer',
         return_labels: bool = False,
     ):
