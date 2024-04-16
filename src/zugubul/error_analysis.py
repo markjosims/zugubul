@@ -95,6 +95,7 @@ def main(argv: Optional[Sequence[str]]=None) -> int:
         se = visedit.StringEdit(target_str=pred, source_str=label)
         html_chunk = se.generate_html()
         html_chunk = add_prefixes_to_html_chunk(html_chunk)
+        html_chunks.append(f"Record {record['i']}:")
         html_chunks.append(html_chunk)
 
         incoming = get_edit_dict(pred=pred, label=label)
