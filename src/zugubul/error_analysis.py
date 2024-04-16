@@ -63,6 +63,16 @@ def clean_edit_dict(d: Dict[str, Dict[str, Any]]):
     
     return d
 
+def add_prefixes_to_html_chunk(html_chunk: str) -> str:
+    html_chunk = html_chunk.replace(
+        '<tr>', '<tr><td>Label:</td>', 1
+    )
+    html_chunk = html_chunk.replace(
+        '</tr><tr>',
+        '</tr><tr><td>Predicted:</td>'
+    ) 
+    return html_chunk
+
 def init_error_parser(error_parser: argparse.ArgumentParser) -> None:
     error_parser.add_argument('IN')
     error_parser.add_argument('--html', '-H')
@@ -83,7 +93,9 @@ def main(argv: Optional[Sequence[str]]=None) -> int:
         pred = record['pred']
         label = record['label']
         se = visedit.StringEdit(target_str=pred, source_str=label)
-        html_chunks.append(se.generate_html())
+        html_chunk = se.generate_html()
+        html_chunk = add_prefixes_to_html_chunk(html_chunk)
+        html_chunks.append(html_chunk)
 
         incoming = get_edit_dict(pred=pred, label=label)
         merge_edit_dicts(edits, incoming)
