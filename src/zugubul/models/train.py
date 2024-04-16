@@ -181,9 +181,9 @@ def train(
         eval_step = 0
         def compute_metrics(pred):
             if task == 'ASR':
-                out = compute_cer_and_wer(pred, processor, return_labels=save_eval_preds)
+                out = compute_cer_and_wer(pred=pred, processor=processor, return_labels=save_eval_preds)
             else:
-                out = compute_acc(pred, return_labels=save_eval_preds)
+                out = compute_acc(pred=pred, return_labels=save_eval_preds)
             if save_eval_preds:
                 label, pred = out.pop('label'), out.pop('pred')
                 nonlocal eval_step
