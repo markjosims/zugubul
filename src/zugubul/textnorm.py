@@ -99,3 +99,9 @@ def report_unique_chars(texts: Sequence[str]) -> Dict[str, Any]:
     unique = set()
     (unique.update(text) for text in texts)
     # find some way to get Unicode metadata for each character
+
+def strip_diacs(text: str) -> str:
+    text = unicode_normalize(text)
+    for diac in COMBINING.values():
+        text = text.replace(diac, '')
+    return text
