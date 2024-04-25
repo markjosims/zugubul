@@ -4,6 +4,7 @@ import argparse
 from typing import Optional, Sequence, Dict, Union, Any
 import json
 from collections import defaultdict
+from zugubul.textnorm import split_segs_and_tone
 
 def edit_dict_factory():
     return defaultdict(lambda: {
@@ -88,20 +89,36 @@ def main(argv: Optional[Sequence[str]]=None) -> int:
         data = json.load(f)
     
     html_chunks = []
-    edits = edit_dict_factory()
+    seg_edits = edit_dict_factory()
+    tone_edits = edit_dict_factory()
     for record in data:
         pred = record['pred']
         label = record['label']
-        se = visedit.StringEdit(target_str=pred, source_str=label)
-        html_chunk = se.generate_html()
-        html_chunk = add_prefixes_to_html_chunk(html_chunk)
+        audio_path = record['audio_path']
+
+        pred_segs, pred_tone = split_segs_and_tone(pred)
+        label_segs, label_tone = split_segs_and_tone(label)
+
+        # update html doc
         html_chunks.append(f"Record {record['i']}:")
-        html_chunks.append(html_chunk)
+        get_edit_html(html_chunks, pred, label)
+        html_chunks.append('Segments')
+        get_edit_html(html_chunks, pred_segs, label_segs)
+        html_chunks.append('Tones')
+        get_edit_html(html_chunks, pred_tone, label_tone)
 
-        incoming = get_edit_dict(pred=pred, label=label)
-        merge_edit_dicts(edits, incoming)
+        add_html_audio(html_chunks, audio_path)
 
-    edits = clean_edit_dict(edits)
+        # update edit object
+        incoming_seg_edits = get_edit_dict(pred=pred_segs, label=label_segs)
+        merge_edit_dicts(seg_edits, incoming_seg_edits)
+
+        incoming_tone_edits = get_edit_dict(pred=pred_tone, label=label_tone)
+        merge_edit_dicts(tone_edits, incoming_tone_edits)
+
+    seg_edits = clean_edit_dict(seg_edits)
+    tone_edits = clean_edit_dict(tone_edits)
+    edits = {'seg_edits': seg_edits, 'tone_edits': tone_edits}
 
     with open(args.html, 'w') as f:
         f.writelines(html_chunks)
@@ -111,6 +128,26 @@ def main(argv: Optional[Sequence[str]]=None) -> int:
 
 
     return 0
+
+def get_edit_html(
+        html_chunks: list,
+        pred: str,
+        label: str,
+    ):
+    se = visedit.StringEdit(target_str=pred, source_str=label)
+    html_chunk = se.generate_html()
+    html_chunk = add_prefixes_to_html_chunk(html_chunk)
+    html_chunks.append(html_chunk)
+
+def add_html_audio(html_chunks: list, audio_path: str):
+    html_chunks.append(
+        f'''
+        <audio controls>
+            <source src="{audio_path}" type="audio/wav">
+            Your browser does not support the audio element.
+        </audio>
+        '''
+    )
 
 if __name__ == '__main__':
     main()
