@@ -100,7 +100,9 @@ def main(argv: Optional[Sequence[str]]=None) -> int:
         label_segs, label_tone = split_segs_and_tone(label)
 
         # update html doc
-        html_chunks.append(f"Record {record['i']}:")
+        html_chunks.append(f"<br>Record {record['i']}:")
+        html_chunks.append(f"<br>Label: {label}\n")
+        html_chunks.append(f"<br>Predicted: {pred}\n")
         get_edit_html(html_chunks, pred, label)
         html_chunks.append('Segments')
         get_edit_html(html_chunks, pred_segs, label_segs)
@@ -120,10 +122,12 @@ def main(argv: Optional[Sequence[str]]=None) -> int:
     tone_edits = clean_edit_dict(tone_edits)
     edits = {'seg_edits': seg_edits, 'tone_edits': tone_edits}
 
-    with open(args.html, 'w') as f:
+    html_out = args.html or args.IN.replace('.json', '.html')
+    json_out = args.json or args.IN.replace('.json', '_summary.json')
+    with open(html_out, 'w') as f:
         f.writelines(html_chunks)
     
-    with open(args.json, 'w') as f:
+    with open(json_out, 'w') as f:
         json.dump(edits, f, indent=2, ensure_ascii=False)
 
 
