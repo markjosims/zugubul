@@ -48,6 +48,7 @@ def train(
         save_eval_preds: bool = False,
         hf_user: Optional[str] = None,
         adapter: Optional[str] = None,
+        print_input: bool = False,
         **kwargs
     ) -> str:
 
@@ -217,6 +218,8 @@ def train(
         eval_dataset=dataset['validation'],
         tokenizer=processor.feature_extractor
     )
+    if print_input:
+        trainer.add_callback(PrintInputCallback)
     
     trainer.train(resume_from_checkpoint=train_checkpoint)
     print('Done training')
