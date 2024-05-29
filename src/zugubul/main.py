@@ -67,7 +67,7 @@ DEFAULT_HYPERPARAMS = {
     'warmup_steps': 500,
     'torch_compile': False,
     'report_to': 'tensorboard',
-    'debug': 'debug underflow_overflow',
+    'debug': 'underflow_overflow',
 }
 
 DEFAULT_VAD_PARAMS = {
