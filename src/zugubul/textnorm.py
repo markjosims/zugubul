@@ -1,4 +1,4 @@
-from typing import Dict, Sequence, Any, Literal, List
+from typing import Dict, Sequence, Any, Literal, List, Tuple
 from string import punctuation
 import unicodedata
 
@@ -11,6 +11,21 @@ COMBINING = {
     'circm': "\u0302",
     'caron': "\u030C",
     'tilde': "\u0303",
+}
+COMBINING_TO_NAME = {
+    "\u0300": 'grave',
+    "\u0304": 'macrn',
+    "\u0301": 'acute',
+    "\u0302": 'circm',
+    "\u030C": 'caron',
+    "\u0303": 'tilde',
+}
+TONE_LETTERS = {
+    'grave': "L",
+    'macrn': "M",
+    'acute': "H",
+    'circm': "HL",
+    'caron': "LH",
 }
 COMPOSITE = {
     "a": {"acute": "á", "macrn": "ā", "grave": "à", "caron": "ǎ", "circm": "â", "tilde": "ã",},
@@ -99,3 +114,25 @@ def report_unique_chars(texts: Sequence[str]) -> Dict[str, Any]:
     unique = set()
     (unique.update(text) for text in texts)
     # find some way to get Unicode metadata for each character
+
+def strip_diacs(text: str, tone_only: bool = False) -> str:
+    text = unicode_normalize(text)
+    for diac in COMBINING.values():
+        if tone_only and diac == COMBINING['tilde']:
+            continue
+        text = text.replace(diac, '')
+    return text
+
+def get_tone_as_letters(text: str) -> str:
+    tone_words = []
+    for word in text.split():
+        tone_diacs = ''.join(c for c in word if c in COMBINING.values())
+        tone_word = '-'.join(tone_diacs)
+        for diac_name, letter in TONE_LETTERS.items():
+            tone_word = tone_word.replace(COMBINING[diac_name], letter)
+        tone_words.append(tone_word)
+
+    return ' '.join(tone_words)
+
+def split_segs_and_tone(text: str) -> Tuple[str, str]:
+    return strip_diacs(text, tone_only=True), get_tone_as_letters(text)

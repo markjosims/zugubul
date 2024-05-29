@@ -32,6 +32,12 @@ def run_silero_vad(
     silero_vad returns sample indices by default,
     this method converts samples into ms.
     Pass `convert_to_ms=False` to keep the original behavior and pass samples.
+    Returns list of dicts:
+    [
+        {'start': TIME, 'end': TIME},
+        {'start': TIME, 'end': TIME},
+        ...
+    ]
     """
     audio = read_audio(
         wav_fp,
