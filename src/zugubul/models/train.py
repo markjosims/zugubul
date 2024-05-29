@@ -12,7 +12,7 @@ from safetensors.torch import save_file as safe_save_file
 from transformers.models.wav2vec2.modeling_wav2vec2 import WAV2VEC2_ADAPTER_SAFE_FILE
 #import bitsandbytes as bnb
 
-from typing import Callable, Optional, Union, Literal, Sequence
+from typing import Callable, Optional, Union, Literal, Sequence, Dict, Any
 import os
 import json
 import torch
@@ -21,7 +21,56 @@ from zugubul.models.processor import init_processor, DataCollatorCTC, DataCollat
 from zugubul.models.vocab import make_lm_vocab
 from zugubul.models._metrics import compute_cer_and_wer, compute_acc
 from zugubul.main import init_train_parser, handle_train, DEFAULT_HYPERPARAMS
+from tqdm import tqdm
 
+class PrintInputTrainer(Trainer):
+    def training_step(self, model: torch.nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
+        """
+        Perform a training step on a batch of inputs.
+
+        Subclass and override to inject custom behavior.
+
+        Args:
+            model (`nn.Module`):
+                The model to train.
+            inputs (`Dict[str, Union[torch.Tensor, Any]]`):
+                The inputs and targets of the model.
+
+                The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
+                argument `labels`. Check your model's documentation for all accepted arguments.
+
+        Return:
+            `torch.Tensor`: The tensor with training loss on this batch.
+        """
+        model.train()
+        inputs = self._prepare_inputs(inputs)
+
+        # BEGIN COMMENTING OUT
+        # if is_sagemaker_mp_enabled():
+        #     loss_mb = smp_forward_backward(model, inputs, self.args.gradient_accumulation_steps)
+        #     return loss_mb.reduce_mean().detach().to(self.args.device)
+        # END COMMENTING OUT
+
+        with self.compute_loss_context_manager():
+            loss = self.compute_loss(model, inputs)
+
+        if self.args.n_gpu > 1:
+            loss = loss.mean()  # mean() to average on multi-gpu parallel training
+        
+        # BEGIN COMMENTING OUT
+        # if self.use_apex:
+        #     with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+        #         scaled_loss.backward()
+        # else:
+        #     self.accelerator.backward(loss)
+        # END COMMENTING OUT
+
+        # BEGIN NEW CODE
+        self.accelerator.backward(loss)
+        tqdm.write(inputs)
+        # END NEW CODE
+
+        return loss.detach() / self.args.gradient_accumulation_steps
 
 def train(
         out_dir: Union[str, os.PathLike],
@@ -42,6 +91,7 @@ def train(
         save_eval_preds: bool = False,
         hf_user: Optional[str] = None,
         adapter: Optional[str] = None,
+        print_inputs: bool = False,
         **kwargs
     ) -> str:
 
@@ -201,7 +251,8 @@ def train(
             return out
 
     print('Starting training...')
-    trainer = Trainer(
+    trainer_wrapper = PrintInputTrainer if print_inputs else Trainer
+    trainer = trainer_wrapper(
         model=model,
         data_collator=data_collator,
         args=training_args,
