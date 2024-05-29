@@ -67,7 +67,7 @@ class PrintInputTrainer(Trainer):
 
         # BEGIN NEW CODE
         self.accelerator.backward(loss)
-        tqdm.write(inputs)
+        print(inputs)
         # END NEW CODE
 
         return loss.detach() / self.args.gradient_accumulation_steps
