@@ -1,7 +1,7 @@
 from transformers import Trainer, Wav2Vec2ForCTC, Wav2Vec2ForSequenceClassification,\
     Wav2Vec2Model, DataCollator, TrainingArguments, Wav2Vec2Processor, Wav2Vec2FeatureExtractor,\
     AutoModelForMaskedLM, DataCollatorForLanguageModeling, AutoTokenizer, CanineTokenizer,\
-    AutoConfig, GPT2LMHeadModel
+    AutoConfig, GPT2LMHeadModel, TrainerCallback
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from zugubul.models.models import CanineForMaskedLM
@@ -22,6 +22,12 @@ from zugubul.models.vocab import make_lm_vocab
 from zugubul.models._metrics import compute_cer_and_wer, compute_acc
 from zugubul.main import init_train_parser, handle_train, DEFAULT_HYPERPARAMS
 
+
+class PrintInputCallback(TrainerCallback):
+	def on_step_begin(
+		self, *args, input_ids=None, **kwargs
+	):
+		print(input_ids)
 
 def train(
         out_dir: Union[str, os.PathLike],
@@ -343,6 +349,7 @@ def download_model(
             'mask_time_prob': 0.05,
             'ctc_loss_reduction': "mean",
             'ignore_mismatched_sizes': True,
+            "ctc_zero_infinity": True,
         }
         if processor:
             default_values['pad_token_id'] = processor.tokenizer.pad_token_id
