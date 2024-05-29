@@ -25,8 +25,14 @@ from zugubul.main import init_train_parser, handle_train, DEFAULT_HYPERPARAMS
 
 class PrintInputCallback(TrainerCallback):
     def on_step_begin(
-        self, *args, input_ids=None, **kwargs
+        self, args, state, control, input_ids=None, **kwargs
     ):
+        print("args")
+        print(args)
+        print("state")
+        print(state)
+        print("control")
+        print(control)
         print(kwargs)
         print(input_ids)
 
