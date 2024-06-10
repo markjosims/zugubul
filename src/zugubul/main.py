@@ -6,15 +6,6 @@ If zugubul package installed, zugubul COMMAND ARGS...
 Run main/zugubul -h for more information.
 """
 
-docstr = """
-Runs rVAD_fast (Copyright (c) 2022 Zheng-Hua Tan and Achintya Kumar Sarkar)
-on WAV_FILEPATH then generates elan annotations of speech segments at EAF_FILEPATH
-If both EAF_FILEPATH and EAF_OUT_FILEPATH are provided,
-merges the generated Eaf object with a preexisting eaf at EAF_FILEPATH,
-using the provided OVERLAP value (or default 200ms), see documentation at elan_tools.py.
-If -r flag is provided, and WAV_FILEPATH is a directory, search for wavs recursively in the directory.
-"""
-
 import os
 import sys
 from pathlib import Path
