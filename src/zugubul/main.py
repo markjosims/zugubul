@@ -494,6 +494,11 @@ def init_train_parser(train_parser: argparse.ArgumentParser) -> None:
         '--adapter',
         help='Path to adapter file to load (if any).'
     )
+    add_arg(
+        '--print_inputs',
+        help='Print input at each training step.',
+        action='store_true',
+    )
     add_remote_args(train_parser)
     add_hyperparameter_args(train_parser)
 
