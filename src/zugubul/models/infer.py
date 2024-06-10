@@ -18,9 +18,6 @@ import argparse
 # enable pandas progress bars
 tqdm.pandas()
 
-def split_audio_windows(filename: str, window_len: int, frameshift: int) -> List[List[bytes]]:
-    ...
-
 def query(filename: str, model: str, label_only: bool = False, task: Literal['ASR', 'LID'] = 'ASR') -> dict:
     api_url = f"https://api-inference.huggingface.co/models/{model}"
     token = HfFolder.get_token()
