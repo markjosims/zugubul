@@ -1,17 +1,20 @@
 from pyannote.audio import Pipeline as PyannotePipeline
 from pyannote.audio.pipelines.utils.hook import ProgressHook
 from typing import Optional
-from torchaudio import load
-
+import torchaudio
 
 def run_pyannote_vad(
         wav_fp: str,
         pipe: Optional[PyannotePipeline] = None,
         sample_rate: int = 16000,
     ):
-    wav = AudioSegment.from_file(wav_fp)
-    wav = wav.set_frame_rate(sample_rate)
-
+    wav_orig, sr_orig = torchaudio.load(wav_fp)
+    wav = torchaudio.functional.resample(
+        waveform=wav_orig,
+        orig_freq=sr_orig,
+        new_freq=sample_rate
+    )
+    
     if not pipe:
         pipe = PyannotePipeline.from_pretrained("pyannote/voice-activity-detection")
 
