@@ -1,120 +1,110 @@
-from typing import Union, Optional, Literal, Sequence, List, Dict
+from typing import Union, Optional, Literal, Sequence, List, Dict, Any, Callable
 
 import os
 import tempfile
 from pympi import Elan
 from tqdm import tqdm
-from transformers import pipeline
+from transformers import pipeline, Pipeline
 
 from zugubul.vad_to_elan import label_speech_segments
 from zugubul.models.dataset import process_annotation_length
 from zugubul.elan_tools import snip_audio, trim
 from zugubul.main import init_annotate_parser, handle_annotate
 import argparse
+import pandas as pd
 
 # enable pandas progress bars
 tqdm.pandas()
 
-def pipe_out_to_label(response_obj: List[Dict[str, str]]) -> str:
+def pipe_out_to_sli_label(pipe_out: List[Dict[str, str]]) -> Dict[str, str]:
     max_score = 0
     pred = ''
-    for score_dict in response_obj:
+    for score_dict in pipe_out:
         score, label = score_dict['score'], score_dict['label']
         if score > max_score:
             pred = label
             max_score = score
-    return pred
+    return {'sli_label': pred}
 
-def pipe_out_to_probs(response_obj: List[Dict[str, str]]) -> Dict[str, str]:
+def pipe_out_to_sli_probs(pipe_out: List[Dict[str, str]]) -> Dict[str, str]:
     scores = {}
-    for score_dict in response_obj:
+    for score_dict in pipe_out:
         score, label = score_dict['score'], score_dict['label']
         scores[label] = score
-    return scores
+    return {'sli_scores': scores}
 
 def infer(
-        source: Union[str, os.PathLike],
-        model: Union[str, os.PathLike],
-        tier: Optional[str] = None,
-        eaf: Union[str, os.PathLike, Elan.Eaf, None] = None,
-        etf: Union[str, os.PathLike, Elan.Eaf, None] = None,
-        task: Literal['LID', 'ASR'] = 'ASR',
-        tgt_lang: Optional[str] = None,
-        return_ac_probs: bool = False,
-        max_len: int = 5,
-    ) -> Elan.Eaf:
-    """
-    source is a path to a .wav file,
-    model is a path (local or url) to a HF LID model, or the model object itself.
-    tier is a str indicating which tier to add annotations to in .eaf file.
-    eaf is an Eaf obj or a path to a .eaf file.
-    If eaf is not passed, VAD is performed on source and the output is used for annotation.
-    etf is an Eaf object of a .etf template file or a path to a .etf file.
-    task is a str indicating whether language identification or automatic speech recognition is being performed.
-    """
-    if not eaf:
-        print("Performing VAD...")
-        eaf = label_speech_segments(
-            wav_fp=source,
-            tier=tier,
-            etf=etf
-        )
-        #data = process_annotation_length(eaf)
+    input_file: Union[str, List[str], pd.Series],
+    model_path: Union[str, os.pathlike],
+    sli_out_format: Literal['labels', 'probs'] = 'labels',
+    task: Literal['asr', 'sli'] = 'asr',
+    do_vad: bool = True,      
+):
+    # define relevant functions for ASR and SLI
+    if task == 'asr':
+        out_format_funct = lambda x:x
+        pipe_class = 'automatic-speech-recognition'
+    elif sli_out_format == 'labels':
+        out_format_funct = pipe_out_to_sli_label
+        pipe_class = 'audio-classification'
     else:
-        if type(eaf) is not Elan.Eaf:
-            eaf = Elan.Eaf(eaf)
-    
-    
+        out_format_funct = pipe_out_to_sli_probs
+        pipe_class = 'audio-classification'
+    pipe = pipeline(pipe_class, model_path)
+
+    # single file w/ VAD
+    if type(input_file) is str and do_vad:
+        print('Performing VAD on file...')
+        sli_segs = _do_vad_and_infer(input_file, sli_out_format, pipe)
+        return sli_segs
+    # multiple files w/ VAD
+    elif do_vad:
+        print('Performing VAD on files...')
+        sli_outs = []
+        for file in tqdm(input_file):
+            sli_outs.extend(_do_vad_and_infer(file, sli_out_format, pipe))
+        return sli_out
+    # single file no VAD
+    elif type(input_file) is str:
+        print('Performing SLI on file...')
+        sli_out = out_format_funct(pipe(input_file))
+        return {'filename': input_file, **sli_out}
+    # multiple files no VAD
+    print('Performing SLI on files...')
+    source_file = pd.Series(source_file) if type(source_file) is list else source_file
+    sli_outs = _do_infer_list(input_file, pipe, out_format_funct)
+    return [{'filename': file, **sli_out} for file, sli_out in zip(input_file, sli_outs)]
+
+def _do_vad_and_infer(
+    input_file: Union[str, os.PathLike],
+    pipe: Pipeline,
+    out_format_funct: Callable,
+) -> List[Dict[str, Any]]:
+    vad_eaf = label_speech_segments(input_file)
     with tempfile.TemporaryDirectory() as tmpdir:
-        clip_data = snip_audio(
-            annotations=eaf,
-            out_dir=tmpdir,
-            audio=source,
-            tier=tier,
-        )
-        print(f"VAD detected {len(clip_data)} speech segments in source.")
-        above_max_len = clip_data.apply(lambda r: r['end']-r['start'] > max_len*1000, axis=1)
-        clip_data = clip_data[~above_max_len]
-        print(f"After removing segments longer than {max_len} seconds {len(clip_data)} segments remain.")
+        vad_df = snip_audio(annotations=vad_eaf, out_dir=tmpdir, audio=input_file)
+        vad_segs = vad_df['wav_clip']
 
-        print(f"Running inference for {task} using {model}...")
+        tqdm.write('Performing SLI on VAD segments...')
+        sli_out = _do_infer_list(vad_segs, pipe, out_format_funct)
 
-        pipeline_class = 'automatic-speech-recognition' if task=='ASR'\
-            else 'audio-classification'
-        pipe = pipeline(pipeline_class, model)
-        pipe_out = clip_data['wav_clip'].progress_apply(pipe)
-        if task == 'LID' and return_ac_probs:
-            labels = [pipe_out_to_probs(x) for x in pipe_out]
-        elif task == 'LID':
-            labels = [pipe_out_to_label(x) for x in pipe_out]
-        else:
-            labels = [x['text'] for x in pipe_out]
+    sli_segs = [{
+            'file': input_file,
+            'segments': [
+                {'start': start, 'end': end, **seg_sli}
+                for start, end, seg_sli in zip(vad_df['start'], vad_df['end'], sli_out)
+            ]
+        }]
+    
+    return sli_segs
 
-        clip_data['text'] = labels
-
-    if return_ac_probs:
-            tiers = labels[0].keys()
-            if tgt_lang:
-                tiers = [tgt_lang,]
-            for t in tiers:
-                eaf.add_tier(t)
-            def add_probs_to_eaf(row):
-                probs = row['text']
-                start = row['start']
-                end = row['end']
-                for t in tiers:
-                    eaf.add_annotation(t, start, end, str(round(probs[t], 5)))
-            clip_data.apply(add_probs_to_eaf, axis=1)
-            return eaf
-        
-
-    tier = 'default-lt' if not tier else tier
-    eaf.remove_all_annotations_from_tier(tier)
-    eaf.add_tier(tier)
-    add_rows_to_eaf = lambda r: eaf.add_annotation(tier, r['start'], r['end'], r['text'])
-    clip_data.apply(add_rows_to_eaf, axis=1)
-
-    return eaf
+def _do_infer_list(
+    input_list: pd.Series,
+    pipe: Pipeline,
+    out_format_funct: Callable,
+):
+    out_list = input_list.progress_apply(pipe)
+    return out_list.apply(out_format_funct)
 
 def annotate(
         source: Union[str, os.PathLike],
