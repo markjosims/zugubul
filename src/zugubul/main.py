@@ -22,6 +22,7 @@ import json
 TORCH = importlib.util.find_spec('torch') is not None
 GOOEY = importlib.util.find_spec('gooey_tools') is not None
 PYSIMPLEGUI = importlib.util.find_spec('PySimpleGUIWx') is not None
+PYANNOTE = importlib.util.find_spec('pyannote') is not None
 GUI = os.environ.get('GUI', 0)
 
 if not GOOEY:
