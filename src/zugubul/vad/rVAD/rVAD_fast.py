@@ -62,8 +62,8 @@ def rVAD_to_json(
         segs: Optional[np.ndarray]=None,
         convert_to_ms: bool = True,
     ) -> List[Dict[str, int]]:
-    if not segs:
-        if not frames:
+    if segs is None:
+        if frames is None:
             raise ValueError('Either frames or segs must be passed')
         segs = frames_to_segs(frames)
     
