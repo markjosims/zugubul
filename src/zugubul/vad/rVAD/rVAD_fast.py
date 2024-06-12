@@ -75,7 +75,7 @@ def rVAD_to_json(
         frame_width = 10
         return [(int(start*frame_width), int(end*frame_width)) for start, end in zip(startpoints, endpoints)]
 
-    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints)]
+    return [{'start': int(start), 'end': int(end)} for start, end in zip(startpoints, endpoints)]
 
 def run_rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
     """
