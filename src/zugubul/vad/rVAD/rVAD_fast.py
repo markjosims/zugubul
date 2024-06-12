@@ -7,7 +7,7 @@ from scipy.signal import lfilter
 from rVAD import speechproc
 from copy import deepcopy
 from zugubul.utils import batch_funct
-from typing import Optional, Literal, Callable, List, Dict
+from typing import Optional, Literal, Callable, List, Dict, Union
 
 # Refs:
 #  [1] Z.-H. Tan, A.k. Sarkara and N. Dehak, "rVAD: an unsupervised segment-based robust voice activity detection method," Computer Speech and Language, vol. 59, pp. 1-21, 2020. 
@@ -77,7 +77,12 @@ def rVAD_to_json(
 
     return [{'start': int(start), 'end': int(end)} for start, end in zip(startpoints, endpoints)]
 
-def run_rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
+def run_rVAD_fast(
+        finwav: str,
+        dialect: Literal['seg', 'frame']='seg',
+        save_funct: Optional[Callable]= None,
+        jsonify: bool = True,
+    ) -> Union[np.ndarray, List[Dict[str, int]]]:
     """
     Run rVAD_fast on the wav file indicated by finwav,
     return array indicating segments of speech.
