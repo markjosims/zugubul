@@ -73,7 +73,8 @@ def rVAD_to_json(
 
     if convert_to_ms:
         frame_width = 10
-        return [(int(start*frame_width), int(end*frame_width)) for start, end in zip(startpoints, endpoints)]
+        startpoints = [int(start*frame_width) for start in startpoints]
+        endpoints   = [int(end*frame_width) for end in endpoints]
 
     return [{'start': int(start), 'end': int(end)} for start, end in zip(startpoints, endpoints)]
 
@@ -138,9 +139,9 @@ def run_rVAD_fast(
     vad_out=speechproc.snre_vad(fdata,  num_frameshifts, samples_per_frame, samples_per_frameshift, ENERGYFLOOR, pv01, pvblk, vadThres)
 
     if dialect == 'seg':
-        vad_out = frames_to_segs(vad_out)
+        return frames_to_segs(vad_out)
     elif dialect == 'json':
-        vad_out = rVAD_to_json(frames=vad_out)
+        return rVAD_to_json(frames=vad_out)
 
     return vad_out
 
