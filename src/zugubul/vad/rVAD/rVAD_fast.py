@@ -4,7 +4,7 @@ import os
 import sys
 import json
 from scipy.signal import lfilter
-from rVAD import speechproc
+from zugubul.vad.rVAD import speechproc
 from copy import deepcopy
 from zugubul.utils import batch_funct
 from typing import Optional, Literal, Callable, List, Dict, Union
