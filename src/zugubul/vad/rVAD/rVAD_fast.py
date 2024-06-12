@@ -58,8 +58,8 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     return np.concatenate([startpoints, endpoints]).astype('int')
 
 def rVAD_to_json(
-        frames: Optional[np.ndarray],
-        segs: Optional[np.ndarray],
+        frames: Optional[np.ndarray]=None,
+        segs: Optional[np.ndarray]=None,
         convert_to_ms: bool = True,
     ) -> List[Dict[str, int]]:
     if not segs:
