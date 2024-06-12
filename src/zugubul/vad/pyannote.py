@@ -1,6 +1,6 @@
 from pyannote.audio import Pipeline as PyannotePipeline
 from pyannote.audio.pipelines.utils.hook import ProgressHook
-from typing import Optional
+from typing import Optional, Literal
 import torchaudio
 
 def run_pyannote_vad(
@@ -8,6 +8,7 @@ def run_pyannote_vad(
         pipe: Optional[PyannotePipeline] = None,
         sample_rate: int = 16000,
         jsonify: bool = True,
+        time_format: Literal['ms', 'sec', 'samples'] = 'ms',
     ):
     wav_orig, sr_orig = torchaudio.load(wav_fp)
     wav = torchaudio.functional.resample(
@@ -28,7 +29,14 @@ def run_pyannote_vad(
     if jsonify:
             segments = []
             for track, _ in result.itertracks():
-                segment = {'start': track.start, 'end': track.end}
+                start, end = track.start, track.end
+                if time_format == 'ms':
+                    start = int(start*1000)
+                    end = int(end*1000)
+                elif time_format == 'samples':
+                    start = int(start*sample_rate)
+                    end = int(end*sample_rate)
+                segment = {'start': start, 'end': end}
                 segments.append(segment)
             return segments
     
