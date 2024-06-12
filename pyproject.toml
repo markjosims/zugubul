@@ -3,7 +3,7 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["rVAD", "zugubul", "zugubul_icons", "silero_vad"]
+packages = ["zugubul", "zugubul_icons"]
 package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
@@ -26,4 +26,3 @@ dynamic = ["dependencies", "optional-dependencies"]
 
 [project.scripts]
 zugubul = "zugubul.main:main"
-rvad = "rVAD.rVAD_fast:main"

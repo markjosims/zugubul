@@ -1,5 +1,5 @@
 import torch
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Literal
 
 SAMPLE_RATE = 16000
 
@@ -14,9 +14,10 @@ silero_vad, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad',
  VADIterator,
  collect_chunks) = utils
 
+
 def run_silero_vad(
         wav_fp: str,
-        convert_to_ms: bool = True,
+        time_format: Literal['ms', 'sec', 'samples'] = 'ms',
         threshold: float = 0.5,
         sampling_rate: int = 16000,
         min_speech_duration_ms: int = 250,
@@ -29,9 +30,9 @@ def run_silero_vad(
     ) -> List[Dict[str, int]]:
     """
     Run silero_vad on the file indicated by `wav`.
-    silero_vad returns sample indices by default,
-    this method converts samples into ms.
-    Pass `convert_to_ms=False` to keep the original behavior and pass samples.
+    `time_format' determines the format for representing timestamps,
+    `ms` for milliseconds, `sec` for seconds, `samples` for sample
+    indices.
     Returns list of dicts:
     [
         {'start': TIME, 'end': TIME},
@@ -52,15 +53,16 @@ def run_silero_vad(
         'speech_pad_ms':                speech_pad_ms,
         'visualize_probs':              visualize_probs,
         'progress_tracking_callback':   progress_tracking_callback,
+        'return_seconds':               time_format != 'samples',
     }
+
     timestamps = get_speech_timestamps(
         audio,
         silero_vad,
         sampling_rate=sampling_rate or SAMPLE_RATE,
-        return_seconds=True,
         **vad_kwargs,
     )
-    if convert_to_ms:
+    if time_format == 'ms':
         for seg in timestamps:
             seg['start']=int(seg['start']*1000)
             seg['end']=int(seg['end']*1000)

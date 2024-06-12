@@ -4,10 +4,10 @@ import os
 import sys
 import json
 from scipy.signal import lfilter
-from rVAD import speechproc
+from zugubul.vad.rVAD import speechproc
 from copy import deepcopy
 from zugubul.utils import batch_funct
-from typing import Optional, Literal, Callable, List, Dict
+from typing import Optional, Literal, Callable, List, Dict, Union
 
 # Refs:
 #  [1] Z.-H. Tan, A.k. Sarkara and N. Dehak, "rVAD: an unsupervised segment-based robust voice activity detection method," Computer Speech and Language, vol. 59, pp. 1-21, 2020. 
@@ -58,12 +58,12 @@ def frames_to_segs(frames: np.ndarray) -> np.ndarray:
     return np.concatenate([startpoints, endpoints]).astype('int')
 
 def rVAD_to_json(
-        frames: Optional[np.ndarray],
-        segs: Optional[np.ndarray],
+        frames: Optional[np.ndarray]=None,
+        segs: Optional[np.ndarray]=None,
         convert_to_ms: bool = True,
     ) -> List[Dict[str, int]]:
-    if not segs:
-        if not frames:
+    if segs is None:
+        if frames is None:
             raise ValueError('Either frames or segs must be passed')
         segs = frames_to_segs(frames)
     
@@ -73,17 +73,23 @@ def rVAD_to_json(
 
     if convert_to_ms:
         frame_width = 10
-        return [(int(start*frame_width), int(end*frame_width)) for start, end in zip(startpoints, endpoints)]
+        startpoints = [int(start*frame_width) for start in startpoints]
+        endpoints   = [int(end*frame_width) for end in endpoints]
 
-    return [(int(start), int(end)) for start, end in zip(startpoints, endpoints)]
+    return [{'start': int(start), 'end': int(end)} for start, end in zip(startpoints, endpoints)]
 
-def run_rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_funct: Optional[Callable]= None) -> np.ndarray:
+def run_rVAD_fast(
+        finwav: str,
+        dialect: Literal['seg', 'frame', 'json']='json',
+        save_funct: Optional[Callable]= None,
+    ) -> Union[np.ndarray, List[Dict[str, int]]]:
     """
     Run rVAD_fast on the wav file indicated by finwav,
     return array indicating segments of speech.
     If "dialect" is frame, return array of 0s and 1s for each frame (10ms) of audio,
     where 1 indicates speech and 0 noise or silence.
     If "dialect" is seg, return array of startpoints and endpoints for speech segments.
+    If "dialect" is json, return a list of dicts containing start and endpoints.
     """
 
     # MODIFICATION BY Mark J Simmons, 3 August 2023
@@ -133,7 +139,9 @@ def run_rVAD_fast(finwav: str, dialect: Literal['seg', 'frame']='seg', save_func
     vad_out=speechproc.snre_vad(fdata,  num_frameshifts, samples_per_frame, samples_per_frameshift, ENERGYFLOOR, pv01, pvblk, vadThres)
 
     if dialect == 'seg':
-        vad_out = frames_to_segs(vad_out)
+        return frames_to_segs(vad_out)
+    elif dialect == 'json':
+        return rVAD_to_json(frames=vad_out)
 
     return vad_out
 
