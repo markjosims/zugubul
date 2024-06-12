@@ -15,7 +15,7 @@ import argparse
 # enable pandas progress bars
 tqdm.pandas()
 
-def get_label_from_query(response_obj: List[Dict[str, str]]) -> str:
+def pipe_out_to_label(response_obj: List[Dict[str, str]]) -> str:
     max_score = 0
     pred = ''
     for score_dict in response_obj:
@@ -25,7 +25,7 @@ def get_label_from_query(response_obj: List[Dict[str, str]]) -> str:
             max_score = score
     return pred
 
-def get_label_probs_from_query(response_obj: List[Dict[str, str]]) -> Dict[str, str]:
+def pipe_out_to_probs(response_obj: List[Dict[str, str]]) -> Dict[str, str]:
     scores = {}
     for score_dict in response_obj:
         score, label = score_dict['score'], score_dict['label']
@@ -84,9 +84,9 @@ def infer(
         pipe = pipeline(pipeline_class, model)
         pipe_out = clip_data['wav_clip'].progress_apply(pipe)
         if task == 'LID' and return_ac_probs:
-            labels = [get_label_probs_from_query(x) for x in pipe_out]
+            labels = [pipe_out_to_probs(x) for x in pipe_out]
         elif task == 'LID':
-            labels = [get_label_from_query(x) for x in pipe_out]
+            labels = [pipe_out_to_label(x) for x in pipe_out]
         else:
             labels = [x['text'] for x in pipe_out]
 
