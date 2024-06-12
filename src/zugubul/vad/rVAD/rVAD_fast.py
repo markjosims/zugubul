@@ -79,9 +79,8 @@ def rVAD_to_json(
 
 def run_rVAD_fast(
         finwav: str,
-        dialect: Literal['seg', 'frame']='seg',
+        dialect: Literal['seg', 'frame', 'json']='json',
         save_funct: Optional[Callable]= None,
-        jsonify: bool = True,
     ) -> Union[np.ndarray, List[Dict[str, int]]]:
     """
     Run rVAD_fast on the wav file indicated by finwav,
@@ -89,6 +88,7 @@ def run_rVAD_fast(
     If "dialect" is frame, return array of 0s and 1s for each frame (10ms) of audio,
     where 1 indicates speech and 0 noise or silence.
     If "dialect" is seg, return array of startpoints and endpoints for speech segments.
+    If "dialect" is json, return a list of dicts containing start and endpoints.
     """
 
     # MODIFICATION BY Mark J Simmons, 3 August 2023
@@ -139,6 +139,8 @@ def run_rVAD_fast(
 
     if dialect == 'seg':
         vad_out = frames_to_segs(vad_out)
+    elif dialect == 'json':
+        vad_out = rVAD_to_json(frames=vad_out)
 
     return vad_out
 
