@@ -1258,8 +1258,8 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         )
     else:
         eaf = annotate(
-            source=wav_file,
-            lid_model=lid_model,
+            input_file=wav_file,
+            sli_model=lid_model,
             asr_model=asr_model,
             tgt_lang=tgt_lang,
             inference_method=inference_method,
