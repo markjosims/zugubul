@@ -36,8 +36,8 @@ def pipe_out_to_sli_probs(pipe_out: List[Dict[str, str]]) -> Dict[str, str]:
 def infer(
     input_file: Union[str, List[str], pd.Series],
     model_path: Union[str, os.pathlike],
-    sli_out_format: Literal['labels', 'probs'] = 'labels',
     task: Literal['asr', 'sli'] = 'asr',
+    sli_out_format: Literal['labels', 'probs'] = 'labels',
     do_vad: bool = True,      
 ):
     # define relevant functions for ASR and SLI
@@ -55,14 +55,15 @@ def infer(
     # single file w/ VAD
     if type(input_file) is str and do_vad:
         print('Performing VAD on file...')
-        sli_segs = _do_vad_and_infer(input_file, sli_out_format, pipe)
+        vad_eaf = label_speech_segments(input_file)
+        sli_segs = _infer_on_segs(input_file, vad_eaf, out_format_funct, pipe)
         return sli_segs
     # multiple files w/ VAD
     elif do_vad:
         print('Performing VAD on files...')
         sli_outs = []
         for file in tqdm(input_file):
-            sli_outs.extend(_do_vad_and_infer(file, sli_out_format, pipe))
+            sli_outs.extend(_infer_on_segs(file, out_format_funct, pipe))
         return sli_out
     # single file no VAD
     elif type(input_file) is str:
@@ -75,28 +76,28 @@ def infer(
     sli_outs = _do_infer_list(input_file, pipe, out_format_funct)
     return [{'filename': file, **sli_out} for file, sli_out in zip(input_file, sli_outs)]
 
-def _do_vad_and_infer(
+def _infer_on_segs(
     input_file: Union[str, os.PathLike],
+    segs: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame],
     pipe: Pipeline,
     out_format_funct: Callable,
 ) -> List[Dict[str, Any]]:
-    vad_eaf = label_speech_segments(input_file)
     with tempfile.TemporaryDirectory() as tmpdir:
-        vad_df = snip_audio(annotations=vad_eaf, out_dir=tmpdir, audio=input_file)
+        vad_df = snip_audio(annotations=segs, out_dir=tmpdir, audio=input_file)
         vad_segs = vad_df['wav_clip']
 
         tqdm.write('Performing SLI on VAD segments...')
-        sli_out = _do_infer_list(vad_segs, pipe, out_format_funct)
+        pipe_out = _do_infer_list(vad_segs, pipe, out_format_funct)
 
-    sli_segs = [{
+    seg_outs = [{
             'file': input_file,
             'segments': [
-                {'start': start, 'end': end, **seg_sli}
-                for start, end, seg_sli in zip(vad_df['start'], vad_df['end'], sli_out)
+                {'start': start, 'end': end, **seg_out}
+                for start, end, seg_out in zip(vad_df['start'], vad_df['end'], pipe_out)
             ]
         }]
     
-    return sli_segs
+    return seg_outs
 
 def _do_infer_list(
     input_list: pd.Series,
@@ -107,50 +108,52 @@ def _do_infer_list(
     return out_list.apply(out_format_funct)
 
 def annotate(
-        source: Union[str, os.PathLike],
+        input_file: Union[str, os.PathLike, List[str]],
         asr_model: Union[str, os.PathLike, None] = None,
-        tgt_lang: Optional[str] = None,
-        lid_model: Union[str, os.PathLike, None] = None,
-        tier: str = 'default-lt',
+        tgt_lang: Union[str, List[str], None] = None,
+        lang_to_asr: Optional[Dict[str, str]] = None,
+        sli_model: Union[str, os.PathLike, None] = None,
+        sli_out_format: Literal['labels', 'probs'] = 'labels',
+        do_vad: bool = True,
         etf: Optional[Union[str, Elan.Eaf]] = None,
-        inference_method: Literal['api', 'local'] = 'api'
     ) -> Elan.Eaf:
     """
-    Perform LID on source file using model at lid_model (a filepath or URL).
+    Perform SLI on source file using model at sli_model (a filepath or URL).
     Remove all annotations not belonging to the target language, then run ASR
     using model at asr_model.
     If tier is provided, add annotations to tier of that name.
     If etf is provided, use as template for output .eaf file.
     """
-    if not asr_model and not lid_model:
-        raise ValueError("Either ASR or AC model or both must be passed.")
+    
+    if (tgt_lang or lang_to_asr) and (not sli_model):
+        raise ValueError("Need to pass `sli_model` if passing either `tgt_lang` or `lang_to_asr`")
 
-    if lid_model:
-        lid_eaf = infer(
-            source=source,
-            model=lid_model,
-            tier=tier,
-            etf=etf,
-            task='LID',
-            inference_method=inference_method,
-            return_ac_probs=not asr_model,
-        )
-        print(len(lid_eaf.get_annotation_data_for_tier(tier)), "speech segments detected from VAD.")
-        tgt_eaf = trim(lid_eaf, tier, keepword=tgt_lang)
-        print(len(tgt_eaf.get_annotation_data_for_tier(tier)), f"speech segments detected belonging to language {tgt_lang}.")
-    else:
-        tgt_eaf = label_speech_segments(source)
-    if asr_model:
-        annotated_eaf = infer(
-            source=source,
-            model=asr_model,
-            eaf=tgt_eaf,
-            tier=tier,
-            etf=etf,
-            task='ASR',
-            inference_method=inference_method,
-        )
-    return annotated_eaf
+    # handle single and multi-file annotation identically
+    if type(input_file) is str:
+        input_file == [input_file,]
+
+    # treat single-language ASR and multi-language ASR identically
+    if (asr_model and tgt_lang) and (not lang_to_asr):
+        lang_to_asr = {tgt_lang: asr_model}
+
+    asr_all_langs = not (tgt_lang or lang_to_asr)
+
+    outputs = [{} for _ in input_file]
+    if sli_model:
+        sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
+        for out, sli_out in zip(outputs, sli_outputs):
+            out.update(**sli_out)
+    
+    if asr_model and not asr_all_langs:
+        for lang, model in lang_to_asr.items():
+            if do_vad:
+                for file_out in outputs:
+                    seg_df = pd.DataFrame(data=file_out['segments'])
+                    file = file_out['filename']
+                    asr_out = _infer_on_segs(file, seg_df, )
+                [out['file'] for out in outputs if out['lang'] == lang]
+
+    return 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='Annotate an audio file using an ASR and, optionally, AC model.')
