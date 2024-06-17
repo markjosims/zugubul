@@ -136,7 +136,7 @@ def annotate(
     if (asr_model and tgt_lang) and (not lang_to_asr):
         lang_to_asr = {tgt_lang: asr_model}
 
-    asr_all_langs = not (tgt_lang or lang_to_asr)
+    lang_specific_asr = tgt_lang or lang_to_asr
 
     outputs = [{} for _ in input_file]
     if sli_model:
@@ -144,7 +144,7 @@ def annotate(
         for out, sli_out in zip(outputs, sli_outputs):
             out.update(**sli_out)
     
-    if asr_model and not asr_all_langs:
+    if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
             if do_vad:
                 for file_out in outputs:
@@ -152,6 +152,8 @@ def annotate(
                     file = file_out['filename']
                     asr_out = _infer_on_segs(file, seg_df, )
                 [out['file'] for out in outputs if out['lang'] == lang]
+    elif asr_model:
+        ...
 
     return 
 
