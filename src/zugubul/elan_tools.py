@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from pympi import Elan
-from typing import Union, Optional, Sequence, Literal
+from typing import Union, Optional, Sequence, Literal, List, Dict
 from copy import deepcopy
 from pydub import AudioSegment
 from pathlib import Path
@@ -182,7 +182,7 @@ def eaf_data(
     return df
 
 def snip_audio(
-        annotations: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame],
+        annotations: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame, List[Dict[str,int]]],
         out_dir: Union[str, os.PathLike],
         audio: Union[str, os.PathLike, AudioSegment, None] = None,
         tier: Union[str, Sequence[str], None] = None,
@@ -201,6 +201,8 @@ def snip_audio(
         del df['eaf_name']
     elif type(annotations) is pd.DataFrame:
         df = annotations
+    elif type(annotations) is list:
+        df = pd.DataFrame(data=annotations)
     else:
         # os.path.isfile(annotations)
         path = Path(annotations)
