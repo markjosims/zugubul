@@ -35,7 +35,7 @@ def pipe_out_to_sli_probs(pipe_out: List[Dict[str, str]]) -> Dict[str, str]:
 
 def infer(
     input_file: Union[str, List[str], pd.Series],
-    model_path: Union[str, os.pathlike],
+    model_path: Union[str, os.PathLike],
     task: Literal['asr', 'sli'] = 'asr',
     sli_out_format: Literal['labels', 'probs'] = 'labels',
     do_vad: bool = True, 
