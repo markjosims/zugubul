@@ -67,7 +67,7 @@ def infer(
     elif do_vad:
         print('Performing VAD and inference on files...')
         infer_out = []
-        for i, file in tqdm(enumerate(input_file)):
+        for i, file in tqdm(enumerate(input_file), total=len(input_file)):
             file_vad_data = vad_data[i] if (vad_data and len(vad_data) == len(input_file))\
             else label_speech_segments(file)
             infer_out.extend(_infer_on_segs(file, file_vad_data, pipe, out_format_funct))
