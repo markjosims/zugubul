@@ -38,7 +38,8 @@ def infer(
     model_path: Union[str, os.pathlike],
     task: Literal['asr', 'sli'] = 'asr',
     sli_out_format: Literal['labels', 'probs'] = 'labels',
-    do_vad: bool = True,      
+    do_vad: bool = True, 
+    vad_data: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame] = None,    
 ):
     # define relevant functions for ASR and SLI
     if task == 'asr':
@@ -52,29 +53,35 @@ def infer(
         pipe_class = 'audio-classification'
     pipe = pipeline(pipe_class, model_path)
 
+    if vad_data:
+        # if user passes vad_data, always use
+        do_vad = True
+
     # single file w/ VAD
     if type(input_file) is str and do_vad:
         print('Performing VAD on file...')
-        vad_eaf = label_speech_segments(input_file)
-        sli_segs = _infer_on_segs(input_file, vad_eaf, out_format_funct, pipe)
-        return sli_segs
+        vad_data = vad_data or label_speech_segments(input_file)
+        segs = _infer_on_segs(input_file, vad_data, pipe, out_format_funct)
+        return segs
     # multiple files w/ VAD
     elif do_vad:
-        print('Performing VAD on files...')
-        sli_outs = []
-        for file in tqdm(input_file):
-            sli_outs.extend(_infer_on_segs(file, out_format_funct, pipe))
-        return sli_out
+        print('Performing VAD and inference on files...')
+        infer_out = []
+        for i, file in tqdm(enumerate(input_file)):
+            file_vad_data = vad_data[i] if (vad_data and len(vad_data) == len(input_file))\
+            else label_speech_segments(file)
+            infer_out.extend(_infer_on_segs(file, file_vad_data, pipe, out_format_funct))
+        return infer_out
     # single file no VAD
     elif type(input_file) is str:
-        print('Performing SLI on file...')
-        sli_out = out_format_funct(pipe(input_file))
-        return {'filename': input_file, **sli_out}
+        print('Performing inference on file...')
+        infer_out = out_format_funct(pipe(input_file))
+        return {'filename': input_file, **infer_out}
     # multiple files no VAD
-    print('Performing SLI on files...')
-    source_file = pd.Series(source_file) if type(source_file) is list else source_file
-    sli_outs = _do_infer_list(input_file, pipe, out_format_funct)
-    return [{'filename': file, **sli_out} for file, sli_out in zip(input_file, sli_outs)]
+    print('Performing inference on files...')
+    source_file = pd.Series(source_file)
+    infer_outs = _do_infer_list(input_file, pipe, out_format_funct)
+    return [{'filename': file, **out} for file, out in zip(input_file, infer_outs)]
 
 def _infer_on_segs(
     input_file: Union[str, os.PathLike],
