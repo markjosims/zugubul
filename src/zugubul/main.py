@@ -1221,8 +1221,8 @@ def handle_annotate(args: Dict[str, Any]) -> int:
 
     wav_file = args['WAV_FILE']
     sli_model = args['ac_path']
-    asr_model = args['asr_paths']
-    tgt_lang = args['langs']
+    asr_model = args['asr_path']
+    tgt_lang = args['lang']
     out_fp = args['OUT']
     # tier = args['tier']
     etf = args['template']
