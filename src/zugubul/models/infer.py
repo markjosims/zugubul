@@ -115,7 +115,7 @@ def _do_infer_list(
     return out_list.apply(out_format_funct)
 
 
-def _merge_json_arrays_by_key(
+def merge_json_arrays_by_key(
     base: List[Dict[str, Any]],
     head: List[Dict[str, Any]],
     key: str = 'filename',
@@ -169,7 +169,7 @@ def annotate(
     outputs = [{} for _ in input_file]
     if sli_model:
         sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
-        outputs = _merge_json_arrays_by_key(outputs, sli_outputs)
+        outputs = merge_json_arrays_by_key(outputs, sli_outputs)
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
@@ -180,10 +180,10 @@ def annotate(
                 asr_out = infer(lang_files, model, task='asr', vad_data=lang_segments)
             else:
                 asr_out = infer(lang_files, model, task='asr')
-            outputs = _merge_json_arrays_by_key(outputs, asr_out)
+            outputs = merge_json_arrays_by_key(outputs, asr_out)
     elif asr_model:
         asr_out = infer(input_file, model, do_vad=False)
-        outputs = _merge_json_arrays_by_key(outputs, asr_out)
+        outputs = merge_json_arrays_by_key(outputs, asr_out)
     
     return outputs
 
