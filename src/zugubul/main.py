@@ -1248,7 +1248,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         out_fp = [out_fp,]
 
     if type(tgt_lang) is list:
-        if (asr_model is not list) or (len(asr_model) != len(tgt_lang)):
+        if (type(asr_model) is not list) or (len(asr_model) != len(tgt_lang)):
             raise ValueError("`asr_model` and `tgt_lang` must have same number of values.")
         
         lang_to_asr={lang:model for lang, model in zip(tgt_lang, asr_model)}
