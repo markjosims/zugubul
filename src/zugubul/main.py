@@ -533,11 +533,13 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_arg(
         "--asr_path",
         widget='DirChooser',
-        help="Path to HuggingFace model to use for automatic speech recognition."# If not passed, label utterances with detected language/speaker probabilities."
+        help="Path to HuggingFace model to use for automatic speech recognition.",# If not passed, label utterances with detected language/speaker probabilities."
+        nargs='+',
     )
     add_arg(
         "--lang",
-        help="ISO code for target language to annotate."
+        help="ISO code for target language to annotate.",
+        nargs='+',
     )
     add_arg(
         "--ac_path",
@@ -1218,7 +1220,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     from glob import glob
 
     wav_file = args['WAV_FILE']
-    lid_model = args['ac_path']
+    sli_model = args['ac_path']
     asr_model = args['asr_paths']
     tgt_lang = args['langs']
     out_fp = args['OUT']
@@ -1245,11 +1247,20 @@ def handle_annotate(args: Dict[str, Any]) -> int:
     else:
         out_fp = [out_fp,]
 
+    if type(tgt_lang) is list:
+        if (asr_model is not list) or (len(asr_model) != len(tgt_lang)):
+            raise ValueError("`asr_model` and `tgt_lang` must have same number of values.")
+        
+        lang_to_asr={lang:model for lang, model in zip(tgt_lang, asr_model)}
+    else:
+        lang_to_asr=None
+
     eafs = annotate(
         input_file=wav_file,
-        sli_model=lid_model,
+        sli_model=sli_model,
         asr_model=asr_model,
         tgt_lang=tgt_lang,
+        lang_to_asr=lang_to_asr,
         # tier=tier,
         etf=etf,
     )
