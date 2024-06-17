@@ -39,7 +39,7 @@ def infer(
     task: Literal['asr', 'sli'] = 'asr',
     sli_out_format: Literal['labels', 'probs'] = 'labels',
     do_vad: bool = True, 
-    vad_data: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame] = None,    
+    vad_data: Union[str, os.PathLike, Elan.Eaf, pd.DataFrame, List[Any]] = None,    
 ):
     # define relevant functions for ASR and SLI
     if task == 'asr':
@@ -114,6 +114,27 @@ def _do_infer_list(
     out_list = input_list.progress_apply(pipe)
     return out_list.apply(out_format_funct)
 
+
+def _merge_json_arrays_by_key(
+    base: List[Dict[str, Any]],
+    head: List[Dict[str, Any]],
+    key: str = 'filename',
+) -> List[Dict[str, Any]]:
+    base_sorted = sorted(base, key=lambda d: d[key])
+    head_sorted = sorted(head, key=lambda d: d[key])
+    i = 0
+    for head_obj in head_sorted:
+        head_key = head_obj[key]
+        for j, base_obj in enumerate(base_sorted[i:]):
+            base_key = base_obj[key]
+            if base_key == head_key:
+                base_sorted[i+j] = {**base_obj, **head_obj}
+                i+=j
+        else:
+            base_sorted.append(head_obj)
+    
+    return base_sorted
+
 def annotate(
         input_file: Union[str, os.PathLike, List[str]],
         asr_model: Union[str, os.PathLike, None] = None,
@@ -148,21 +169,23 @@ def annotate(
     outputs = [{} for _ in input_file]
     if sli_model:
         sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
-        for out, sli_out in zip(outputs, sli_outputs):
-            out.update(**sli_out)
+        outputs = _merge_json_arrays_by_key(outputs, sli_outputs)
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
+            is_lang = [o for o in outputs if o['lang'] == lang]
+            lang_files = [file['filename'] for file in is_lang]
             if do_vad:
-                for file_out in outputs:
-                    seg_df = pd.DataFrame(data=file_out['segments'])
-                    file = file_out['filename']
-                    asr_out = _infer_on_segs(file, seg_df, )
-                [out['file'] for out in outputs if out['lang'] == lang]
+                lang_segments = [file['segments'] for file in is_lang]
+                asr_out = infer(lang_files, model, task='asr', vad_data=lang_segments)
+            else:
+                asr_out = infer(lang_files, model, task='asr')
+            outputs = _merge_json_arrays_by_key(outputs, asr_out)
     elif asr_model:
-        ...
-
-    return 
+        asr_out = infer(input_file, model, do_vad=False)
+        outputs = _merge_json_arrays_by_key(outputs, asr_out)
+    
+    return outputs
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='Annotate an audio file using an ASR and, optionally, AC model.')
