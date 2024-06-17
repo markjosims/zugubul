@@ -135,6 +135,24 @@ def merge_json_arrays_by_key(
     
     return base_sorted
 
+def elanify_json(
+        data: List[Dict[str, Any]],
+        etf: Optional[Elan.Eaf] = None,
+) -> Elan.Eaf:
+    eaf = Elan.Eaf(etf) if etf else Elan.Eaf()
+
+    for obj in data:
+        text = obj.get('text', '')
+        start = obj['start']
+        end = obj['end']
+        # TODO: add option to make annotations from sli_scores
+        language = obj.get('sli_label')
+        if language not in eaf.get_tier_names():
+            eaf.add_tier(language)
+        eaf.add_annotation(language, start, end, text)
+        
+    return eaf
+
 def annotate(
         input_file: Union[str, os.PathLike, List[str]],
         asr_model: Union[str, os.PathLike, None] = None,
@@ -173,7 +191,7 @@ def annotate(
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
-            is_lang = [o for o in outputs if o['lang'] == lang]
+            is_lang = [o for o in outputs if o['sli_label'] == lang]
             lang_files = [file['filename'] for file in is_lang]
             if do_vad:
                 lang_segments = [file['segments'] for file in is_lang]
@@ -185,7 +203,7 @@ def annotate(
         asr_out = infer(input_file, model, do_vad=False)
         outputs = merge_json_arrays_by_key(outputs, asr_out)
     
-    return outputs
+    return [elanify_json(file, etf) for file in outputs]
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     parser = argparse.ArgumentParser(description='Annotate an audio file using an ASR and, optionally, AC model.')
