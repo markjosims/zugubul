@@ -533,7 +533,8 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
     add_arg(
         "--asr_path",
         widget='DirChooser',
-        help="Path to HuggingFace model to use for automatic speech recognition. If not passed, label utterances with detected language/speaker probabilities.")
+        help="Path to HuggingFace model to use for automatic speech recognition."# If not passed, label utterances with detected language/speaker probabilities."
+    )
     add_arg(
         "--lang",
         help="ISO code for target language to annotate."
@@ -542,21 +543,12 @@ def init_annotate_parser(annotate_parser: argparse.ArgumentParser) -> None:
         "--ac_path",
         widget='DirChooser',
         help="Path to HuggingFace model to use for audio classification. If not passed, annotate all detected utterances.")
-    add_arg(
-        "--inference_method",
-        "-im",
-        choices=['local', 'api', 'try_api'],
-        default='try_api',
-        help='Method for running inference. If local, download model if not already downloaded and '\
-            +'run pipeline. If api, use HuggingFace inference API. If try_api, call HuggingFace API '\
-            +'but run locally if API returns error.'        
-    )
-    add_arg(
-        '-t',
-        '--tier',
-        default='default-lt',
-        help="Add ASR annotations to given tier. By default `default-lt`."
-    )
+    # add_arg(
+    #     '-t',
+    #     '--tier',
+    #     default='default-lt',
+    #     help="Add ASR annotations to given tier. By default `default-lt`."
+    # )
     add_arg(
         '--template',
         type=lambda x: is_valid_file(annotate_parser, x),
@@ -1223,50 +1215,46 @@ def handle_annotate(args: Dict[str, Any]) -> int:
             files_on_server=args['files_on_server'],
         )
     from zugubul.models.infer import annotate
+    from glob import glob
 
     wav_file = args['WAV_FILE']
     lid_model = args['ac_path']
-    asr_model = args['asr_path']
-    tgt_lang = args['lang']
+    asr_model = args['asr_paths']
+    tgt_lang = args['langs']
     out_fp = args['OUT']
-    inference_method = args['inference_method']
-    tier = args['tier']
+    # tier = args['tier']
     etf = args['template']
 
     batch = args['batch']
     recursive = args['recursive']
-    overwrite = args['overwrite']
 
-    if batch:
-        batch_funct(
-            f=annotate,
-            dir=wav_file,
-            suffix='.wav',
-            file_arg='source',
-            kwargs={
-                'lid_model': lid_model,
-                'asr_model': asr_model,
-                'tgt_lang': tgt_lang,
-                'inference_method': inference_method,
-                'tier': tier,
-                'etf': etf,
-            },
-            out_path_f=lambda data_file: get_eaf_outpath(data_file, wav_file),
-            save_f=lambda data_file, out: save_eaf_batch(data_file, out, wav_file),
-            recursive=recursive,
-            overwrite=overwrite
-        )
+    if batch and recursive:
+        wav_file = glob(os.path.join(wav_file, '**/*.wav'))
+        out_fp = [
+            os.path.join(
+                out_fp, os.path.basename(wav)
+            ) for wav in wav_file
+        ]
+    elif batch:
+        wav_file = glob(os.path.join(wav_file, '*.wav'))
+        out_fp = [
+            os.path.join(
+                out_fp, os.path.basename(wav)
+            ) for wav in wav_file
+        ]
     else:
-        eaf = annotate(
-            input_file=wav_file,
-            sli_model=lid_model,
-            asr_model=asr_model,
-            tgt_lang=tgt_lang,
-            inference_method=inference_method,
-            tier=tier,
-            etf=etf
-        )
-        eaf.to_file(out_fp)
+        out_fp = [out_fp,]
+
+    eafs = annotate(
+        input_file=wav_file,
+        sli_model=lid_model,
+        asr_model=asr_model,
+        tgt_lang=tgt_lang,
+        # tier=tier,
+        etf=etf,
+    )
+    for eaf, out in zip(eafs, out_fp):
+        eaf.to_file(out)
 
     return 0
 
