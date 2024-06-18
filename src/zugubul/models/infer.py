@@ -76,12 +76,12 @@ def infer(
     elif type(input_file) is str:
         print('Performing inference on file...')
         infer_out = out_format_funct(pipe(input_file))
-        return {'filename': input_file, **infer_out}
+        return {'file': input_file, **infer_out}
     # multiple files no VAD
     print('Performing inference on files...')
     source_file = pd.Series(source_file)
     infer_outs = _do_infer_list(input_file, pipe, out_format_funct)
-    return [{'filename': file, **out} for file, out in zip(input_file, infer_outs)]
+    return [{'file': file, **out} for file, out in zip(input_file, infer_outs)]
 
 def _infer_on_segs(
     input_file: Union[str, os.PathLike],
@@ -118,7 +118,7 @@ def _do_infer_list(
 def merge_json_arrays_by_key(
     base: List[Dict[str, Any]],
     head: List[Dict[str, Any]],
-    key: str = 'filename',
+    key: str = 'file',
 ) -> List[Dict[str, Any]]:
     base_sorted = sorted(base, key=lambda d: d[key])
     head_sorted = sorted(head, key=lambda d: d[key])
@@ -184,7 +184,7 @@ def annotate(
 
     lang_specific_asr = tgt_lang or lang_to_asr
 
-    outputs = [{'filename': filename} for filename in input_file]
+    outputs = [{'file': file} for file in input_file]
     if sli_model:
         sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
         outputs = merge_json_arrays_by_key(outputs, sli_outputs)
@@ -192,7 +192,7 @@ def annotate(
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
             is_lang = [o for o in outputs if o['sli_label'] == lang]
-            lang_files = [file['filename'] for file in is_lang]
+            lang_files = [file['file'] for file in is_lang]
             if do_vad:
                 lang_segments = [file['segments'] for file in is_lang]
                 asr_out = infer(lang_files, model, task='asr', vad_data=lang_segments)
