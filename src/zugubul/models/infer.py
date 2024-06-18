@@ -176,7 +176,7 @@ def annotate(
 
     # handle single and multi-file annotation identically
     if type(input_file) is str:
-        input_file == [input_file,]
+        input_file = [input_file,]
 
     # treat single-language ASR and multi-language ASR identically
     if (asr_model and tgt_lang) and (not lang_to_asr):
