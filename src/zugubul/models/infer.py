@@ -184,7 +184,7 @@ def annotate(
 
     lang_specific_asr = tgt_lang or lang_to_asr
 
-    outputs = [{} for _ in input_file]
+    outputs = [{'filename': filename} for filename in input_file]
     if sli_model:
         sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
         outputs = merge_json_arrays_by_key(outputs, sli_outputs)
