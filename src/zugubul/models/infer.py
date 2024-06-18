@@ -210,7 +210,7 @@ def annotate(
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
-            for file_obj in tqdm(outputs, desc='Performing VAD on files'):
+            for file_obj in tqdm(outputs, desc='Performing ASR on files'):
                 filename = file_obj['file']
                 if do_vad:
                     lang_segments = [segment for segment in file_obj['segments'] if segment['sli_label']==lang]
