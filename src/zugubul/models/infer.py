@@ -120,20 +120,39 @@ def merge_json_arrays_by_key(
     head: List[Dict[str, Any]],
     key: str = 'file',
 ) -> List[Dict[str, Any]]:
-    base_sorted = sorted(base, key=lambda d: d[key])
-    head_sorted = sorted(head, key=lambda d: d[key])
+    base.sort(key=lambda d: d[key])
+    head.sort(key=lambda d: d[key])
     i = 0
-    for head_obj in head_sorted:
+    for head_obj in head:
         head_key = head_obj[key]
-        for j, base_obj in enumerate(base_sorted[i:]):
+        for j, base_obj in enumerate(base[i:]):
             base_key = base_obj[key]
             if base_key == head_key:
-                base_sorted[i+j] = {**base_obj, **head_obj}
+                base[i+j] = {**base_obj, **head_obj}
                 i+=j
+                break
         else:
-            base_sorted.append(head_obj)
+            base.append(head_obj)
     
-    return base_sorted
+    return base
+
+def merge_json_objs(
+        base: Dict[str, Any],
+        head: Dict[str, Any],
+) -> Dict[str, Any]:
+    for key, value in head.items():
+        if key not in base:
+            base[key] = value
+        elif type(value) is dict:
+            if type(base[key]) is not dict:
+                raise ValueError("Base value and head value should both be dicts.")
+            merge_json_objs(base[key], head[key])
+        elif type(value) is list:
+            if type(base[key]) is not list:
+                raise ValueError("Base value and head value should both be lists.")
+            merge_json_arrays_by_key(base, head, 'start')
+        else:
+            base[key] = value
 
 def elanify_json(
         data: List[Dict[str, Any]],
@@ -187,21 +206,26 @@ def annotate(
     outputs = [{'file': file} for file in input_file]
     if sli_model:
         sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
-        outputs = merge_json_arrays_by_key(outputs, sli_outputs)
+        merge_json_arrays_by_key(outputs, sli_outputs, in_place=True)
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
-            is_lang = [o for o in outputs if o['sli_label'] == lang]
-            lang_files = [file['file'] for file in is_lang]
-            if do_vad:
-                lang_segments = [file['segments'] for file in is_lang]
-                asr_out = infer(lang_files, model, task='asr', vad_data=lang_segments)
-            else:
-                asr_out = infer(lang_files, model, task='asr')
-            outputs = merge_json_arrays_by_key(outputs, asr_out)
+            for file_obj in tqdm(outputs, desc='Performing VAD on files'):
+                filename = file_obj['file']
+                if do_vad:
+                    lang_segments = [segment for segment in file_obj['segments'] if segment['sli_label']==lang]
+                    asr_out = infer(filename, model, task='asr', vad_data=lang_segments)
+                elif file_obj['sli_label'] == lang:
+                    asr_out = infer(filename, model, task='asr')
+                merge_json_arrays_by_key(outputs, asr_out, in_place=True)
     elif asr_model:
-        asr_out = infer(input_file, model, do_vad=False)
-        outputs = merge_json_arrays_by_key(outputs, asr_out)
+        if do_vad and sli_model:
+            # already done vad, re-use segment times
+            vad_data = [obj['segments'] for obj in outputs]
+            asr_out = infer(input_file, model, vad_data=vad_data)
+        else:
+            asr_out = infer(input_file, model, do_vad=do_vad)
+        merge_json_arrays_by_key(outputs, asr_out, in_place=True)
     
     return [elanify_json(file, etf) for file in outputs]
 
