@@ -93,7 +93,7 @@ def _infer_on_segs(
         vad_df = snip_audio(annotations=segs, out_dir=tmpdir, audio=input_file)
         vad_segs = vad_df['wav_clip']
 
-        tqdm.write('Performing SLI on VAD segments...')
+        tqdm.write('Performing inference on VAD segments...')
         pipe_out = _do_infer_list(vad_segs, pipe, out_format_funct)
 
     seg_outs = [{
