@@ -128,7 +128,7 @@ def merge_json_arrays_by_key(
         for j, base_obj in enumerate(base[i:]):
             base_key = base_obj[key]
             if base_key == head_key:
-                base[i+j] = {**base_obj, **head_obj}
+                merge_json_objs(base_obj, head_obj)
                 i+=j
                 break
         else:
