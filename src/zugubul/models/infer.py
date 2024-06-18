@@ -150,7 +150,7 @@ def merge_json_objs(
         elif type(value) is list:
             if type(base[key]) is not list:
                 raise ValueError("Base value and head value should both be lists.")
-            merge_json_arrays_by_key(base, head, 'start')
+            merge_json_arrays_by_key(base[key], head[key], 'start')
         else:
             base[key] = value
 
