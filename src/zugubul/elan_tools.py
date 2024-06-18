@@ -219,6 +219,12 @@ def snip_audio(
     elif tier: # type(tier) is Sequence
         df = df[df['tier'].isin(tier)]
 
+    if 'wav_source' not in df.columns:
+        if type(audio) is str:
+            df['wav_source'] = audio
+        else:
+            raise ValueError("If annotations does not have `wav_source` column, `audio` must be a str.")
+
     df['wav_clip'] = ''
 
     for wav_source in tqdm(df['wav_source'].unique(), desc='Snipping audio'):
