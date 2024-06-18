@@ -206,7 +206,7 @@ def annotate(
     outputs = [{'file': file} for file in input_file]
     if sli_model:
         sli_outputs = infer(input_file, sli_model, 'sli', sli_out_format, do_vad)
-        merge_json_arrays_by_key(outputs, sli_outputs, in_place=True)
+        merge_json_arrays_by_key(outputs, sli_outputs)
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
@@ -217,7 +217,7 @@ def annotate(
                     asr_out = infer(filename, model, task='asr', vad_data=lang_segments)
                 elif file_obj['sli_label'] == lang:
                     asr_out = infer(filename, model, task='asr')
-                merge_json_arrays_by_key(outputs, asr_out, in_place=True)
+                merge_json_arrays_by_key(outputs, asr_out)
     elif asr_model:
         if do_vad and sli_model:
             # already done vad, re-use segment times
@@ -225,7 +225,7 @@ def annotate(
             asr_out = infer(input_file, model, vad_data=vad_data)
         else:
             asr_out = infer(input_file, model, do_vad=do_vad)
-        merge_json_arrays_by_key(outputs, asr_out, in_place=True)
+        merge_json_arrays_by_key(outputs, asr_out)
     
     return [elanify_json(file, etf) for file in outputs]
 
