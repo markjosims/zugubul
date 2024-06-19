@@ -59,17 +59,21 @@ def infer(
 
     # single file w/ VAD
     if type(input_file) is str and do_vad:
-        print('Performing VAD on file...')
-        vad_data = vad_data or label_speech_segments(input_file)
+        if not vad_data:
+            print('Performing VAD on file...')
+            vad_data = label_speech_segments(input_file)
         segs = _infer_on_segs(input_file, vad_data, pipe, out_format_funct)
         return segs
     # multiple files w/ VAD
     elif do_vad:
-        print('Performing VAD and inference on files...')
+        print('Performing inference on files...')
         infer_out = []
         for i, file in tqdm(enumerate(input_file), total=len(input_file)):
-            file_vad_data = vad_data[i] if (vad_data and len(vad_data) == len(input_file))\
-            else label_speech_segments(file)
+            if vad_data and (len(vad_data)==len(input_file)):
+                file_vad_data = vad_data[i]
+            else:
+                print('Performing VAD on file...')
+                file_vad_data = label_speech_segments(file)
             infer_out.extend(_infer_on_segs(file, file_vad_data, pipe, out_format_funct))
         return infer_out
     # single file no VAD
