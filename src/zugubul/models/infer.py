@@ -162,7 +162,7 @@ def elanify_json(
 
     audio_file = data['file']
     eaf.add_linked_file(audio_file)
-    
+
     segments = data['segments']
     for obj in segments:
         text = obj.get('text', '')
@@ -214,7 +214,7 @@ def annotate(
     
     if asr_model and lang_specific_asr:
         for lang, model in lang_to_asr.items():
-            for file_obj in tqdm(outputs, desc='Performing ASR on files'):
+            for file_obj in tqdm(outputs, desc=f'Performing ASR for language {lang}'):
                 filename = file_obj['file']
                 if do_vad:
                     lang_segments = [segment for segment in file_obj['segments'] if segment['sli_label']==lang]
