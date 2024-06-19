@@ -155,12 +155,16 @@ def merge_json_objs(
             base[key] = value
 
 def elanify_json(
-        data: List[Dict[str, Any]],
+        data: Dict[str, Any],
         etf: Optional[Elan.Eaf] = None,
 ) -> Elan.Eaf:
     eaf = Elan.Eaf(etf) if etf else Elan.Eaf()
 
-    for obj in data:
+    audio_file = data['file']
+    eaf.add_linked_file(audio_file)
+    
+    segments = data['segments']
+    for obj in segments:
         text = obj.get('text', '')
         start = obj['start']
         end = obj['end']
