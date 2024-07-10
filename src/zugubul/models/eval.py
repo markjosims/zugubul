@@ -29,7 +29,8 @@ def eval(
         metric: Union[str, List[str]] = 'cer_and_wer',
         label_col: str = 'text',
         input_col: str = 'audio',
-        split: str = 'test'
+        split: str = 'test',
+        batch_size: int = 10,
 ) -> None:
     if model_str:
         print('Loading model and processor...')
@@ -73,7 +74,7 @@ def eval(
                     )
                 outputs['model'][m].append(model_outs)        
     print('Evaluating...')
-    dataset.map(eval_row, batched=True, batch_size=10)
+    dataset.map(eval_row, batched=True, batch_size=batch_size)
     return outputs
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
