@@ -1284,7 +1284,6 @@ def handle_eval(args: Dict[str, Any]) -> int:
         **args
     )
     with open(out_path, 'w') as f:
-        breakpoint()
         json.dump(out, f)
     return 0
 
