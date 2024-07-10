@@ -1241,7 +1241,7 @@ def handle_annotate(args: Dict[str, Any]) -> int:
         wav_file = glob(os.path.join(wav_file, '*.wav'))
         out_fp = [
             os.path.join(
-                out_fp, os.path.basename(wav)
+                out_fp, os.path.basename(wav).replace('.wav', '.eaf')
             ) for wav in wav_file
         ]
     else:
