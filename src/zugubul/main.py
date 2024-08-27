@@ -1382,6 +1382,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return handle_vad(args)
     elif command == 'eaf_data':
         return handle_eaf_data(args)
+    elif command == 'snip_audio':
+        return handle_snip_audio(args)
     elif command == 'split_data':
         return handle_split_data(args)
     elif command == 'lid_labels':
